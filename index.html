@@ -1,0 +1,2487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121820">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Tarjeta de arquero</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#121820; --panel:#1A222C; --panel2:#222C38; --line:#2E3A47;
+  --ink:#E9EFF4; --dim:#8D9CAB;
+  --gold:#F2C11B; --red:#DF4A44; --blue:#3D7CC9; --wht:#E6E8E4; --miss:#4A5765;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:contain;}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer;font-variant-numeric:tabular-nums;}
+input,textarea,select{font:inherit;font-variant-numeric:tabular-nums;}
+input,textarea{-webkit-user-select:text!important;user-select:text!important;
+  -webkit-touch-callout:default!important;}
+.selec{-webkit-user-select:text;user-select:text;}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+.wrap{max-width:520px;margin:0 auto;padding:14px 14px 148px;}
+
+.top{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
+.name{font-size:18px;font-weight:600;letter-spacing:.2px;}
+.sub{font-size:12px;color:var(--dim);margin-left:auto;text-align:right;}
+.inst{margin-left:auto;background:var(--gold);color:#181206;font-size:13px;font-weight:600;
+  padding:7px 12px;border-radius:8px;}
+
+.seg{display:flex;gap:5px;background:var(--panel);padding:5px;border-radius:11px;}
+.seg button{flex:1;padding:9px 4px;border-radius:8px;font-size:15px;font-weight:600;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .12s,color .12s;}
+.seg button[data-on="1"]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
+.segrow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px;}
+
+.selrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+select.arq{flex:1;min-width:0;background:var(--panel);color:var(--ink);border:none;
+  box-shadow:inset 0 0 0 1px var(--line);border-radius:11px;padding:12px 10px;font-size:15px;font-weight:600;}
+.addarq{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);
+  border-radius:11px;padding:12px 15px;font-size:18px;font-weight:600;flex:none;}
+
+.fmt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.step{display:flex;align-items:center;background:var(--panel);border-radius:11px;padding:5px;gap:2px;}
+.step .lb{font-size:12px;color:var(--dim);padding-left:7px;flex:1;line-height:1.15;}
+.step button{width:34px;height:34px;border-radius:8px;background:var(--panel2);font-size:19px;
+  font-weight:600;box-shadow:inset 0 0 0 1px var(--line);flex:none;}
+.step b{min-width:26px;text-align:center;font-size:17px;font-weight:600;}
+
+.card{background:var(--panel);border-radius:14px;padding:13px;margin-bottom:12px;}
+.chead{display:flex;align-items:baseline;gap:8px;margin-bottom:11px;}
+.chead h2{margin:0;font-size:16px;font-weight:600;}
+.chead span{font-size:13px;color:var(--dim);margin-left:auto;text-align:right;}
+
+.slots{display:grid;gap:7px;}
+.slot{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:600;background:#151C24;box-shadow:inset 0 0 0 1px var(--line);}
+.slot[data-sel="1"]{box-shadow:inset 0 0 0 2px var(--gold);}
+
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px;}
+.pad button{padding:14px 0;border-radius:11px;font-size:19px;font-weight:600;}
+.pad button:active{transform:scale(.95);}
+.undo{grid-column:span 4;background:#151C24;color:var(--dim);box-shadow:inset 0 0 0 1px var(--line);}
+
+.tablewrap{overflow-x:auto;}
+table.grid{width:100%;border-collapse:collapse;}
+table.grid td,table.grid th{padding:4px 1px;text-align:center;font-weight:500;}
+table.grid th{color:var(--dim);font-weight:500;font-size:12px;padding-bottom:6px;}
+table.grid tr[data-on="1"] td{background:#212B36;}
+table.grid tr td:first-child{border-radius:6px 0 0 6px;}
+table.grid tr td:last-child{border-radius:0 6px 6px 0;}
+.num{color:var(--dim);}
+.chip{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-weight:600;}
+.dash{color:#333F4B;}
+.tot{font-weight:600;}
+.avg{color:var(--dim);}
+
+.sum{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+.big{font-size:40px;line-height:.9;font-weight:600;}
+.big small{font-size:14px;color:var(--dim);font-weight:500;margin-left:3px;}
+.stat{font-size:13px;color:var(--dim);margin:0;}
+.stat b{display:block;font-size:21px;color:var(--ink);font-weight:600;line-height:1.15;}
+.stat i{color:var(--ink);font-style:normal;font-weight:600;}
+
+.act{width:100%;margin-top:12px;padding:13px;border-radius:11px;background:var(--gold);color:#181206;
+  font-size:16px;font-weight:600;}
+.act[disabled]{background:#242E39;color:#5C6A78;cursor:default;}
+.act2{background:#242E39;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
+.ghost{background:none;color:var(--dim);font-size:14px;padding:9px 2px;}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.pair .act{margin-top:0;}
+
+.rec{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+.rec:last-child{border-bottom:none;}
+.rec .lbl{font-size:15px;min-width:0;}
+.rec .lbl small{display:block;color:var(--dim);font-size:12px;}
+.rec .v{margin-left:auto;text-align:right;flex:none;}
+.rec .v b{font-size:22px;font-weight:600;}
+.rec .v small{display:block;color:var(--dim);font-size:12px;}
+.minis{display:flex;gap:6px;flex:none;}
+.mini{background:#242E39;color:var(--ink);font-size:12px;font-weight:600;padding:7px 9px;
+  border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);}
+.empty{color:var(--dim);font-size:14px;padding:6px 0;margin:0;line-height:1.5;}
+
+.pos{width:26px;height:26px;border-radius:50%;background:var(--panel2);color:var(--dim);flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;
+  box-shadow:inset 0 0 0 1px var(--line);}
+.pos[data-p="1"]{background:var(--gold);color:#181206;box-shadow:none;}
+.pos[data-p="2"]{background:#B9C3CC;color:#161C22;box-shadow:none;}
+.pos[data-p="3"]{background:#B07A46;color:#1A1206;box-shadow:none;}
+.gtit{font-size:13px;color:var(--dim);margin:0 0 4px;}
+.gtit b{color:var(--ink);font-weight:600;}
+
+.field{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.field label{font-size:14px;color:var(--dim);width:84px;flex:none;}
+.field input{flex:1;min-width:0;background:#151C24;border:1px solid var(--line);border-radius:9px;
+  padding:10px;color:var(--ink);font-size:15px;}
+.fotorow{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.foto,.fotoph{width:60px;height:75px;border-radius:9px;flex:none;background:#151C24;
+  box-shadow:inset 0 0 0 1px var(--line);}
+.foto{object-fit:cover;}
+.fotoph{display:flex;align-items:center;justify-content:center;color:#3E4A57;font-size:11px;text-align:center;}
+.fotobtns{display:flex;flex-direction:column;gap:7px;align-items:flex-start;}
+.avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;margin-left:auto;flex:none;}
+.avatarmini{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;}
+
+.chart{width:100%;height:auto;display:block;margin:2px 0 4px;}
+.chart .gline{stroke:var(--line);stroke-width:1;}
+.chart .lab{fill:var(--dim);font-size:9px;}
+.chart .path{fill:none;stroke:var(--gold);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+.chart .area{fill:var(--gold);opacity:.09;}
+.chart .dot{fill:var(--bg);stroke:var(--gold);stroke-width:2;}
+.chart .last{fill:var(--gold);}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;}
+.legend div{font-size:13px;color:var(--dim);}
+.legend b{display:block;font-size:20px;color:var(--ink);font-weight:600;line-height:1.2;}
+.csv{width:100%;height:100px;background:#151C24;border:1px solid var(--line);border-radius:9px;
+  color:var(--dim);font-size:11px;padding:9px;margin-top:10px;resize:vertical;
+  font-family:ui-monospace,Menlo,monospace;white-space:pre;}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;display:grid;gap:5px;background:#0F151C;
+  border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom));}
+.tabs button{padding:13px 2px;font-size:12.5px;font-weight:500;color:var(--dim);border-radius:10px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#151C24;
+  box-shadow:inset 0 0 0 1px #212B36;}
+.tabs button[data-on="1"]{color:#181206;background:var(--gold);box-shadow:none;font-weight:600;}
+.tabs button[data-on="1"]{color:var(--gold);}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--panel2);
+  padding:11px 17px;border-radius:11px;font-size:14px;z-index:9;display:none;max-width:88%;
+  box-shadow:0 6px 24px rgba(0,0,0,.45),inset 0 0 0 1px var(--line);}
+#fallback{position:fixed;left:0;right:0;bottom:0;z-index:12;display:none;
+  padding:0 12px calc(64px + env(safe-area-inset-bottom));}
+.fbcard{max-width:496px;margin:0 auto;background:var(--panel2);border-radius:14px;padding:14px;
+  box-shadow:0 -8px 30px rgba(0,0,0,.5),inset 0 0 0 1px var(--line);}
+.fbcard b{font-size:15px;}
+.fbcard p{font-size:13px;color:var(--dim);margin:6px 0 12px;line-height:1.45;}
+.fbcard i{color:var(--ink);font-style:normal;font-weight:600;}
+.fblink{display:block;text-align:center;background:var(--gold);color:#181206;text-decoration:none;
+  font-size:15px;font-weight:600;padding:13px;border-radius:11px;}
+.fbcard .ghost{width:100%;}
+#visor{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(6,10,14,.95);z-index:20;
+  display:none;overflow:auto;padding:14px 12px calc(20px + env(safe-area-inset-bottom));}
+#visor .vcard{max-width:520px;margin:0 auto;}
+#visor img{width:100%;display:block;border-radius:10px;background:#fff;}
+#visor p{font-size:13px;color:var(--dim);margin:12px 2px;line-height:1.45;}
+#visor p i{color:var(--ink);font-style:normal;font-weight:600;}
+#visor .cerrar{width:100%;padding:13px;border-radius:11px;background:#242E39;color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--line);font-size:15px;font-weight:600;}
+#visor .capbtn{width:100%;padding:13px;border-radius:11px;background:var(--gold);color:#181206;
+  font-size:15px;font-weight:600;margin-bottom:10px;}
+#visor.cap{background:#FFFFFF;padding:0;}
+#visor.cap .vcard{width:100%;max-width:none;margin:0;}
+#visor.cap p,#visor.cap .cerrar,#visor.cap .capbtn{display:none;}
+#visor.cap img{border-radius:0;}
+.modolin{max-width:360px;margin:0 auto;padding-top:6vh;text-align:center;}
+.modolin h2{font-size:22px;font-weight:600;margin:16px 0 8px;}
+.modolin p{font-size:14px;color:var(--dim);margin:0 0 26px;line-height:1.5;}
+.modobtn{width:100%;padding:20px;border-radius:14px;background:var(--panel);margin-bottom:12px;
+  box-shadow:inset 0 0 0 1px var(--line);text-align:left;}
+.modobtn b{display:block;font-size:18px;font-weight:600;margin-bottom:4px;}
+.modobtn span{font-size:13px;color:var(--dim);line-height:1.45;}
+.modobtn[data-on="1"]{box-shadow:inset 0 0 0 2px var(--gold);}
+
+.bolita{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;
+  vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.swmodo{background:var(--panel);color:var(--dim);font-size:12px;font-weight:600;padding:7px 11px;
+  border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;}
+.tiro{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);}
+.tiro:last-of-type{border-bottom:none;}
+.tiro .qn{flex:1;min-width:0;font-size:15px;font-weight:600;}
+.tiro .qn small{display:block;color:var(--dim);font-size:12px;font-weight:400;}
+.tiro .fl{display:flex;gap:7px;flex:none;}
+.fslot{width:44px;height:44px;border-radius:11px;background:#151C24;box-shadow:inset 0 0 0 1px var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;}
+.fslot[data-sel="1"]{box-shadow:inset 0 0 0 2px var(--gold);}
+.tiro .pt{width:34px;text-align:right;font-size:17px;font-weight:600;flex:none;}
+.pad3{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px;}
+.pad3 button{padding:15px 0;border-radius:11px;font-size:19px;font-weight:600;}
+.navp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+.navp button{padding:13px;border-radius:11px;background:#242E39;color:var(--ink);font-size:15px;
+  font-weight:600;box-shadow:inset 0 0 0 1px var(--line);}
+.navp button[disabled]{color:#5C6A78;}
+.animal{display:flex;gap:11px;align-items:center;margin-bottom:12px;}
+.animal img{width:74px;height:56px;border-radius:9px;object-fit:cover;flex:none;background:#151C24;}
+.animal .ph{width:74px;height:56px;border-radius:9px;background:#151C24;flex:none;
+  box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;
+  color:#3E4A57;font-size:11px;}
+.animal input{flex:1;min-width:0;background:#151C24;border:1px solid var(--line);border-radius:9px;
+  padding:10px;color:var(--ink);font-size:15px;}
+.detalle{background:#151C24;border-radius:10px;padding:9px 11px;margin:2px 0 10px;}
+.detalle table{width:100%;border-collapse:collapse;font-size:13px;}
+.detalle td{padding:3px 2px;}
+.detalle td:first-child{color:var(--dim);width:26px;}
+.detalle td:nth-child(2){color:var(--dim);}
+.detalle td:nth-last-child(-n+3){text-align:center;width:30px;}
+.tec{margin-bottom:12px;}
+.tec input{width:100%;background:#151C24;border:1px solid var(--line);border-radius:9px;
+  padding:11px;color:var(--ink);font-size:15px;font-weight:600;margin-bottom:7px;}
+.tec textarea{width:100%;min-height:96px;background:#151C24;border:1px solid var(--line);
+  border-radius:9px;padding:11px;color:var(--ink);font-size:14px;line-height:1.5;resize:vertical;}
+.tecfotos{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+.tf{position:relative;}
+.tf img{width:92px;height:69px;border-radius:8px;object-fit:cover;display:block;background:#151C24;}
+.tf button{position:absolute;top:-6px;right:-6px;width:23px;height:23px;border-radius:50%;
+  background:var(--panel2);color:var(--ink);font-size:12px;box-shadow:inset 0 0 0 1px var(--line);}
+.tecbar{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+.mdrow{display:flex;gap:26px;align-items:flex-end;margin:12px 0 4px;}
+.mdlab{display:block;font-size:13px;color:var(--dim);margin-bottom:2px;}
+.mdval{font-size:30px;font-weight:600;line-height:1;}
+.mdval.mdbig{font-size:42px;color:var(--gold);}
+.cronorow{display:flex;align-items:center;gap:14px;}
+.cronon{font-size:46px;font-weight:600;line-height:1;flex:none;min-width:112px;}
+.cronobt{flex:1;display:flex;flex-direction:column;gap:7px;}
+.barra{height:7px;border-radius:4px;background:#151C24;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);}
+.barra i{display:block;height:100%;background:var(--gold);border-radius:4px;}
+.chk{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);}
+.chk:last-of-type{border-bottom:none;}
+.tick{width:24px;height:24px;border-radius:7px;flex:none;background:#151C24;
+  box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:transparent;margin-top:1px;}
+.tick[data-on="1"]{background:var(--gold);color:#181206;box-shadow:none;}
+.ctxt{font-size:14px;line-height:1.35;min-width:0;}
+.ctxt[data-on="1"]{color:var(--dim);}
+.ctxt small{display:block;color:var(--dim);font-size:12px;margin-top:2px;line-height:1.4;}
+.cinp{flex:1;min-width:0;background:#151C24;border:1px solid var(--line);border-radius:8px;
+  padding:8px;color:var(--ink);font-size:14px;}
+textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(--line);
+  border-radius:9px;padding:11px;color:var(--ink);font-size:14px;line-height:1.5;resize:vertical;}
+#lock{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:40;display:none;
+  overflow:auto;padding:0 20px calc(24px + env(safe-area-inset-bottom));}
+#lock .lin{max-width:340px;margin:0 auto;padding-top:11vh;text-align:center;}
+#lock h2{font-size:20px;font-weight:600;margin:16px 0 6px;}
+#lock p{font-size:14px;color:var(--dim);margin:0 0 22px;line-height:1.5;}
+.puntos{display:flex;gap:12px;justify-content:center;margin-bottom:24px;height:16px;}
+.punto{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);}
+.punto[data-on="1"]{background:var(--gold);box-shadow:none;}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;max-width:300px;margin:0 auto;}
+.teclado button{padding:17px 0;border-radius:13px;background:var(--panel);font-size:23px;font-weight:600;
+  box-shadow:inset 0 0 0 1px var(--line);}
+.teclado button:active{background:var(--panel2);}
+.teclado .txt{font-size:14px;font-weight:500;color:var(--dim);background:none;box-shadow:none;}
+#lock .aviso{color:var(--red);font-size:14px;min-height:20px;margin:16px 0 0;}
+#lock .pie{margin-top:26px;}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="fallback"></div>
+<div id="visor"></div>
+<div id="lock"></div>
+<input type="file" id="fotoinput" accept="image/*" style="display:none">
+<input type="file" id="copiainput" accept=".json,.txt,application/json,text/plain" style="display:none">
+<script>
+"use strict";
+var DISTS=[10,18,30], KEYS=['X','10','9','8','7','6','5','4','3','2','1','M'];
+var MAXE=30, MAXA=12;
+var STORE='arqueria:datos:v1';
+var WV=/;\s*wv\)/.test(navigator.userAgent||'');
+
+function val(s){ return s==null?0:s==='M'?0:s==='X'?10:Number(s); }
+function dec(n){ return n.toFixed(2).replace('.',','); }
+function esc(t){ return String(t).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function ringc(s){
+  if(s==='M') return {bg:'var(--miss)',fg:'#0D1218',bd:'transparent'};
+  var v=val(s);
+  if(v>=9) return {bg:'var(--gold)',fg:'#1A1405',bd:'transparent'};
+  if(v>=7) return {bg:'var(--red)',fg:'#FFFFFF',bd:'transparent'};
+  if(v>=5) return {bg:'var(--blue)',fg:'#FFFFFF',bd:'transparent'};
+  if(v>=3) return {bg:'#0F141A',fg:'#D9E2EA',bd:'#3C4855'};
+  return {bg:'var(--wht)',fg:'#0F141A',bd:'transparent'};
+}
+function sty(c){ return 'background:'+c.bg+';color:'+c.fg+';box-shadow:inset 0 0 0 1px '+c.bd; }
+
+/* ---- una tirada conoce su propio formato ---- */
+function nE(s){ return s.ends.length; }
+function nA(s){ return s.ends[0]?s.ends[0].length:0; }
+function maxPts(s){ return nE(s)*nA(s)*10; }
+function formato(s){ return nE(s)+'×'+nA(s); }
+function malla(ne,na){ var a=[],e,r,i; for(e=0;e<ne;e++){ r=[]; for(i=0;i<na;i++) r.push(null); a.push(r); } return a; }
+function flat(s){ return s.ends.reduce(function(a,r){ return a.concat(r); },[]); }
+function shots(s){ return flat(s).filter(function(x){ return x!=null; }).length; }
+function total(s){ return flat(s).reduce(function(a,x){ return a+val(x); },0); }
+function xs(s){ return flat(s).filter(function(x){ return x==='X'; }).length; }
+function dieces(s){ return flat(s).filter(function(x){ return x==='10'; }).length; }
+function media(s){ var n=shots(s); return n?total(s)/n:0; }
+function complete(s){ return shots(s)===nE(s)*nA(s); }
+function firstEmpty(s){ var e,a;
+  for(e=0;e<nE(s);e++) for(a=0;a<nA(s);a++) if(s.ends[e][a]==null) return {end:e,arrow:a};
+  return {end:nE(s)-1,arrow:nA(s)-1}; }
+function reformar(s,ne,na){
+  var out=[],e,a,r;
+  for(e=0;e<ne;e++){ r=[]; for(a=0;a<na;a++) r.push(s.ends[e]&&s.ends[e][a]!=null?s.ends[e][a]:null); out.push(r); }
+  s.ends=out;
+}
+function fecha(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
+function fechaCorta(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+function iso(d){ return new Date(d).toISOString().slice(0,10); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ---- estado, con conversión de la versión anterior ---- */
+var ARCOS=['Instintivo','Tradicional','Desnudo','Compuesto','Longbow'];
+var PRESETS=['Club de campo','Monte Alto','La Dehesa','El Encinar','Pinar del Río',
+  'Sierra Norte','Coto Bajo','Las Navas','El Robledal','Valle Verde'];
+var KEYS3D=['11','10','8','5','M'];
+var LISTA=[{k:'d',n:"Montaje de la diana",items:[["Parapeto / boss de espuma o paja","130x130 cm para exterior; 60x60 cm para uso portátil e interior",1],["Núcleo de recambio del parapeto","Centro reemplazable: la zona 8-10 se desgasta primero",0],["Caballete o trípode de diana","Metálico o de madera, con altura regulable (centro a ~130 cm)",1],["Contrapesos o sacos de arena","Alternativa a las piquetas en suelo duro",0],["Funda o lona impermeable","Protege la diana de la lluvia y el sol si queda a la intemperie",1],["Caras de diana 60 cm","Para 18-30 m, el rango donde vive el tradicional",1],["Blancos animales o siluetas 3D","Recorrido de bosque, lo suyo del arco tradicional",0],["Chinchetas de diana (pins)","Cabeza ancha, específicas de tiro con arco",1],["Red de retención (backstop)","Detiene las flechas desviadas; imprescindible si hay paso cercano",1],["Zona de seguridad tras la diana","Espacio libre, muro o talud; si no lo hay, la red deja de ser opcional",1],["Marcadores de distancia","Estacas o conos fijos a las distancias que te permita el espacio",1],["Iluminación","Foco LED si tiras al anochecer",1],["Extractor de flechas","De goma o silicona",1],["Lubricante de extracción","Silicona o jabón para sacar flechas de espuma dura",1],["Caja o cubo para residuos","Restos de plumas, caras usadas, cinta",1]]},
+{k:'e',n:"Equipo del arquero",items:[["Cuerpo ILF (riser) tradicional","Madera o metal con interfaz ILF; 17\", 19\" o 21\" según la altura total que busques",0],["Palas ILF","Cortas/medias/largas según el riser; el libraje marcado es a 28\" sobre riser de 17\"",0],["Cuerda del AMO correcto","Dacron B50 si las palas no admiten FastFlight; comprueba antes en la ficha del fabricante",0],["Cuerda de repuesto","Ya estirada y con el mismo brace height",0],["Punto de encoche (nock point)","Latón o hilo de serving; con dedos suele ir uno arriba o dos abrazando",0],["Cuero o piel para la balda y el lateral","Strike plate y shelf pad: protege el riser y suaviza la salida",0],["Funda de arco y fundas de palas","El desmontaje frecuente del ILF hace que las palas se rocen",0],["Juego de flechas","12 uds.; con dedos el spine correcto importa más que en suelto mecánico",0],["Plumas naturales montadas","Sobre balda las plumas de plástico rozan y desvían la flecha",0],["Flechas de repuesto","Mismo lote, spine y peso de punta que el juego principal",0],["Tubo o caja de transporte de flechas","Evita deformaciones y plumas aplastadas",0],["Carcaj de cadera o de espalda","El de espalda es lo habitual en tradicional",0],["Dactilera (tab) o guante","Guante de tres dedos es lo clásico; ten un repuesto",0],["Protector de brazo (bracer)","Con brace height bajo el golpe de cuerda es más probable",0],["Peto o protector de pecho","Aparta la ropa de la trayectoria de la cuerda",0],["Gafas de protección","Obligatorias en muchas instalaciones",0],["Llave Allen para tornillos ILF","Normalmente 3/16\" o 5 mm para el limb bolt; llévala siempre",0],["Juego de llaves Allen","Métricas e imperiales para el resto de tornillería",0],["Escuadra de arco (bow square)","Brace height y altura del punto de encoche",0],["Tensor de arco (bow stringer)","Nunca montar la cuerda a mano o con la pierna",0],["Cera para cuerda","El Dacron la pide a menudo",0],["Extractor de flechas","De bolsillo",0],["Bolsa de herramientas","Todo lo anterior junto y localizable",0],["Catalejo o prismáticos","Ver impactos sin acercarte a la diana",0],["Diana blanca sin zonas","Trabajo de forma sin puntuación, muy usado en instintivo",0],["Gorra y gafas de sol","",0],["Crema solar y repelente de insectos","",0],["Chubasquero y toalla","El material también hay que secarlo",0],["Botiquín básico","Tiritas, antiséptico, esparadrapo, frío instantáneo",0],["Bolsa o carro de transporte","Para llevar todo el equipo de una vez",0],["Licencia federativa y seguro","Vigentes; llevar copia digital",0],["Documento de identidad","Requerido en competición",0]]},
+{k:'t',n:"Taller de flechas",items:[["Tornillo de banco con mordazas blandas","Sujetar tubos sin marcarlos",0],["Estantería y cajas organizadoras","Puntas, insertos y culatines separados por peso y calibre",0],["Tubos verticales para guardar flechas","Por juegos, sin aplastar plumas",0],["Emplumadora (fletching jig)","Con clamp para pluma natural; con una basta para uso propio",0],["Clamp helicoidal","La pluma natural se monta en hélice; es lo que la hace estabilizar",0],["Chopper o quemador de plumas","Dar forma (shield, parabólica) a plumas enteras",0],["Sacapuntas cónico para madera","5° para la punta y 11° para el culatín, si tiras tubo de madera",0],["Cortadora de flechas (arrow saw)","Con disco abrasivo y tope de longitud regulable",0],["Discos de corte de repuesto","Se desgastan con el carbono",0],["Escuadrador de tubos (squaring tool)","Deja el corte perpendicular; clave para la precisión",0],["Comprobador de rectitud / spine tester","Con dedos y sin plunger, agrupar tubos por spine real cambia mucho",0],["Balanza de precisión en granos","Resolución 0,1 gr para igualar el peso del juego",0],["Pistola de calor o soplete de hot melt","Montar y desmontar puntas pegadas en caliente",0],["Extractor de insertos","Recuperar insertos sin destrozar el tubo",0],["Calibre digital (pie de rey)","Diámetros de tubo, insertos y culatines",0],["Regla metálica y cinta métrica","Medir longitud de flecha desde la garganta del culatín",0],["Cúter, tijeras finas y alicates","Retirar plumas y restos de cola",0],["Lima y papel de lija fino","Rebabar el corte del tubo",0],["Herramienta de serving + hilo","Reparar el serving central y los bucles de la cuerda",0],["Plumas naturales","4-5\" shield o parabólicas; separa las de índice por color",0],["Culatines (nocks)","Del calibre exacto de tus tubos, varios colores",0],["Insertos y outserts","Solo para tubo de carbono o aluminio",0],["Puntas / tips","Varios pesos; en tradicional se sube peso de punta para bajar spine efectivo",0],["Tubos de repuesto","Mismo spine y lote que tu juego actual",0],["Cola de plumas (Fletch-Tite o Duco)","Apta para pluma natural, no solo para vanes",0],["Hot melt para puntas","Permite desmontar la punta con calor",0],["Epoxi de dos componentes","Insertos: unión permanente y resistente",0],["Acetona o alcohol isopropílico","Desengrasar el tubo antes de pegar; sin esto, la cola falla",0],["Bastoncillos, paños sin pelusa y papel","Limpieza y aplicación",0],["Wraps adhesivos","Facilitan reemplazar plumas sin raspar el tubo",0],["Cera de cuerda, hilo de serving y Dacron B50","Mantenimiento y fabricación de cuerdas",0],["Rotulador permanente y etiquetas","Numerar flechas para seguir su agrupación",0],["Kit de crestado (cresting)","Decorar e identificar tus flechas",0],["Gafas de seguridad","Obligatorias al cortar tubos",0],["Mascarilla FFP2/FFP3","El polvo de carbono es irritante y no debe inhalarse",0],["Guantes de nitrilo","Colas, epoxi y disolventes",0],["Extintor pequeño o manta ignífuga","Trabajas con calor y disolventes",0],["Contenedor para residuos y restos de tubo","Las astillas de carbono se clavan",0],["Cuaderno o ficha de flechas","Longitud, spine, peso de punta, FOC y fecha de cada juego",0]]}];
+var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
+             {id:'azul',nombre:'Azul',color:'#3D7CC9'},
+             {id:'blanca',nombre:'Blanca',color:'#E6E8E4'}];
+var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2'],formato:{ends:10,arrows:6},
+  drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},check:null,extras:{},
+  alturaOjo:170,estim:[],
+  campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
+          {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
+  recorridos:[],recorridoId:null};
+(function cargar(){
+  var p=null;
+  try{ var raw=localStorage.getItem(STORE); if(raw) p=JSON.parse(raw); }catch(e){}
+  if(!p) { D.arqueros=[{id:uid(),nombre:'',federacion:'',licencia:'',foto:null}]; return; }
+  D.sites=p.sites||D.sites;
+  D.sessions=p.sessions||[];
+  D.formato=p.formato||D.formato;
+  if(p.pin) D.pin=p.pin;
+  if(p.modo) D.modo=p.modo;
+  if(p.preguntar!==undefined) D.preguntar=p.preguntar;
+  if(p.tecnicas) D.tecnicas=p.tecnicas;
+  if(p.material) D.material=p.material;
+  if(p.notas) D.notas=p.notas;
+  if(p.notasCampo) D.notasCampo=p.notasCampo;
+  if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
+  if(p.estim) D.estim=p.estim;
+  if(p.check) D.check=p.check;
+  if(p.extras) D.extras=p.extras;
+  if(p.campos&&p.campos.length===4) D.campos=p.campos;
+  if(p.recorridos) D.recorridos=p.recorridos;
+  if(p.recorridoId) D.recorridoId=p.recorridoId;
+  if(p.arqueros && p.arqueros.length){ D.arqueros=p.arqueros; D.drafts=p.drafts||{}; }
+  else {
+    /* venimos de la versión de un solo arquero */
+    var a=p.arquero||{nombre:'',federacion:'',licencia:'',foto:null};
+    a.id=uid(); D.arqueros=[a];
+    D.sessions.forEach(function(s){ if(!s.arquero) s.arquero=a.id; });
+    var dr=p.drafts||{}; D.drafts={};
+    Object.keys(dr).forEach(function(k){ D.drafts[a.id+'|'+k.replace('-','|')]=dr[k]; });
+  }
+  if(!D.arqueros.length) D.arqueros=[{id:uid(),nombre:'',federacion:'',licencia:'',foto:null}];
+})();
+
+function arrancaCheck(){
+  if(D.check) return;
+  D.check={};
+  LISTA.forEach(function(b){ b.items.forEach(function(it,i){ if(it[2]) D.check[b.k+i]=1; }); });
+}
+arrancaCheck();
+var U={dist:18,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
+var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
+
+function save(){ try{ localStorage.setItem(STORE,JSON.stringify(D)); }
+  catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); } }
+function arqActual(){ return D.arqueros[Math.min(U.arq,D.arqueros.length-1)]; }
+function arqPorId(id){ return D.arqueros.filter(function(a){ return a.id===id; })[0]
+  || {nombre:'(borrado)',federacion:'',licencia:'',foto:null}; }
+function nombreArq(a){ return a.nombre||'Arquero sin nombre'; }
+function sitio(i){ return D.sites[i]||('Sitio '+(i+1)); }
+function claveDraft(){ return arqActual().id+'|'+U.dist+'|'+U.site; }
+function draft(){
+  var k=claveDraft();
+  if(!D.drafts[k]) D.drafts[k]={id:uid(),arquero:arqActual().id,fecha:new Date().toISOString(),
+    dist:U.dist,site:U.site,ends:malla(D.formato.ends,D.formato.arrows)};
+  return D.drafts[k];
+}
+/* mejor marca por media de flecha, entre tiradas completas */
+function best(arqId,d,s){
+  return D.sessions.filter(function(x){ return x.arquero===arqId && x.dist===d && x.site===s && complete(x); })
+    .sort(function(a,b){ return media(b)-media(a); })[0];
+}
+
+var tt;
+function toast(m){ var el=document.getElementById('toast'); el.textContent=m; el.style.display='block';
+  clearTimeout(tt); tt=setTimeout(function(){ el.style.display='none'; },2600); }
+
+/* ---- salida de archivos ---- */
+function b64(bytes){
+  if(typeof bytes==='string') return btoa(unescape(encodeURIComponent(bytes)));
+  var s='',i,CH=0x8000;
+  for(i=0;i<bytes.length;i+=CH) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
+  return btoa(s);
+}
+function bajar(bytes,nombre,tipo){
+  var blob;
+  try{ blob=new Blob([bytes],{type:tipo}); }catch(e){ blob=null; }
+  if(blob && navigator.share && navigator.canShare && typeof File!=='undefined'){
+    try{
+      var f=new File([blob],nombre,{type:tipo});
+      if(navigator.canShare({files:[f]})){
+        navigator.share({files:[f],title:nombre}).catch(function(){ enlaceManual(bytes,nombre,tipo,blob); });
+        return;
+      }
+    }catch(e){}
+  }
+  if(blob && !WV){
+    try{
+      var url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){}
+  }
+  enlaceManual(bytes,nombre,tipo,blob);
+}
+function enlaceManual(bytes,nombre,tipo,blob){
+  var caja=document.getElementById('fallback'), href;
+  try{ href='data:'+tipo+';base64,'+b64(bytes); }
+  catch(e){ href=blob?URL.createObjectURL(blob):''; }
+  caja.innerHTML='<div class="fbcard"><b>'+esc(nombre)+'</b>'
+    +'<p>'+(WV
+      ? 'Mantén pulsado el botón y elige <i>Descargar enlace</i>. Un toque normal no hace nada.'
+      : 'Si no ha aparecido en Descargas, mantén pulsado el botón y elige <i>Descargar enlace</i>.')
+    +'</p>'
+    +'<a class="fblink" href="'+href+'" download="'+esc(nombre)+'" data-fb="link">Guardar '+esc(nombre)+'</a>'
+    +'<button class="ghost" data-fb="cerrar">Cerrar</button></div>';
+  caja.style.display='block';
+}
+
+function copiar(txt,queEs){
+  function viejo(){
+    try{
+      var ta=document.createElement('textarea');
+      ta.value=txt; ta.style.position='fixed'; ta.style.top='-1000px';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok=document.execCommand('copy'); ta.remove();
+      toast(ok?(queEs||'Texto')+' copiado':'Este envoltorio no deja copiar.');
+    }catch(e){ toast('Este envoltorio no deja copiar.'); }
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ toast((queEs||'Texto')+' copiado'); }).catch(viejo);
+  } else viejo();
+}
+
+/* ---- telémetro por inclinación ----
+   d = altura del ojo / tan(ángulo bajo la horizontal). Entrenamiento, no competición. */
+var MD={ang:null,dist:null,buf:[],escucha:false,vista:false,fijada:null,sensor:null,est:''};
+function onOrient(ev){
+  if(ev==null||ev.beta==null) return;
+  MD.sensor=true;
+  var dep=90-ev.beta;
+  MD.buf.push(dep); if(MD.buf.length>12) MD.buf.shift();
+  var i,su=0; for(i=0;i<MD.buf.length;i++) su+=MD.buf[i];
+  var prom=su/MD.buf.length;
+  MD.ang=prom;
+  MD.dist=(prom>=1&&prom<=60)?((D.alturaOjo||170)/100)/Math.tan(prom*Math.PI/180):null;
+  pintaMedida();
+}
+function escuchaSensor(si){
+  try{
+    if(si&&!MD.escucha){
+      if(!window.addEventListener){ MD.sensor=false; return; }
+      window.addEventListener('deviceorientation',onOrient,true); MD.escucha=true;
+      MD.sensor=null; setTimeout(function(){ if(MD.sensor===null){ MD.sensor=false; pintaMedida(); } },2500);
+    }
+    else if(!si&&MD.escucha){
+      if(window.removeEventListener) window.removeEventListener('deviceorientation',onOrient,true);
+      MD.escucha=false;
+    }
+  }catch(e){ MD.escucha=false; MD.sensor=false; }
+}
+function distDe(ang){ return ((D.alturaOjo||170)/100)/Math.tan(ang*Math.PI/180); }
+function temblor(){
+  if(MD.buf.length<6) return null;
+  var i,su=0,m; for(i=0;i<MD.buf.length;i++) su+=MD.buf[i]; m=su/MD.buf.length;
+  var v=0; for(i=0;i<MD.buf.length;i++) v+=(MD.buf[i]-m)*(MD.buf[i]-m);
+  return Math.sqrt(v/MD.buf.length);
+}
+function pintaMedida(){
+  if(!MD.vista) return;
+  var a=document.getElementById('mdang'), d=document.getElementById('mddist');
+  if(a) a.textContent=(MD.ang==null?'—':MD.ang.toFixed(1)+'°');
+  if(d) d.textContent=(MD.dist==null?'—':MD.dist.toFixed(1)+' m');
+  var rg=document.getElementById('mdrango');
+  if(rg){
+    if(MD.ang==null||MD.dist==null) rg.textContent='';
+    else {
+      var lo=distDe(Math.min(60,MD.ang+0.5)), hi=(MD.ang-0.5>=0.6)?distDe(MD.ang-0.5):null;
+      rg.textContent='Con medio grado de margen: entre '+lo.toFixed(1)+' y '
+        +(hi==null?'mucho más':hi.toFixed(1)+' m');
+    }
+  }
+  var tb=document.getElementById('mdpulso'), t=temblor();
+  if(tb) tb.textContent=(t==null?'':(t<0.25?'Pulso firme.':(t<0.7?'Aguanta un poco más quieto.':'Te mueves demasiado.')));
+  var av=document.getElementById('mdaviso');
+  if(av) av.textContent=(MD.sensor===false
+    ?'No detecto el sensor de inclinación en esta versión instalada.'
+    :(MD.dist==null&&MD.sensor?'Inclina el móvil hacia la base de la diana.':''));
+}
+function errMedio(){
+  var h=D.estim||[]; if(!h.length) return null;
+  var ab=0,sg=0,i;
+  for(i=0;i<h.length;i++){ ab+=Math.abs(h[i].e-h[i].r); sg+=(h[i].e-h[i].r); }
+  return {abs:ab/h.length,sesgo:sg/h.length,n:h.length};
+}
+function pantallaDistancia(){
+  var em=errMedio();
+  var h='<div class="card"><div class="chead"><h2>Medir distancia</h2>'
+    +'<span>solo entrenamiento</span></div>'
+    +'<p class="stat">Sujeta el móvil vertical, mira por el canto superior y apunta a la '
+    +'<i>base</i> de la diana, donde toca el suelo. Mantén la postura y fija la medida.</p>'
+    +'<div class="mdrow"><div><span class="mdlab">Ángulo</span>'
+    +'<span class="mdval" id="mdang">—</span></div>'
+    +'<div><span class="mdlab">Distancia</span>'
+    +'<span class="mdval mdbig" id="mddist">—</span></div></div>'
+    +'<p class="stat" id="mdrango"></p>'
+    +'<p class="stat" id="mdpulso"></p>'
+    +'<p class="stat" id="mdaviso"></p>'
+    +'<button class="act" data-act="mdfijar">Fijar medida</button>'
+    +(MD.fijada!=null?'<p class="stat" style="margin-top:8px">Medida fijada: <i>'
+      +MD.fijada.toFixed(1)+' m</i></p>':'')
+    +'<div class="field" style="margin-top:12px"><label for="mdh">Altura ojo</label>'
+    +'<input id="mdh" type="number" inputmode="numeric" min="100" max="220" data-alturaojo '
+    +'value="'+(D.alturaOjo||170)+'"><span class="stat">cm</span></div></div>';
+
+  h+='<div class="card"><div class="chead"><h2>Entrenar el ojo</h2>'
+    +'<span>'+((D.estim||[]).length)+' intentos</span></div>'
+    +'<p class="stat">Primero estima a ojo, apunta el número, y luego mide. La app lleva la cuenta.</p>'
+    +'<div class="field" style="margin-top:10px"><label for="mde">Tu estimación</label>'
+    +'<input id="mde" type="number" inputmode="numeric" min="1" max="120" data-est '
+    +'value="'+esc(MD.est)+'"><span class="stat">m</span></div>'
+    +'<button class="act act2" data-act="mdcomparar">Comparar con la medida</button>';
+  if(em){
+    h+='<div class="legend" style="margin-top:12px">'
+      +'<div>Error medio<b>'+dec(em.abs)+' m</b></div>'
+      +'<div>Tendencia<b>'+(Math.abs(em.sesgo)<0.5?'centrado'
+        :(em.sesgo>0?'+'+dec(em.sesgo)+' m':dec(em.sesgo)+' m'))+'</b></div>'
+      +'<div>Intentos<b>'+em.n+'</b></div></div>'
+      +'<p class="stat" style="margin-top:8px">'
+      +(Math.abs(em.sesgo)<0.5?'No tiras ni corto ni largo de forma sistemática.'
+        :(em.sesgo>0?'Tiendes a estimar de más: las ves más lejos de lo que están.'
+                    :'Tiendes a estimar de menos: las ves más cerca de lo que están.'))+'</p>';
+    h+='<div class="detalle" style="margin-top:10px"><table><tbody>';
+    (D.estim||[]).slice(-10).reverse().forEach(function(x){
+      var dif=x.e-x.r;
+      h+='<tr><td>'+x.e.toFixed(0)+' m</td><td>medido '+x.r.toFixed(1)+' m</td>'
+        +'<td style="color:'+(Math.abs(dif)<=2?'#6FA85B':(Math.abs(dif)<=5?'#C79A0E':'#DF4A44'))+'">'
+        +(dif>0?'+':'')+dif.toFixed(1)+'</td></tr>';
+    });
+    h+='</tbody></table></div>'
+      +'<button class="ghost" data-act="mdborrar">Borrar el historial de estimaciones</button>';
+  }
+  h+='</div>';
+
+  h+='<div class="card"><p class="stat">El método mide el ángulo hasta el suelo, así que necesita que '
+    +'la diana esté a tu mismo nivel; en cuesta se desvía.<br><br>'
+    +'Y sobre todo: un grado de error son 0,9 m a diez metros, pero 5 m a veinte y 8 m a treinta. '
+    +'De veinte metros en adelante tómalo como una orientación, no como una medida.<br><br>'
+    +'<i>En las divisiones de distancia desconocida de campo y 3D los telémetros están prohibidos '
+    +'en competición.</i></p></div>';
+  return h;
+}
+
+/* ---- cronómetro con señales de audio ---- */
+var TM={tot:120,left:120,on:false,h:null,aviso:30};
+var AC=null;
+function pitido(veces,freq,dur){
+  try{
+    if(!AC){ var K=window.AudioContext||window.webkitAudioContext; if(!K) return; AC=new K(); }
+    if(AC.state==='suspended') AC.resume();
+    var i;
+    for(i=0;i<veces;i++){
+      var t0=AC.currentTime+i*(dur+0.12);
+      var o=AC.createOscillator(), g=AC.createGain();
+      o.type='square'; o.frequency.value=freq||880;
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(0.35,t0+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0); o.stop(t0+dur+0.02);
+    }
+  }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(veces===1?200:[0,180,120,180,120,180].slice(0,veces*2)); }catch(e){}
+}
+function mmss(sg){
+  var m=Math.floor(sg/60), q=sg%60;
+  return m+':'+(q<10?'0':'')+q;
+}
+function pintaCrono(){
+  var el=document.getElementById('crono');
+  if(el) el.textContent=mmss(TM.left);
+  var bt=document.getElementById('cronobtn');
+  if(bt) bt.textContent=TM.on?'Parar':(TM.left===TM.tot?'Empezar':'Seguir');
+}
+function tic(){
+  if(!TM.on) return;
+  TM.left--;
+  if(TM.left===TM.aviso) pitido(2,1000,0.18);
+  if(TM.left<=0){
+    TM.left=0; paraCrono(); pitido(3,700,0.3);
+    var el=document.getElementById('crono'); if(el) el.textContent='0:00';
+    toast('Tiempo.');
+    return;
+  }
+  pintaCrono();
+}
+function arrancaCrono(){
+  if(TM.on) return;
+  if(TM.left<=0) TM.left=TM.tot;
+  TM.on=true; pitido(1,1200,0.25);
+  clearInterval(TM.h); TM.h=setInterval(tic,1000);
+  pintaCrono();
+}
+function paraCrono(){ TM.on=false; clearInterval(TM.h); TM.h=null; pintaCrono(); }
+function ponCrono(sg){ paraCrono(); TM.tot=sg; TM.left=sg; TM.aviso=sg>60?30:10; render(); }
+function tarjetaCrono(presets){
+  var h='<div class="card"><div class="chead"><h2>Cronómetro</h2>'
+    +'<span>aviso a '+TM.aviso+' s</span></div>'
+    +'<div class="cronorow"><span id="crono" class="cronon">'+mmss(TM.left)+'</span>'
+    +'<div class="cronobt">'
+    +'<button class="act" id="cronobtn" data-act="crono" style="margin-top:0">'
+    +(TM.on?'Parar':(TM.left===TM.tot?'Empezar':'Seguir'))+'</button>'
+    +'<button class="mini" data-act="cronoreset">Poner a cero</button>'
+    +'</div></div>'
+    +'<div class="seg" style="margin-top:11px">'
+    +presets.map(function(pp){
+      return '<button data-act="cronoset" data-v="'+pp[0]+'" data-on="'+(TM.tot===pp[0]?1:0)+'">'+pp[1]+'</button>';
+    }).join('')+'</div>'
+    +'<p class="stat" style="margin-top:9px">Un pitido al empezar, dos al quedar '+TM.aviso
+    +' segundos y tres al acabar.</p></div>';
+  return h;
+}
+
+/* ---- copia de seguridad ---- */
+var PREVIO='arqueria:previo';
+function sinFotos(d){
+  d.arqueros.forEach(function(a){ a.foto=null; });
+  (d.tecnicas||[]).forEach(function(t){ t.fotos=[]; });
+  (d.material||[]).forEach(function(t){ t.fotos=[]; });
+  (d.campos||[]).forEach(function(c){
+    Object.keys(c.animales||{}).forEach(function(k){ c.animales[k].foto=null; }); });
+  return d;
+}
+function copiaJSON(conFotos){
+  var d=JSON.parse(JSON.stringify(D));
+  if(!conFotos) d=sinFotos(d);
+  return JSON.stringify({app:'tarjeta-arquero',formato:4,fecha:new Date().toISOString(),datos:d});
+}
+function pesa(txt){
+  var kb=txt.length/1024;
+  return kb<1024?Math.round(kb)+' KB':(kb/1024).toFixed(1)+' MB';
+}
+function leeCopia(txt){
+  var o;
+  try{ o=JSON.parse(txt); }catch(e){ return null; }
+  var d=(o&&o.datos)?o.datos:o;
+  if(!d||!Array.isArray(d.arqueros)) return null;
+  return {datos:d,fecha:(o&&o.fecha)||null};
+}
+function resumenCopia(c){
+  var d=c.datos;
+  return [d.arqueros.length+' arquero'+(d.arqueros.length===1?'':'s'),
+    (d.sessions||[]).length+' tiradas de sala',
+    (d.recorridos||[]).length+' recorridos',
+    (d.material||[]).length+' fichas de material',
+    (function(){ var n=0,k; for(k in (d.check||{})) n++; return n+' materiales marcados'; })(),
+    (d.tecnicas||[]).length+' técnicas'].join(' · ');
+}
+function aplicaCopia(c){
+  try{ localStorage.setItem(PREVIO,JSON.stringify(D)); }catch(e){}
+  var d=c.datos;
+  D.arqueros=d.arqueros&&d.arqueros.length?d.arqueros:D.arqueros;
+  D.sites=d.sites||D.sites;
+  D.formato=d.formato||D.formato;
+  D.drafts=d.drafts||{};
+  D.sessions=d.sessions||[];
+  D.tecnicas=d.tecnicas||[];
+  D.material=d.material||[];
+  D.notas=d.notas||{};
+  D.notasCampo=d.notasCampo||{};
+  D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[];
+  D.check=d.check||null; D.extras=d.extras||{}; arrancaCheck();
+  D.campos=(d.campos&&d.campos.length===4)?d.campos:D.campos;
+  D.recorridos=d.recorridos||[];
+  D.recorridoId=d.recorridoId||null;
+  if(d.pin) D.pin=d.pin; 
+  if(d.modo) D.modo=d.modo;
+  U.arq=0; U.sel={end:0,arrow:0}; C.idx=0; C.sel={a:0,f:0}; C.copia=null; C.pegado='';
+  save(); render(); toast('Copia restaurada');
+}
+function hayPrevio(){ try{ return !!localStorage.getItem(PREVIO); }catch(e){ return false; } }
+function tarjetaCopia(){
+  var conF=C.conFotos!==false, txt=copiaJSON(conF);
+  var h='<div class="card"><div class="chead"><h2>Copia de seguridad</h2><span>'+pesa(txt)+'</span></div>'
+    +'<p class="stat">Guarda todo: arqueros, tiradas, recorridos, técnicas y ajustes.</p>'
+    +'<div class="seg" style="margin:10px 0">'
+    +'<button data-act="copiafotos" data-v="1" data-on="'+(conF?1:0)+'">Con fotos</button>'
+    +'<button data-act="copiafotos" data-v="0" data-on="'+(conF?0:1)+'">Sin fotos (más ligera)</button>'
+    +'</div>'
+    +(WV?'':'<button class="act act2" data-act="bajarcopia">Descargar archivo</button>')
+    +'<button class="act" data-act="copiarcopia">Copiar al portapapeles</button>'
+    +'<button class="ghost" data-act="vercopia">'+(C.verCopia?'Ocultar texto':'Ver texto')+'</button>'
+    +(C.verCopia?'<textarea class="csv selec" readonly data-selall>'+esc(txt)+'</textarea>'
+        +'<p class="stat">Toca dentro del recuadro y se selecciona todo. Luego usa <i>Copiar</i> '
+        +'del menú que saca Android.</p>':'')
+    +'<p class="stat" style="margin-top:10px">Pega el texto copiado en cualquier dispositivo a través de '
+    +'cualquier aplicación, donde posteriormente pueda ser copiado en la aplicación para restaurar.</p>'
+    +'</div>';
+
+  h+='<div class="card"><div class="chead"><h2>Restaurar</h2></div>'
+    +'<p class="stat">Pega aquí una copia o elige el archivo guardado. Lo que tengas ahora se sustituye.</p>'
+    +'<textarea class="csv selec" placeholder="Pega aquí el texto de la copia" data-pegar>'+esc(C.pegado||'')+'</textarea>'
+    +'<div class="pair" style="margin-top:10px">'
+    +'<button class="act act2" data-act="elegircopia" style="margin-top:0">Elegir archivo</button>'
+    +'<button class="act act2" data-act="comprobarcopia" style="margin-top:0">Comprobar</button></div>';
+  if(C.copia){
+    h+='<p class="stat" style="margin-top:12px">Copia válida'
+      +(C.copia.fecha?' del '+fecha(C.copia.fecha):'')+':<br><i>'+esc(resumenCopia(C.copia))+'</i></p>'
+      +'<button class="act" data-act="aplicarcopia">Restaurar esta copia</button>';
+  }
+  if(hayPrevio()) h+='<button class="ghost" data-act="deshacercopia">Deshacer la última restauración</button>';
+  h+='</div>';
+  return h;
+}
+
+/* ---- foto ---- */
+var FW=280, FH=350;
+function cargarFoto(file){
+  if(!file) return;
+  var fr=new FileReader();
+  fr.onerror=function(){ toast('No se pudo leer la imagen.'); };
+  fr.onload=function(){
+    var img=new Image();
+    img.onerror=function(){ toast('Ese archivo no es una imagen válida.'); };
+    img.onload=function(){
+      try{
+        var destino=C.fotoDestino;
+        var ancho=destino?300:FW, alto=destino?225:FH;
+        if(destino&&destino.tipo==='ficha'){ ancho=320; alto=240; }
+        var cv=document.createElement('canvas'); cv.width=ancho; cv.height=alto;
+        var ctx=cv.getContext('2d');
+        var ar=img.width/img.height, tar=ancho/alto, sw,sh,sx,sy;
+        if(ar>tar){ sh=img.height; sw=sh*tar; sx=(img.width-sw)/2; sy=0; }
+        else { sw=img.width; sh=sw/tar; sx=0; sy=(img.height-sh)/2; }
+        ctx.drawImage(img,sx,sy,sw,sh,0,0,ancho,alto);
+        var url=cv.toDataURL('image/jpeg',destino?0.62:0.72);
+        var dat={data:url.split(',')[1],w:ancho,h:alto};
+        if(destino&&destino.tipo==='ficha'){
+          var t2=D[destino.lista][destino.i];
+          if(t2){ if(!t2.fotos) t2.fotos=[]; if(t2.fotos.length<3) t2.fotos.push(dat); }
+          C.fotoDestino=null;
+        }
+        else if(destino){ var rr=recActual(); if(rr) animal(rr,destino.pu).foto=dat; C.fotoDestino=null; }
+        else D.arqueros[U.fotoIdx].foto=dat;
+        save(); render(); toast('Foto guardada');
+      }catch(e){ toast('No se pudo procesar la imagen.'); }
+    };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function fotoURL(a){ return 'data:image/jpeg;base64,'+a.foto.data; }
+
+/* ---- bloqueo por PIN ----
+   Cerrojo local: evita miradas ajenas, no cifra nada. Sin recuperación posible. */
+var PIN={buf:'',modo:'',primero:'',fallos:0};
+function hayPin(){ return !!(D.pin && D.pin.length===6); }
+function pintaLock(){
+  var L=document.getElementById('lock');
+  if(!L.dataset.on){ L.style.display='none'; return; }
+  var tit,txt;
+  if(PIN.modo==='nuevo'){ tit='Crea tu clave'; txt='Seis números. Apúntala en algún sitio: si se te olvida, '
+    +'no hay forma de recuperarla y habría que borrar los datos.'; }
+  else if(PIN.modo==='repite'){ tit='Repite la clave'; txt='Vuelve a marcar los mismos seis números.'; }
+  else if(PIN.modo==='quitar'){ tit='Marca tu clave'; txt='Confírmala para poder quitar el bloqueo.'; }
+  else { tit='Introduce tu clave'; txt='Seis números para entrar.'; }
+  var pts='';
+  for(var i=0;i<6;i++) pts+='<div class="punto" data-on="'+(i<PIN.buf.length?1:0)+'"></div>';
+  var tec='';
+  [1,2,3,4,5,6,7,8,9].forEach(function(n){ tec+='<button data-pin="'+n+'">'+n+'</button>'; });
+  tec+='<button class="txt" data-pin="salir">'+(PIN.modo?'Cancelar':'')+'</button>'
+     +'<button data-pin="0">0</button>'
+     +'<button class="txt" data-pin="borra">Borrar</button>';
+  L.innerHTML='<div class="lin">'
+    +'<svg width="54" height="54" viewBox="0 0 100 100" aria-hidden="true">'
+    +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
+    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
+    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
+    +'<h2>'+tit+'</h2><p>'+txt+'</p>'
+    +'<div class="puntos">'+pts+'</div>'
+    +'<div class="teclado">'+tec+'</div>'
+    +'<p class="aviso">'+(PIN.aviso||'')+'</p></div>';
+  L.style.display='block';
+}
+function abreLock(modo){
+  PIN.buf=''; PIN.modo=modo||''; PIN.primero=''; PIN.aviso='';
+  document.getElementById('lock').dataset.on='1'; pintaLock();
+}
+function cierraLock(){
+  var L=document.getElementById('lock');
+  delete L.dataset.on; L.style.display='none'; L.innerHTML='';
+  PIN.buf=''; PIN.modo=''; PIN.primero='';
+}
+function teclaPin(k){
+  var L=document.getElementById('lock');
+  if(k==='borra'){ PIN.buf=PIN.buf.slice(0,-1); PIN.aviso=''; pintaLock(); return; }
+  if(k==='salir'){
+    if(!PIN.modo) return;
+    cierraLock(); render(); return;
+  }
+  if(PIN.buf.length>=6) return;
+  PIN.buf+=k; PIN.aviso='';
+  if(PIN.buf.length<6){ pintaLock(); return; }
+  var v=PIN.buf;
+  if(PIN.modo==='nuevo'){ PIN.primero=v; PIN.buf=''; PIN.modo='repite'; pintaLock(); return; }
+  if(PIN.modo==='repite'){
+    if(v===PIN.primero){ D.pin=v; save(); cierraLock(); render(); toast('Clave activada'); }
+    else { PIN.buf=''; PIN.modo='nuevo'; PIN.aviso='No coinciden. Empieza otra vez.'; pintaLock(); }
+    return;
+  }
+  if(PIN.modo==='quitar'){
+    if(v===D.pin){ delete D.pin; save(); cierraLock(); render(); toast('Clave quitada'); }
+    else { PIN.buf=''; PIN.aviso='Clave incorrecta.'; pintaLock(); }
+    return;
+  }
+  /* entrada normal */
+  if(v===D.pin){ PIN.fallos=0; cierraLock(); }
+  else {
+    PIN.fallos++; PIN.buf='';
+    PIN.aviso=PIN.fallos>=3?'Clave incorrecta. Llevas '+PIN.fallos+' intentos.':'Clave incorrecta.';
+    pintaLock();
+  }
+}
+
+/* ================= TIRO EN CAMPO (figuras 3D) ================= */
+function pts3(v){ return v==null?0:v==='M'?0:Number(v); }
+function color3(v){
+  if(v==='M') return {bg:'var(--miss)',fg:'#0D1218',bd:'transparent'};
+  if(v==='11') return {bg:'#F2C11B',fg:'#1A1405',bd:'transparent'};
+  if(v==='10') return {bg:'#C79A0E',fg:'#1A1405',bd:'transparent'};
+  if(v==='8') return {bg:'var(--red)',fg:'#FFF',bd:'transparent'};
+  if(v==='5') return {bg:'var(--blue)',fg:'#FFF',bd:'transparent'};
+  return {bg:'#151C24',fg:'var(--dim)',bd:'var(--line)'};
+}
+function recActual(){
+  if(!D.recorridoId) return null;
+  return D.recorridos.filter(function(r){ return r.id===D.recorridoId; })[0]||null;
+}
+/* orden real de puestos: arranca en la estaca elegida y da la vuelta */
+function secuencia(r){
+  var out=[],i;
+  for(i=0;i<r.puestos;i++) out.push(((r.inicio-1+i)%r.puestos)+1);
+  return out;
+}
+function tiros(r,arqId,puesto){
+  var k=arqId+'|'+puesto;
+  if(!r.tiros[k]) r.tiros[k]=[null,null];
+  return r.tiros[k];
+}
+function totalArq(r,arqId){
+  return secuencia(r).reduce(function(a,pu){
+    var t=r.tiros[arqId+'|'+pu]||[null,null];
+    return a+pts3(t[0])+pts3(t[1]);
+  },0);
+}
+function flechasArq(r,arqId){
+  return secuencia(r).reduce(function(a,pu){
+    var t=r.tiros[arqId+'|'+pu]||[null,null];
+    return a+(t[0]!=null?1:0)+(t[1]!=null?1:0);
+  },0);
+}
+function cuenta(r,arqId,v){
+  return secuencia(r).reduce(function(a,pu){
+    var t=r.tiros[arqId+'|'+pu]||[null,null];
+    return a+(t[0]===v?1:0)+(t[1]===v?1:0);
+  },0);
+}
+function mediaArq(r,arqId){ var n=flechasArq(r,arqId); return n?totalArq(r,arqId)/n:0; }
+function maxRec(r){ return r.puestos*2*11; }
+function puestosHechos(r){
+  return secuencia(r).filter(function(pu){
+    return r.patrulla.every(function(a){ var t=r.tiros[a.id+'|'+pu]||[null,null];
+      return t[0]!=null&&t[1]!=null; });
+  }).length;
+}
+function clasifRec(r){
+  return r.patrulla.slice().sort(function(x,y){
+    return totalArq(r,y.id)-totalArq(r,x.id)
+      || cuenta(r,y.id,'11')-cuenta(r,x.id,'11')
+      || cuenta(r,y.id,'10')-cuenta(r,x.id,'10');
+  });
+}
+function animal(r,pu){
+  var c=D.campos[r.campo]; if(!c.animales) c.animales={};
+  if(!c.animales[pu]) c.animales[pu]={nombre:'',foto:null};
+  return c.animales[pu];
+}
+function estaca(id){ return ESTACAS.filter(function(e){ return e.id===id; })[0]||ESTACAS[0]; }
+function nuevoRecorrido(campo,puestos,inicio,patrulla,est){
+  var r={id:uid(),fecha:new Date().toISOString(),campo:campo,puestos:puestos,inicio:inicio,
+    estacas:est||'roja',patrulla:patrulla,tiros:{},cerrado:false};
+  D.recorridos.unshift(r); D.recorridoId=r.id;
+  C.idx=0; C.sel={a:0,f:0}; C.tab='puesto';
+  save();
+  return r;
+}
+
+/* ---- clasificación: agrupa por día, distancia, sitio y formato ---- */
+function grupos(){
+  var m={};
+  D.sessions.forEach(function(s){
+    var k=iso(s.fecha)+'|'+s.dist+'|'+s.site+'|'+nE(s)+'x'+nA(s);
+    if(!m[k]) m[k]={clave:k,fecha:s.fecha,dist:s.dist,site:s.site,ne:nE(s),na:nA(s),tiradas:[]};
+    m[k].tiradas.push(s);
+  });
+  return Object.keys(m).map(function(k){
+    var gp=m[k], porArq={};
+    /* si alguien tiró dos veces en el mismo grupo, cuenta su mejor tirada */
+    gp.tiradas.forEach(function(s){
+      var a=s.arquero;
+      if(!porArq[a] || total(s)>total(porArq[a])) porArq[a]=s;
+    });
+    gp.filas=Object.keys(porArq).map(function(a){ return porArq[a]; }).sort(function(x,y){
+      return total(y)-total(x) || xs(y)-xs(x) || dieces(y)-dieces(x);
+    });
+    return gp;
+  }).filter(function(gp){ return gp.filas.length>1; })
+    .sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+}
+
+/* ---- CSV ---- */
+function buildCSV(){
+  var maxA=D.sessions.reduce(function(m,s){ return Math.max(m,nA(s)); },6);
+  var head=['arquero','federacion','licencia','fecha','distancia_m','sitio','formato','tanda'];
+  for(var i=1;i<=maxA;i++) head.push('f'+i);
+  head=head.concat(['total_tanda','media_tanda','total_tirada','media_tirada']);
+  var rows=[];
+  D.sessions.slice().sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); }).forEach(function(s){
+    var A=arqPorId(s.arquero), T=total(s), N=shots(s)||1;
+    s.ends.forEach(function(row,e){
+      var n=row.filter(function(x){ return x!=null; }).length; if(!n) return;
+      var t=row.reduce(function(a,x){ return a+val(x); },0);
+      var celdas=[A.nombre,A.federacion,A.licencia,iso(s.fecha),s.dist,sitio(s.site),formato(s),e+1]
+        .map(function(v){ return String(v).replace(/;/g,','); });
+      for(var i=0;i<maxA;i++) celdas.push(row[i]==null?'':row[i]);
+      rows.push(celdas.concat([t,dec(t/n),T,dec(T/N)]).join(';'));
+    });
+  });
+  return [head.join(';')].concat(rows).join('\n');
+}
+
+/* ---- ZIP y XLSX ---- */
+var CRCT=(function(){ var t=[],c,n,k; for(n=0;n<256;n++){ c=n;
+  for(k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } return t; })();
+function crc32(b){ var c=0xFFFFFFFF,i; for(i=0;i<b.length;i++) c=CRCT[(c^b[i])&0xFF]^(c>>>8);
+  return (c^0xFFFFFFFF)>>>0; }
+function u8(str){ return new TextEncoder().encode(str); }
+function w16(a,v){ a.push(v&255,(v>>8)&255); }
+function w32(a,v){ a.push(v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255); }
+function zip(files){
+  var out=[],central=[],off=0,i;
+  files.forEach(function(f){
+    var name=u8(f.name), data=f.data, c=crc32(data), h=[];
+    w32(h,0x04034b50); w16(h,20); w16(h,0); w16(h,0); w16(h,0); w16(h,0);
+    w32(h,c); w32(h,data.length); w32(h,data.length); w16(h,name.length); w16(h,0);
+    for(i=0;i<name.length;i++) h.push(name[i]);
+    var cd=[];
+    w32(cd,0x02014b50); w16(cd,20); w16(cd,20); w16(cd,0); w16(cd,0); w16(cd,0); w16(cd,0);
+    w32(cd,c); w32(cd,data.length); w32(cd,data.length); w16(cd,name.length);
+    w16(cd,0); w16(cd,0); w16(cd,0); w16(cd,0); w32(cd,0); w32(cd,off);
+    for(i=0;i<name.length;i++) cd.push(name[i]);
+    central.push(cd); out.push(h); out.push(Array.prototype.slice.call(data));
+    off+=h.length+data.length;
+  });
+  var cstart=off, cbytes=[];
+  central.forEach(function(cd){ cbytes=cbytes.concat(cd); });
+  var end=[];
+  w32(end,0x06054b50); w16(end,0); w16(end,0); w16(end,files.length); w16(end,files.length);
+  w32(end,cbytes.length); w32(end,cstart); w16(end,0);
+  var all=[]; out.forEach(function(p){ all=all.concat(p); });
+  return new Uint8Array(all.concat(cbytes).concat(end));
+}
+function col(n){ var s=''; n++; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=(n-m-1)/26; } return s; }
+function xesc(t){ return String(t).replace(/[&<>]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+function hoja(rows){
+  var xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  rows.forEach(function(r,ri){
+    xml+='<row r="'+(ri+1)+'">';
+    r.forEach(function(v,ci){
+      if(v==null||v==='') return;
+      var ref=col(ci)+(ri+1);
+      if(typeof v==='number'&&isFinite(v)) xml+='<c r="'+ref+'"><v>'+v+'</v></c>';
+      else xml+='<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>';
+    });
+    xml+='</row>';
+  });
+  return xml+'</sheetData></worksheet>';
+}
+function buildXLSX(){
+  var ss=D.sessions.slice().sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); });
+  var maxA=ss.reduce(function(m,s){ return Math.max(m,nA(s)); },6);
+  var r1=[['Fecha','Arquero','Federación','Licencia','Distancia (m)','Sitio','Formato',
+           'Flechas','Total','Media por flecha','X','Dieces']];
+  ss.forEach(function(s){ var A=arqPorId(s.arquero), N=shots(s)||1;
+    r1.push([iso(s.fecha),A.nombre,A.federacion,A.licencia,s.dist,sitio(s.site),formato(s),
+      shots(s),total(s),Number((total(s)/N).toFixed(3)),xs(s),dieces(s)]); });
+  var cab=['Fecha','Arquero','Distancia (m)','Sitio','Formato','Tanda'];
+  for(var i=1;i<=maxA;i++) cab.push('F'+i);
+  cab.push('Total tanda'); cab.push('Media tanda');
+  var r2=[cab];
+  ss.forEach(function(s){ var A=arqPorId(s.arquero);
+    s.ends.forEach(function(row,e){
+      var n=row.filter(function(x){ return x!=null; }).length; if(!n) return;
+      var t=row.reduce(function(a,x){ return a+val(x); },0);
+      var fila=[iso(s.fecha),A.nombre,s.dist,sitio(s.site),formato(s),e+1];
+      for(var j=0;j<maxA;j++) fila.push(row[j]==null?'':row[j]);
+      r2.push(fila.concat([t,Number((t/n).toFixed(3))]));
+    });
+  });
+  var r3=[['Fecha','Distancia (m)','Sitio','Formato','Puesto','Arquero','Total','Media por flecha','X','Dieces']];
+  grupos().forEach(function(gp){
+    gp.filas.forEach(function(s,i){
+      r3.push([iso(gp.fecha),gp.dist,sitio(gp.site),gp.ne+'x'+gp.na,i+1,
+        nombreArq(arqPorId(s.arquero)),total(s),Number(media(s).toFixed(3)),xs(s),dieces(s)]);
+    });
+  });
+  var files=[
+    {name:'[Content_Types].xml',data:u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      +'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      +'<Default Extension="xml" ContentType="application/xml"/>'
+      +'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      +'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      +'<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      +'<Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+      +'</Types>')},
+    {name:'_rels/.rels',data:u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      +'</Relationships>')},
+    {name:'xl/workbook.xml',data:u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+      +'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+      +'<sheet name="Tiradas" sheetId="1" r:id="rId1"/>'
+      +'<sheet name="Tandas" sheetId="2" r:id="rId2"/>'
+      +'<sheet name="Clasificaciones" sheetId="3" r:id="rId3"/>'
+      +'</sheets></workbook>')},
+    {name:'xl/_rels/workbook.xml.rels',data:u8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+      +'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
+      +'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>'
+      +'</Relationships>')},
+    {name:'xl/worksheets/sheet1.xml',data:u8(hoja(r1))},
+    {name:'xl/worksheets/sheet2.xml',data:u8(hoja(r2))},
+    {name:'xl/worksheets/sheet3.xml',data:u8(hoja(r3))}
+  ];
+  return zip(files);
+}
+
+/* ---- PDF ---- */
+function lat(t){ var s='',i,c; t=String(t);
+  for(i=0;i<t.length;i++){ c=t.charCodeAt(i); s+=(c<256)?t[i]:'?'; } return s; }
+function pesc(t){ return lat(t).replace(/([\\()])/g,'\\$1'); }
+function buildPDF(s){
+  var A=arqPorId(s.arquero), W=595, H=842, M=45, c='', y;
+  var ne=nE(s), na=nA(s);
+  function T(x,yy,size,txt,bold){ return 'BT /'+(bold?'F2':'F1')+' '+size+' Tf '+x.toFixed(1)+' '+yy.toFixed(1)
+    +' Td ('+pesc(txt)+') Tj ET\n'; }
+  function TC(x,yy,size,txt,bold){ var w=(bold?0.56:0.52)*size*lat(txt).length; return T(x-w/2,yy,size,txt,bold); }
+  function L(x1,y1,x2,y2,g){ return (g==null?0.75:g)+' G '+x1.toFixed(1)+' '+y1.toFixed(1)+' m '
+    +x2.toFixed(1)+' '+y2.toFixed(1)+' l S\n'; }
+  function ancho(txt,size){ return 0.52*size*lat(txt).length; }
+  function parte(txt,maxw,size){
+    var out=[];
+    String(txt).split(/\n/).forEach(function(par){
+      var linea='';
+      par.split(/\s+/).forEach(function(pal){
+        var pr=linea?linea+' '+pal:pal;
+        if(ancho(pr,size)>maxw && linea){ out.push(linea); linea=pal; }
+        else linea=pr;
+      });
+      out.push(linea);
+    });
+    return out;
+  }
+  function TF(x,yy,maxw,txt,mn){ var sz=10; mn=mn||8;
+    while(sz>mn && ancho(txt,sz)>maxw) sz-=0.5;
+    if(ancho(txt,sz)>maxw){ var n=Math.max(1,Math.floor(maxw/(0.52*sz))-3); txt=String(txt).slice(0,n)+'...'; }
+    return T(x,yy,sz,txt); }
+
+  y=H-M;
+  c+='0 g\n'+T(M,y,17,'Tarjeta de arquero',true);
+  c+=T(W-M-118,y,10,'Serie de '+ne+' tanda'+(ne>1?'s':'')+' x '+na+' flecha'+(na>1?'s':''));
+  y-=9; c+='0.2 G 1.4 w '+M+' '+y+' m '+(W-M)+' '+y+' l S\n0.75 G 0.7 w\n';
+
+  y-=24;
+  var foto=A.foto&&A.foto.data, fw=58, fh=72, fx=W-M-fw, fy=H-M-22-fh;
+  var cx=300, cv2=cx+56, wIzq=cx-12-(M+62), wMed=(foto?fx-10:W-M)-cv2;
+  c+=T(M,y,10,'Arquero',true)+TF(M+62,y,wIzq,A.nombre||'—');
+  c+=T(cx,y,10,'Fecha',true)+TF(cv2,y,wMed,fecha(s.fecha));
+  y-=16;
+  c+=T(M,y,10,'Federación',true)+TF(M+62,y,wIzq,A.federacion||'—');
+  c+=T(cx,y,10,'Distancia',true)+TF(cv2,y,wMed,s.dist+' m');
+  y-=16;
+  c+=T(M,y,10,'Licencia',true)+TF(M+62,y,wIzq,A.licencia||'—');
+  c+=T(cx,y,10,'Lugar',true)+TF(cv2,y,wMed,sitio(s.site));
+  if(foto){
+    c+='q '+fw+' 0 0 '+fh+' '+fx+' '+fy+' cm /Im1 Do Q\n';
+    c+='0.55 G 0.7 w '+fx+' '+fy+' '+fw+' '+fh+' re S\n';
+  }
+
+  /* la tabla se encoge para que quepan las tandas que haga falta */
+  y-=26;
+  var x0=M, x1=W-M, anchoTabla=x1-x0;
+  var wTanda=30, wTot=42, wMedia=44, wAcum=44;
+  var wFlecha=(anchoTabla-wTanda-wTot-wMedia-wAcum)/na;
+  var fsz=Math.max(6,Math.min(10,wFlecha*0.42));
+  var cxs=[], i;
+  for(i=0;i<na;i++) cxs.push(x0+wTanda+wFlecha*(i+0.5));
+  var cTot=x0+wTanda+wFlecha*na+wTot/2;
+  var cMed=cTot+wTot/2+wMedia/2, cAcu=cMed+wMedia/2+wAcum/2;
+
+  var disponible=y-190;
+  var rowH=Math.min(23,Math.max(9,disponible/(ne+1)));
+  var top=y;
+  c+=T(x0+2,y-rowH*0.62,Math.min(9,fsz),'Tanda',true);
+  for(i=0;i<na;i++) c+=TC(cxs[i],y-rowH*0.62,Math.min(9,fsz),String(i+1),true);
+  c+=TC(cTot,y-rowH*0.62,9,'Total',true)+TC(cMed,y-rowH*0.62,9,'Media',true)+TC(cAcu,y-rowH*0.62,9,'Acum.',true);
+  y-=rowH; c+=L(x0,y,x1,y,0.2);
+
+  var acc=0;
+  s.ends.forEach(function(row,e){
+    var n=row.filter(function(z){ return z!=null; }).length;
+    var t=row.reduce(function(a,z){ return a+val(z); },0);
+    acc+=t;
+    var ty=y-rowH*0.62;
+    c+=TC(x0+wTanda/2,ty,Math.min(10,fsz),String(e+1),true);
+    row.forEach(function(v,ix){ if(v!=null) c+=TC(cxs[ix],ty,fsz,String(v)); });
+    c+=TC(cTot,ty,Math.min(10,fsz),n?String(t):'',true);
+    c+=TC(cMed,ty,Math.min(10,fsz),n?dec(t/n):'');
+    c+=TC(cAcu,ty,Math.min(10,fsz),n?String(acc):'');
+    y-=rowH;
+    c+=L(x0,y,x1,y,e===ne-1?0.2:0.8);
+  });
+
+  var N=shots(s), Tt=total(s);
+  var ty2=y-rowH*0.66;
+  c+=T(x0+2,ty2,11,'Total',true);
+  c+=TC(cTot,ty2,11,String(Tt),true);
+  c+=TC(cMed,ty2,11,dec(N?Tt/N:0),true);
+  c+=TC(cAcu,ty2,11,String(Tt),true);
+  y-=rowH+7; c+=L(x0,y,x1,y,0.2);
+
+  y-=24;
+  c+=T(M,y,10,'Flechas: '+N+' de '+(ne*na))
+   + T(M+130,y,10,'X: '+xs(s))
+   + T(M+220,y,10,'Dieces: '+dieces(s))
+   + T(M+330,y,10,'X + dieces: '+(xs(s)+dieces(s)));
+  var rec=best(s.arquero,s.dist,s.site);
+  y-=16;
+  c+=TF(M,y,W-2*M,rec?('Mejor media en '+s.dist+' m · '+sitio(s.site)+': '+dec(media(rec))+' por flecha ('
+        +total(rec)+' en '+formato(rec)+', '+fecha(rec.fecha)+')')
+      :('Sin mejor marca previa en '+s.dist+' m · '+sitio(s.site)));
+
+  var firmasY;
+  if(y-168>150){
+    y-=30;
+    c+=T(M,y,10,'Observaciones',true);
+    y-=12;
+    var bTop=y, bBot=168;
+    c+='0.55 G 0.7 w '+M+' '+bBot+' '+(W-2*M)+' '+(bTop-bBot).toFixed(1)+' re S\n';
+    var textoObs=[];
+    if(s.obs) textoObs=textoObs.concat(parte(s.obs,W-2*M-24,9.5));
+    var nota=D.notas&&D.notas[s.dist];
+    if(nota){ if(textoObs.length) textoObs.push('');
+      textoObs.push('Reglajes a '+s.dist+' m:');
+      textoObs=textoObs.concat(parte(nota,W-2*M-24,9.5)); }
+    if(textoObs.length){
+      var ly2=bTop-20;
+      textoObs.forEach(function(linea){
+        if(ly2<bBot+10) return;
+        c+=T(M+12,ly2,9.5,linea); ly2-=14;
+      });
+    } else {
+      for(var ly=bTop-24; ly>bBot+8; ly-=24) c+=L(M+10,ly,W-M-10,ly,0.85);
+    }
+    firmasY=128;
+  } else {
+    firmasY=Math.max(56,y-48);
+  }
+  c+=L(M,firmasY,M+180,firmasY,0.4)+L(W-M-180,firmasY,W-M,firmasY,0.4);
+  c+=T(M,firmasY-13,9,'Firma del arquero')+T(W-M-180,firmasY-13,9,'Firma del anotador');
+
+  var objs=[], nobj=foto?7:6;
+  objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+  objs[3]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /Font << /F1 5 0 R /F2 6 0 R >>'
+    +(foto?' /XObject << /Im1 7 0 R >>':'')+' >> /Contents 4 0 R >>';
+  objs[4]='<< /Length '+c.length+' >>\nstream\n'+c+'endstream';
+  objs[5]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[6]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  if(foto){
+    var bin=atob(A.foto.data);
+    objs[7]='<< /Type /XObject /Subtype /Image /Width '+A.foto.w+' /Height '+A.foto.h
+      +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+bin.length+' >>\nstream\n'
+      +bin+'\nendstream';
+  }
+  var out='%PDF-1.4\n', offs=[], k;
+  for(k=1;k<=nobj;k++){ offs[k]=out.length; out+=k+' 0 obj\n'+objs[k]+'\nendobj\n'; }
+  var xr=out.length;
+  out+='xref\n0 '+(nobj+1)+'\n0000000000 65535 f \n';
+  for(k=1;k<=nobj;k++) out+=('0000000000'+offs[k]).slice(-10)+' 00000 n \n';
+  out+='trailer\n<< /Size '+(nobj+1)+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  var bytes=new Uint8Array(out.length);
+  for(k=0;k<out.length;k++) bytes[k]=out.charCodeAt(k)&255;
+  return bytes;
+}
+function fechaCompacta(f){ return iso(f).replace(/-/g,''); }
+function limpiaNombre(t){ return String(t).replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim(); }
+function baseSala(s){ return limpiaNombre(fechaCompacta(s.fecha)+' '+s.dist+'m '+sitio(s.site)); }
+function baseCampo(r){ return limpiaNombre(fechaCompacta(r.fecha)+' '+r.puestos+'p '+D.campos[r.campo].nombre); }
+function nombrePDF(s){ return baseSala(s)+'.pdf'; }
+
+/* ---- imagen de la tarjeta ---- */
+function colorFlecha(v){
+  if(v==='M') return '#9AA3AB';
+  var n=val(v);
+  if(n>=9) return '#A8791B';
+  if(n>=7) return '#C0392B';
+  if(n>=5) return '#2E63A6';
+  if(n>=3) return '#1A1A1A';
+  return '#6B7280';
+}
+function lienzo(CW,CH){
+  var cv=document.createElement('canvas'); cv.width=CW; cv.height=CH;
+  var g=cv.getContext('2d');
+  g.fillStyle='#FFFFFF'; g.fillRect(0,0,CW,CH);
+  return {cv:cv,g:g};
+}
+function tarjetaJPG(s,cb){
+  var A=arqPorId(s.arquero), CW=900, M=60, ne=nE(s), na=nA(s);
+  var rowH=Math.max(24,Math.min(42,Math.round(460/ne)));
+  var yTabla=300, altoPie=458;
+  var CH=yTabla+14+(ne+1)*rowH+altoPie;
+  var L1=lienzo(CW,CH), cv=L1.cv, g=L1.g;
+
+  function F(size,bold){ g.font=(bold?'600 ':'400 ')+size+'px system-ui, -apple-system, Roboto, sans-serif'; }
+  function T(x,y,size,txt,o){ o=o||{}; F(size,o.b); g.fillStyle=o.c||'#12181F';
+    g.textAlign=o.a||'left'; g.fillText(String(txt),x,y); g.textAlign='left'; }
+  function TF(x,y,maxw,txt,o){ o=o||{}; var size=o.s||21, min=o.min||15; F(size,o.b); txt=String(txt);
+    while(size>min && g.measureText(txt).width>maxw){ size-=1; F(size,o.b); }
+    while(txt.length>4 && g.measureText(txt).width>maxw) txt=txt.slice(0,-2)+'…';
+    T(x,y,size,txt,o); }
+  function LN(x1,y1,x2,y2,col,w){ g.strokeStyle=col||'#C9D0D6'; g.lineWidth=w||1;
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
+  function parteCv(txt,maxw,size){
+    F(size,0); var out=[];
+    String(txt).split(/\n/).forEach(function(par){
+      var linea='';
+      par.split(/\s+/).forEach(function(pal){
+        var pr=linea?linea+' '+pal:pal;
+        if(g.measureText(pr).width>maxw && linea){ out.push(linea); linea=pal; }
+        else linea=pr;
+      });
+      out.push(linea);
+    });
+    return out;
+  }
+
+  function pintar(img){
+    T(M,86,40,'Tarjeta de arquero',{b:1});
+    (function(){ var n=baseSala(s)+'.jpg', sz=19; F(sz,1);
+      while(sz>12 && g.measureText(n).width>385){ sz-=1; F(sz,1); }
+      T(CW-M,84,sz,n,{a:'right',b:1,c:'#42505C'}); })();
+    LN(M,106,CW-M,106,'#12181F',2);
+
+    var fw=100, fh=125, fx=CW-M-fw, fy=134;
+    if(img){ g.drawImage(img,fx,fy,fw,fh);
+      g.strokeStyle='#B9C1C8'; g.lineWidth=1; g.strokeRect(fx+.5,fy+.5,fw,fh); }
+
+    function anchoMax(arr){ F(21,1); var w=0; arr.forEach(function(t){
+      w=Math.max(w,g.measureText(t).width); }); return w+14; }
+    var yy=162, col2=480;
+    var LI=anchoMax(['Arquero','Federación','Licencia']);
+    var LD=anchoMax(['Fecha','Distancia','Lugar']);
+    var wIzq=col2-24-(M+LI), wMed=(img?fx-20:CW-M)-(col2+LD);
+    [['Arquero',A.nombre||'—',['Fecha',fecha(s.fecha)]],
+     ['Federación',A.federacion||'—',['Distancia',s.dist+' m']],
+     ['Licencia',A.licencia||'—',['Lugar',sitio(s.site)]]].forEach(function(r){
+      T(M,yy,21,r[0],{b:1}); TF(M+LI,yy,wIzq,r[1],{min:13});
+      T(col2,yy,21,r[2][0],{b:1}); TF(col2+LD,yy,wMed,r[2][1],{min:13});
+      yy+=34;
+    });
+
+    var anchoTabla=CW-2*M, wTanda=60, wTot=95, wMedia=100, wAcum=95;
+    var wFlecha=(anchoTabla-wTanda-wTot-wMedia-wAcum)/na;
+    var fsz=Math.max(11,Math.min(23,wFlecha*0.42));
+    var cxs=[],i;
+    for(i=0;i<na;i++) cxs.push(M+wTanda+wFlecha*(i+0.5));
+    var cTot=M+wTanda+wFlecha*na+wTot/2, cMed=cTot+wTot/2+wMedia/2, cAcu=cMed+wMedia/2+wAcum/2;
+
+    var ty=yTabla;
+    T(M+2,ty,Math.min(19,fsz),'Tanda',{b:1,c:'#42505C'});
+    for(i=0;i<na;i++) T(cxs[i],ty,Math.min(19,fsz),i+1,{b:1,a:'center',c:'#42505C'});
+    T(cTot,ty,19,'Total',{b:1,a:'center',c:'#42505C'});
+    T(cMed,ty,19,'Media',{b:1,a:'center',c:'#42505C'});
+    T(cAcu,ty,19,'Acum.',{b:1,a:'center',c:'#42505C'});
+    ty+=14; LN(M,ty,CW-M,ty,'#12181F',1.5);
+
+    var acc=0;
+    s.ends.forEach(function(row,e){
+      var n=row.filter(function(z){ return z!=null; }).length;
+      var t=row.reduce(function(a,z){ return a+val(z); },0);
+      acc+=t; ty+=rowH;
+      var by=ty-rowH*0.32;
+      T(M+wTanda/2,by,Math.min(22,fsz),e+1,{b:1,a:'center',c:'#42505C'});
+      row.forEach(function(v,ix){ if(v!=null) T(cxs[ix],by,fsz,v,{a:'center',c:colorFlecha(v),b:1}); });
+      T(cTot,by,Math.min(22,fsz),n?t:'',{b:1,a:'center'});
+      T(cMed,by,Math.min(21,fsz),n?dec(t/n):'',{a:'center',c:'#42505C'});
+      T(cAcu,by,Math.min(21,fsz),n?acc:'',{a:'center',c:'#42505C'});
+      LN(M,ty,CW-M,ty,e===ne-1?'#12181F':'#DDE2E7',e===ne-1?1.5:1);
+    });
+
+    var N=shots(s), Tt=total(s);
+    ty+=rowH+4;
+    T(M+2,ty-14,24,'Total',{b:1});
+    T(cTot,ty-14,24,Tt,{b:1,a:'center'});
+    T(cMed,ty-14,23,dec(N?Tt/N:0),{b:1,a:'center'});
+    T(cAcu,ty-14,23,Tt,{b:1,a:'center'});
+    LN(M,ty,CW-M,ty,'#12181F',1.5);
+
+    ty+=38;
+    T(M,ty,21,'Serie de '+ne+' tanda'+(ne>1?'s':'')+' × '+na+' flecha'+(na>1?'s':''),{b:1});
+    ty+=34;
+    T(M,ty,20,'Flechas: '+N+' de '+(ne*na),{c:'#42505C'});
+    T(M+250,ty,20,'X: '+xs(s),{c:'#42505C'});
+    T(M+400,ty,20,'Dieces: '+dieces(s),{c:'#42505C'});
+    T(M+580,ty,20,'X + dieces: '+(xs(s)+dieces(s)),{c:'#42505C'});
+    var rec=best(s.arquero,s.dist,s.site);
+    ty+=30;
+    TF(M,ty,CW-2*M,rec?('Mejor media en '+s.dist+' m · '+sitio(s.site)+': '+dec(media(rec))+' por flecha ('
+        +total(rec)+' en '+formato(rec)+', '+fecha(rec.fecha)+')')
+      :('Sin mejor marca previa en '+s.dist+' m · '+sitio(s.site)),{s:20,c:'#42505C'});
+
+    ty+=44;
+    T(M,ty,20,'Observaciones',{b:1});
+    g.strokeStyle='#C9D0D6'; g.lineWidth=1; g.strokeRect(M+.5,ty+16.5,CW-2*M,150);
+    var lineas=[];
+    if(s.obs) lineas=lineas.concat(parteCv(s.obs,CW-2*M-32,18));
+    var nota=D.notas&&D.notas[s.dist];
+    if(nota){ if(lineas.length) lineas.push('');
+      lineas.push('Reglajes a '+s.dist+' m:');
+      lineas=lineas.concat(parteCv(nota,CW-2*M-32,18)); }
+    if(lineas.length){
+      var yl=ty+44;
+      lineas.forEach(function(linea){ if(yl>ty+158) return; T(M+16,yl,18,linea,{c:'#12181F'}); yl+=26; });
+    } else {
+      for(var ly=ty+58; ly<ty+160; ly+=44) LN(M+16,ly,CW-M-16,ly,'#E6EAEE',1);
+    }
+
+    ty+=232;
+    LN(M,ty,M+270,ty,'#8A949E',1); LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
+    T(M,ty+26,18,'Firma del arquero',{c:'#5B6975'});
+    T(CW-M-270,ty+26,18,'Firma del anotador',{c:'#5B6975'});
+
+    try{ cb(cv.toDataURL('image/jpeg',0.92)); }
+    catch(e){ toast('No se pudo generar la imagen.'); }
+  }
+
+  if(A.foto&&A.foto.data){
+    var im=new Image();
+    im.onload=function(){ pintar(im); };
+    im.onerror=function(){ pintar(null); };
+    im.src=fotoURL(A);
+  } else pintar(null);
+}
+
+/* ---- imagen de la clasificación ---- */
+function clasifJPG(gp,cb){
+  var CW=900, M=60, rowH=52;
+  var CH=250+(gp.filas.length+1)*rowH+120;
+  var L1=lienzo(CW,CH), cv=L1.cv, g=L1.g;
+  function F(size,bold){ g.font=(bold?'600 ':'400 ')+size+'px system-ui, -apple-system, Roboto, sans-serif'; }
+  function T(x,y,size,txt,o){ o=o||{}; F(size,o.b); g.fillStyle=o.c||'#12181F';
+    g.textAlign=o.a||'left'; g.fillText(String(txt),x,y); g.textAlign='left'; }
+  function TF(x,y,maxw,txt,o){ o=o||{}; var size=o.s||24, min=o.min||15; F(size,o.b); txt=String(txt);
+    while(size>min && g.measureText(txt).width>maxw){ size-=1; F(size,o.b); }
+    while(txt.length>4 && g.measureText(txt).width>maxw) txt=txt.slice(0,-2)+'…';
+    T(x,y,size,txt,o); }
+  function LN(x1,y1,x2,y2,col,w){ g.strokeStyle=col||'#C9D0D6'; g.lineWidth=w||1;
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
+
+  T(M,86,40,'Clasificación',{b:1});
+  (function(){ var n=limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg';
+    var sz=19; F(sz,1);
+    while(sz>12 && g.measureText(n).width>430){ sz-=1; F(sz,1); }
+    T(CW-M,84,sz,n,{a:'right',b:1,c:'#42505C'}); })();
+  LN(M,106,CW-M,106,'#12181F',2);
+  T(M,152,22,fecha(gp.fecha)+'  ·  '+gp.dist+' m  ·  '+sitio(gp.site)
+    +'  ·  '+gp.ne+'×'+gp.na,{c:'#42505C'});
+  T(CW-M,152,22,gp.filas.length+' arqueros',{a:'right',c:'#42505C'});
+
+  var cPos=M+26, cNom=M+70, cTot=530, cMed=640, cX=730, cD=805;
+  var ty=225;
+  T(cNom,ty,19,'Arquero',{b:1,c:'#42505C'});
+  T(cTot,ty,19,'Total',{b:1,a:'center',c:'#42505C'});
+  T(cMed,ty,19,'Media',{b:1,a:'center',c:'#42505C'});
+  T(cX,ty,19,'X',{b:1,a:'center',c:'#42505C'});
+  T(cD,ty,19,'Dieces',{b:1,a:'center',c:'#42505C'});
+  ty+=14; LN(M,ty,CW-M,ty,'#12181F',1.5);
+
+  gp.filas.forEach(function(s,i){
+    ty+=rowH;
+    var by=ty-rowH*0.34, A=arqPorId(s.arquero);
+    var medalla=['#D9A400','#9AA5AE','#B07A46'][i];
+    if(medalla){ g.fillStyle=medalla; g.beginPath(); g.arc(cPos,by-8,17,0,6.2832); g.fill();
+      T(cPos,by,20,i+1,{b:1,a:'center',c:'#FFFFFF'}); }
+    else T(cPos,by,20,i+1,{b:1,a:'center',c:'#7A858F'});
+    TF(cNom,by,cTot-70-cNom,nombreArq(A),{s:24,b:1,min:14});
+    T(cTot,by,25,total(s),{b:1,a:'center'});
+    T(cMed,by,22,dec(media(s)),{a:'center',c:'#42505C'});
+    T(cX,by,22,xs(s),{a:'center',c:'#42505C'});
+    T(cD,by,22,dieces(s),{a:'center',c:'#42505C'});
+    LN(M,ty,CW-M,ty,i===gp.filas.length-1?'#12181F':'#DDE2E7',i===gp.filas.length-1?1.5:1);
+  });
+
+  ty+=48;
+  T(M,ty,18,'Desempate por número de X y después por dieces.',{c:'#7A858F'});
+  ty+=44;
+  LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
+  T(CW-M-270,ty+26,18,'Firma del juez',{c:'#5B6975'});
+  try{ cb(cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+}
+
+/* ---- visor ---- */
+var imgActual=null;
+function mostrarImagen(url,pie,alt,nombre){
+  var v=document.getElementById('visor');
+  imgActual=nombre?{url:url,nombre:nombre}:null;
+  v.innerHTML='<div class="vcard">'
+    +'<button class="capbtn" data-fb="captura">Preparar para captura</button>'
+    +(imgActual?'<button class="cerrar" data-fb="bajarimg" style="margin-bottom:10px">Descargar '
+      +esc(nombre)+'</button>':'')
+    +'<p>La imagen ocupará toda la pantalla y desaparecerá todo lo demás. Haz entonces la captura '
+    +'con los botones del móvil y quedará guardada en la galería. Toca la pantalla para volver.</p>'
+    +'<img src="'+url+'" alt="'+esc(alt||'')+'">'
+    +'<p style="text-align:center">'+esc(pie)+'</p>'
+    +'<button class="cerrar" data-fb="cerrar">Cerrar</button></div>';
+  v.className=''; v.style.display='block'; v.scrollTop=0;
+}
+function verTarjeta(s){
+  tarjetaJPG(s,function(url){
+    mostrarImagen(url,s.dist+' m · '+sitio(s.site)+' · '+fecha(s.fecha),'Tarjeta',baseSala(s)+'.jpg');
+  });
+}
+function verClasif(gp){
+  clasifJPG(gp,function(url){
+    mostrarImagen(url,'Clasificación · '+gp.dist+' m · '+fecha(gp.fecha),'Clasificación',
+      limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg');
+  });
+}
+
+/* ---- gráfica ---- */
+function chart(pts){
+  if(!pts.length) return '<p class="empty">Sin tiradas guardadas en esta distancia y sitio.</p>';
+  var W=300,H=132,L=24,R=8,T=10,B=20;
+  var vs=pts.map(function(p){ return p.media; });
+  var lo=Math.max(0,Math.floor(Math.min.apply(null,vs)*2)/2-0.5);
+  var hi=Math.min(10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
+  var x=function(i){ return L+(pts.length===1?(W-L-R)/2:i*(W-L-R)/(pts.length-1)); };
+  var y=function(v){ return T+(H-T-B)*(1-(v-lo)/(hi-lo)); };
+  var g='',i;
+  for(i=0;i<=4;i++){ var v=lo+(hi-lo)*i/4;
+    g+='<line class="gline" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'"/>'
+     +'<text class="lab" x="'+(L-5)+'" y="'+(y(v)+3).toFixed(1)+'" text-anchor="end">'+v.toFixed(1).replace('.',',')+'</text>';
+  }
+  var d=pts.map(function(p,i){ return (i?'L':'M')+x(i).toFixed(1)+','+y(p.media).toFixed(1); }).join(' ');
+  var area=d+' L'+x(pts.length-1).toFixed(1)+','+(H-B)+' L'+x(0).toFixed(1)+','+(H-B)+' Z';
+  var dots=pts.map(function(p,i){ var last=i===pts.length-1;
+    return '<circle class="'+(last?'last':'dot')+'" cx="'+x(i).toFixed(1)+'" cy="'+y(p.media).toFixed(1)+'" r="'+(last?4:3)+'"/>'; }).join('');
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Evolución de la media por flecha">'
+    +g+(pts.length>1?'<path class="area" d="'+area+'"/>':'')+'<path class="path" d="'+d+'"/>'+dots
+    +'<text class="lab" x="'+L+'" y="'+(H-5)+'">'+fechaCorta(pts[0].fecha)+'</text>'
+    +(pts.length>1?'<text class="lab" x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end">'+fechaCorta(pts[pts.length-1].fecha)+'</text>':'')
+    +'</svg>';
+}
+
+/* ---- imágenes del recorrido ---- */
+function pintor(g){
+  function F(size,bold){ g.font=(bold?'600 ':'400 ')+size+'px system-ui, -apple-system, Roboto, sans-serif'; }
+  return {
+    F:F,
+    T:function(x,y,size,txt,o){ o=o||{}; F(size,o.b); g.fillStyle=o.c||'#12181F';
+      g.textAlign=o.a||'left'; g.fillText(String(txt),x,y); g.textAlign='left'; },
+    TF:function(x,y,maxw,txt,o){ o=o||{}; var size=o.s||22, min=o.min||13; F(size,o.b); txt=String(txt);
+      while(size>min && g.measureText(txt).width>maxw){ size-=1; F(size,o.b); }
+      while(txt.length>4 && g.measureText(txt).width>maxw) txt=txt.slice(0,-2)+'…';
+      this.T(x,y,size,txt,o); },
+    LN:function(x1,y1,x2,y2,col,w){ g.strokeStyle=col||'#C9D0D6'; g.lineWidth=w||1;
+      g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
+  };
+}
+function encabezado(P,g,CW,M,titulo,derecha,sub1,sub2){
+  P.T(M,86,40,titulo,{b:1});
+  var sz=19; P.F(sz,1);
+  while(sz>12 && g.measureText(String(derecha)).width>385){ sz-=1; P.F(sz,1); }
+  P.T(CW-M,84,sz,derecha,{a:'right',b:1,c:'#42505C'});
+  P.LN(M,106,CW-M,106,'#12181F',2);
+  P.T(M,152,22,sub1,{c:'#42505C'});
+  if(sub2) P.T(CW-M,152,22,sub2,{a:'right',c:'#42505C'});
+}
+function clasifRecJPG(r,cb){
+  var CW=900,M=60,rowH=52, filas=clasifRec(r);
+  var extra=0;
+  if(r.obs) extra+=60+Math.ceil(String(r.obs).length/70)*25;
+  if((D.notasCampo||{})[r.campo]) extra+=Math.ceil(String(D.notasCampo[r.campo]).length/70)*25+25;
+  var CH=250+(filas.length+1)*rowH+130+extra;
+  var L=lienzo(CW,CH), g=L.g, P=pintor(g);
+  encabezado(P,g,CW,M,'Clasificación',baseCampo(r)+' clasificacion.jpg',
+    fecha(r.fecha)+'  ·  '+D.campos[r.campo].nombre+'  ·  '+r.puestos+' puestos  ·  estacas '
+    +estaca(r.estacas).nombre.toLowerCase(), filas.length+' arqueros');
+  var cPos=M+26,cNom=M+70,cArco=430,cTot=610,cMed=700,c11=780,c10=840;
+  var ty=225;
+  P.T(cNom,ty,19,'Arquero',{b:1,c:'#42505C'});
+  P.T(cArco,ty,19,'Arco',{b:1,c:'#42505C'});
+  P.T(cTot,ty,19,'Total',{b:1,a:'center',c:'#42505C'});
+  P.T(cMed,ty,19,'Media',{b:1,a:'center',c:'#42505C'});
+  P.T(c11,ty,19,'11',{b:1,a:'center',c:'#42505C'});
+  P.T(c10,ty,19,'10',{b:1,a:'center',c:'#42505C'});
+  ty+=14; P.LN(M,ty,CW-M,ty,'#12181F',1.5);
+  filas.forEach(function(a,i){
+    ty+=rowH; var by=ty-rowH*0.34;
+    var med=['#D9A400','#9AA5AE','#B07A46'][i];
+    if(med){ g.fillStyle=med; g.beginPath(); g.arc(cPos,by-8,17,0,6.2832); g.fill();
+      P.T(cPos,by,20,i+1,{b:1,a:'center',c:'#FFFFFF'}); }
+    else P.T(cPos,by,20,i+1,{b:1,a:'center',c:'#7A858F'});
+    P.TF(cNom,by,cArco-16-cNom,a.nombre,{s:23,b:1});
+    P.TF(cArco,by,cTot-50-cArco,a.arco,{s:18,c:'#5B6975'});
+    P.T(cTot,by,24,totalArq(r,a.id),{b:1,a:'center'});
+    P.T(cMed,by,21,dec(mediaArq(r,a.id)),{a:'center',c:'#42505C'});
+    P.T(c11,by,21,cuenta(r,a.id,'11'),{a:'center',c:'#42505C'});
+    P.T(c10,by,21,cuenta(r,a.id,'10'),{a:'center',c:'#42505C'});
+    P.LN(M,ty,CW-M,ty,i===filas.length-1?'#12181F':'#DDE2E7',i===filas.length-1?1.5:1);
+  });
+  ty+=44;
+  P.T(M,ty,18,'Máximo posible: '+maxRec(r)+' puntos. Desempate por número de 11 y después por 10.',{c:'#7A858F'});
+  var obsR=[];
+  if(r.obs) obsR.push(r.obs);
+  if((D.notasCampo||{})[r.campo]) obsR.push('Notas del campo: '+D.notasCampo[r.campo]);
+  if(obsR.length){
+    ty+=34; P.T(M,ty,19,'Observaciones',{b:1});
+    obsR.join('  ').split(/\n/).forEach(function(par){
+      var linea='';
+      P.F(18,0);
+      par.split(/\s+/).forEach(function(pal){
+        var pr=linea?linea+' '+pal:pal;
+        if(g.measureText(pr).width>CW-2*M && linea){ ty+=25; P.T(M,ty,18,linea,{c:'#42505C'}); linea=pal; }
+        else linea=pr;
+      });
+      ty+=25; P.T(M,ty,18,linea,{c:'#42505C'});
+    });
+  }
+  ty+=46; P.LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
+  P.T(CW-M-270,ty+26,18,'Firma del juez',{c:'#5B6975'});
+  try{ cb(L.cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+}
+function resumenArqJPG(r,a,cb){
+  var CW=900,M=60,rowH=40, seq=secuencia(r);
+  var CH=250+(seq.length+2)*rowH+150;
+  var L=lienzo(CW,CH), g=L.g, P=pintor(g);
+  encabezado(P,g,CW,M,a.nombre,limpiaNombre(baseCampo(r)+' '+a.nombre)+'.jpg',
+    fecha(r.fecha)+'  ·  '+D.campos[r.campo].nombre+'  ·  '+r.puestos+' puestos  ·  '+a.arco
+    +'  ·  estacas '+estaca(r.estacas).nombre.toLowerCase(),'');
+  var cPu=M+30,cAn=M+80,cF1=520,cF2=610,cSu=700,cAc=810;
+  var ty=225;
+  P.T(cPu,ty,18,'Nº',{b:1,a:'center',c:'#42505C'});
+  P.T(cAn,ty,18,'Figura',{b:1,c:'#42505C'});
+  P.T(cF1,ty,18,'1ª',{b:1,a:'center',c:'#42505C'});
+  P.T(cF2,ty,18,'2ª',{b:1,a:'center',c:'#42505C'});
+  P.T(cSu,ty,18,'Puesto',{b:1,a:'center',c:'#42505C'});
+  P.T(cAc,ty,18,'Acum.',{b:1,a:'center',c:'#42505C'});
+  ty+=14; P.LN(M,ty,CW-M,ty,'#12181F',1.5);
+  var acc=0;
+  seq.forEach(function(pu,i){
+    var t=r.tiros[a.id+'|'+pu]||[null,null], su=pts3(t[0])+pts3(t[1]);
+    var hay=t[0]!=null||t[1]!=null;
+    if(hay) acc+=su;
+    ty+=rowH; var by=ty-rowH*0.32;
+    P.T(cPu,by,20,pu,{b:1,a:'center',c:'#42505C'});
+    P.TF(cAn,by,cF1-70-cAn,animal(r,pu).nombre||'—',{s:20,c:'#12181F'});
+    P.T(cF1,by,21,t[0]==null?'·':t[0],{a:'center',b:1,c:t[0]==='11'?'#A8791B':'#12181F'});
+    P.T(cF2,by,21,t[1]==null?'·':t[1],{a:'center',b:1,c:t[1]==='11'?'#A8791B':'#12181F'});
+    P.T(cSu,by,21,hay?su:'',{a:'center',b:1});
+    P.T(cAc,by,20,hay?acc:'',{a:'center',c:'#42505C'});
+    P.LN(M,ty,CW-M,ty,i===seq.length-1?'#12181F':'#E4E8EC',i===seq.length-1?1.5:1);
+  });
+  ty+=rowH;
+  P.T(M+2,ty-14,23,'Total',{b:1});
+  P.T(cSu,ty-14,23,totalArq(r,a.id),{b:1,a:'center'});
+  P.T(cAc,ty-14,23,totalArq(r,a.id),{b:1,a:'center'});
+  P.LN(M,ty,CW-M,ty,'#12181F',1.5);
+  ty+=40;
+  P.T(M,ty,20,'Flechas: '+flechasArq(r,a.id)+' de '+(r.puestos*2),{c:'#42505C'});
+  P.T(M+270,ty,20,'Media: '+dec(mediaArq(r,a.id)),{c:'#42505C'});
+  P.T(M+490,ty,20,'Onces: '+cuenta(r,a.id,'11'),{c:'#42505C'});
+  P.T(M+660,ty,20,'Dieces: '+cuenta(r,a.id,'10'),{c:'#42505C'});
+  ty+=60; P.LN(M,ty,M+270,ty,'#8A949E',1);
+  P.T(M,ty+26,18,'Firma del arquero',{c:'#5B6975'});
+  try{ cb(L.cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+}
+
+/* ---- selector de modalidad, dentro de la pantalla normal ---- */
+function pantallaModo(){
+  return '<div class="wrap"><div class="modolin">'
+    +'<svg width="54" height="54" viewBox="0 0 100 100" aria-hidden="true">'
+    +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
+    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
+    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
+    +'<h2>¿Qué vas a tirar?</h2>'
+    +'<p>Puedes cambiar de modalidad cuando quieras con el botón de arriba a la derecha.</p>'
+    +'<button class="modobtn" data-act="modo" data-v="sala" data-on="'+(D.modo==='sala'?1:0)+'">'
+    +'<b>Tiro en sala</b><span>Diana de anillos, tandas y flechas configurables, 10, 18 y 30 metros. '
+    +'Récords, progreso y clasificación por día.</span></button>'
+    +'<button class="modobtn" data-act="modo" data-v="campo" data-on="'+(D.modo==='campo'?1:0)+'">'
+    +'<b>Tiro en campo</b><span>Recorrido de figuras 3D, 12 o 24 puestos, dos flechas por puesto '
+    +'con 11, 10, 8, 5 y cero. Patrulla con varios arqueros y clasificación en directo.</span></button>'
+    +'</div></div>';
+}
+
+/* ---- pantallas de campo ---- */
+function cabeceraCampo(){
+  return '<div class="top">'
+   +'<svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">'
+   +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
+   +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
+   +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
+   +'<span class="name">Tiro en campo</span>'
+   +'<button class="swmodo" data-act="cambiamodo">Cambiar a sala</button></div>';
+}
+function pantallaPuesto(r){
+  var seq=secuencia(r), pu=seq[Math.min(C.idx,seq.length-1)], an=animal(r,pu);
+  var h='<div class="card"><div class="chead"><h2>Puesto '+pu+'</h2>'
+    +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
+    +(C.idx+1)+' de '+r.puestos+' · '+esc(D.campos[r.campo].nombre)+'</span></div>'
+    +'<div class="animal">'
+    +(an.foto?'<img src="data:image/jpeg;base64,'+an.foto.data+'" alt="Figura" data-act="fotoanimal" data-pu="'+pu+'">'
+             :'<div class="ph" data-act="fotoanimal" data-pu="'+pu+'">Foto</div>')
+    +'<input placeholder="Nombre del animal" list="animales" maxlength="28" data-animal="'+pu+'" value="'+esc(an.nombre)+'">'
+    +'</div>';
+
+  r.patrulla.forEach(function(a,ai){
+    var t=tiros(r,a.id,pu), suma=pts3(t[0])+pts3(t[1]);
+    h+='<div class="tiro"><div class="qn">'+esc(a.nombre)+'<small>'+esc(a.arco)+'</small></div><div class="fl">';
+    [0,1].forEach(function(fi){
+      var v=t[fi], c=color3(v);
+      h+='<button class="fslot" data-act="slot3" data-a="'+ai+'" data-f="'+fi+'"'
+        +' data-sel="'+(C.sel.a===ai&&C.sel.f===fi?1:0)+'" style="'+sty(c)+'">'+(v==null?'':v)+'</button>';
+    });
+    h+='</div><div class="pt">'+(t[0]!=null||t[1]!=null?suma:'')+'</div></div>';
+  });
+
+  h+='<div class="pad3">';
+  KEYS3D.forEach(function(v){ h+='<button data-act="tiro3" data-v="'+v+'" style="'+sty(color3(v))+'">'+v+'</button>'; });
+  h+='</div><button class="ghost" data-act="borra3" style="width:100%">Borrar esta flecha</button>';
+  h+='<div class="navp">'
+    +'<button data-act="puestoant"'+(C.idx===0?' disabled':'')+'>◀ Anterior</button>'
+    +'<button data-act="puestosig"'+(C.idx>=r.puestos-1?' disabled':'')+'>Siguiente ▶</button></div>';
+  h+='</div>';
+
+  h+=tarjetaCrono([[120,'2 min'],[240,'4 min'],[60,'1 min']]);
+
+  h+='<div class="card"><div class="chead"><h2>Observaciones</h2>'
+    +'<span>de este recorrido</span></div>'
+    +'<textarea class="obs selec" placeholder="Tiempo, luz, incidencias del recorrido..." '
+    +'data-obsrec>'+esc(r.obs||'')+'</textarea>'
+    +'<div class="chead" style="margin:14px 0 8px"><h2>Notas de '+esc(D.campos[r.campo].nombre)+'</h2>'
+    +'<span>fijo para este campo</span></div>'
+    +'<textarea class="obs selec" placeholder="Accesos, estacas difíciles, distancias que engañan..." '
+    +'data-notacampo="'+r.campo+'">'+esc((D.notasCampo||{})[r.campo]||'')+'</textarea></div>';
+
+  h+='<div class="card"><div class="chead"><h2>Resumen de la patrulla</h2>'
+    +'<span>'+puestosHechos(r)+' de '+r.puestos+' puestos</span></div>';
+  clasifRec(r).forEach(function(a,i){
+    h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
+      +'<div class="lbl" data-act="detalle" data-id="'+a.id+'">'+esc(a.nombre)
+      +'<small>'+esc(a.arco)+' · toca para ver puesto a puesto</small></div>'
+      +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>'+cuenta(r,a.id,'11')+' onces</small></div></div>';
+    if(C.abierto===a.id) h+=detallePorPuesto(r,a);
+  });
+  h+='</div>';
+  return h;
+}
+function detallePorPuesto(r,a){
+  var seq=secuencia(r), acc=0, filas='';
+  seq.forEach(function(pu){
+    var t=r.tiros[a.id+'|'+pu]||[null,null];
+    if(t[0]==null&&t[1]==null) return;
+    acc+=pts3(t[0])+pts3(t[1]);
+    filas+='<tr><td>'+pu+'</td><td>'+esc(animal(r,pu).nombre||'—')+'</td>'
+      +'<td>'+(t[0]==null?'·':t[0])+'</td><td>'+(t[1]==null?'·':t[1])+'</td><td>'+acc+'</td></tr>';
+  });
+  if(!filas) filas='<tr><td colspan="5" style="color:var(--dim)">Sin flechas anotadas.</td></tr>';
+  return '<div class="detalle"><table><tbody>'+filas+'</tbody></table></div>';
+}
+function pantallaRecorrido(r){
+  var h='';
+  if(r && !r.cerrado){
+    h+='<div class="card"><div class="chead"><h2>Recorrido en curso</h2>'
+      +'<span>'+fecha(r.fecha)+'</span></div>'
+      +'<p class="stat"><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
+      +'Estacas '+estaca(r.estacas).nombre.toLowerCase()+' · '+esc(D.campos[r.campo].nombre)+' · '+r.puestos
+      +' puestos · salida en la '+r.inicio+' · '+r.patrulla.length+' arqueros'
+      +'<br>Llevas <i>'+puestosHechos(r)+'</i> puestos completos.</p>'
+      +'<button class="act" data-act="cerrarrec">Cerrar el recorrido</button>'
+      +'<button class="ghost" data-act="borrarrec">Descartar este recorrido</button></div>';
+  }
+
+  h+='<div class="card"><div class="chead"><h2>'+(r&&!r.cerrado?'Empezar otro':'Nuevo recorrido')+'</h2></div>'
+    +'<p class="stat">Campo</p><div class="seg" style="margin-bottom:10px">';
+  D.campos.forEach(function(c,i){
+    h+='<button data-act="nrcampo" data-v="'+i+'" data-on="'+(C.nCampo===i?1:0)+'">'+esc(c.nombre)+'</button>';
+  });
+  h+='</div>'
+    +'<p class="stat">Estacas</p><div class="seg" style="margin-bottom:10px">'
+    +ESTACAS.map(function(e){
+      return '<button data-act="nrestaca" data-v="'+e.id+'" data-on="'+(C.nEstaca===e.id?1:0)+'">'
+        +'<span class="bolita" style="background:'+e.color+'"></span>'+e.nombre+'</button>'; }).join('')
+    +'</div>'
+    +'<p class="stat">Puestos</p><div class="seg" style="margin-bottom:10px">'
+    +'<button data-act="nrpuestos" data-v="12" data-on="'+(C.nPuestos===12?1:0)+'">12</button>'
+    +'<button data-act="nrpuestos" data-v="24" data-on="'+(C.nPuestos===24?1:0)+'">24</button></div>'
+    +'<div class="field"><label for="nrini">Salida</label>'
+    +'<select id="nrini" class="arq" data-nrinicio>';
+  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Estaca '+i+'</option>';
+  h+='</select></div>'
+    +'<div class="field"><label for="nrn">Arqueros</label>'
+    +'<select id="nrn" class="arq" data-nrn>';
+  for(var n=1;n<=8;n++) h+='<option value="'+n+'"'+(C.nuevos===n?' selected':'')+'>'+n+' arquero'+(n>1?'s':'')+'</option>';
+  h+='</select></div>';
+  for(var k=0;k<C.nuevos;k++){
+    var pa=C.patrulla[k]||{nombre:'',arco:ARCOS[0]};
+    h+='<div class="field"><label>'+(k+1)+'º</label>'
+      +'<input placeholder="Nombre" list="arqnombres" maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'"></div>'
+      +'<div class="field"><label></label><select class="arq" data-parco="'+k+'">'
+      +ARCOS.map(function(x){ return '<option'+(pa.arco===x?' selected':'')+'>'+x+'</option>'; }).join('')
+      +'</select></div>';
+  }
+  h+='<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
+
+  h+='<div class="card"><div class="chead"><h2>Nombres de los campos</h2></div>';
+  D.campos.forEach(function(c,i){
+    h+='<div class="field"><label>Campo '+(i+1)+'</label>'
+      +'<input list="campospre" maxlength="22" data-campo="'+i+'" value="'+esc(c.nombre)+'"></div>';
+  });
+  h+='<p class="stat">Las figuras y sus fotos se guardan por campo, así que la próxima vez que tires '
+    +'ahí ya estarán puestas.</p></div>';
+  h+=tarjetaCopia();
+
+  if(D.recorridos.length){
+    h+='<div class="card"><div class="chead"><h2>Recorridos anteriores</h2>'
+      +'<span>'+D.recorridos.length+'</span></div>';
+    D.recorridos.slice(0,20).forEach(function(x){
+      var g=clasifRec(x)[0];
+      h+='<div class="rec"><div class="lbl">'+esc(D.campos[x.campo].nombre)
+        +'<small><span class="bolita" style="background:'+estaca(x.estacas).color+'"></span>'
+        +fecha(x.fecha)+' · '+x.puestos+' puestos · '+x.patrulla.length+' arqueros'
+        +(x.cerrado?'':' · en curso')+'</small></div>'
+        +'<div class="v"><b>'+(g?totalArq(x,g.id):0)+'</b><small>'+(g?esc(g.nombre):'—')+'</small></div>'
+        +'<div class="minis"><button class="mini" data-act="verrec" data-id="'+x.id+'">Abrir</button>'
+        +'<button class="mini" data-act="borrarrecid" data-id="'+x.id+'">✕</button></div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+function pantallaResumen(r){
+  if(!r) return '<div class="card"><p class="empty">No hay ningún recorrido abierto.</p></div>';
+  var h='<div class="card"><div class="chead"><h2>Resumen</h2>'
+    +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
+    +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+'</span></div>';
+  clasifRec(r).forEach(function(a,i){
+    h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
+      +'<div class="lbl">'+esc(a.nombre)+'<small>'+esc(a.arco)+' · '+dec(mediaArq(r,a.id))+' por flecha · '
+      +cuenta(r,a.id,'11')+' onces · '+cuenta(r,a.id,'10')+' dieces</small></div>'
+      +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>de '+maxRec(r)+'</small></div>'
+      +'<div class="minis"><button class="mini" data-act="imgarq" data-id="'+a.id+'">Imagen</button></div></div>';
+  });
+  h+='<button class="act" data-act="imgclasif">Ver clasificación como imagen</button></div>';
+  return h;
+}
+var SUGMAT=['Arco','Flechas','Cuerda','Visor','Estabilizador','Botón','Reposaflechas','Clicker',
+  'Dragonera','Aljaba','Protector de dedos','Protector de brazo','Puntas','Plumas','Culatines','Disparador'];
+function fichas(lista,titulo,ayuda,ph,sug){
+  var arr=D[lista]||[];
+  var h='<div class="card"><div class="chead"><h2>'+titulo+'</h2><span>'+arr.length+'</span></div>'
+    +'<p class="stat">'+ayuda+'</p></div>';
+  arr.forEach(function(t,i){
+    var fotos=t.fotos||[];
+    h+='<div class="card tec">'
+      +'<input placeholder="'+ph+'"'+(sug?' list="sugmat"':'')+' maxlength="60" '
+      +'data-fichatit="'+i+'" data-l="'+lista+'" value="'+esc(t.titulo)+'">'
+      +'<textarea class="selec" placeholder="Escribe aquí" data-fichatxt="'+i+'" data-l="'+lista+'">'
+      +esc(t.texto)+'</textarea>';
+    if(fotos.length){
+      h+='<div class="tecfotos">';
+      fotos.forEach(function(f,j){
+        h+='<div class="tf"><img src="data:image/jpeg;base64,'+f.data+'" alt="" '
+          +'data-act="verfichafoto" data-l="'+lista+'" data-i="'+i+'" data-j="'+j+'">'
+          +'<button data-act="borfichafoto" data-l="'+lista+'" data-i="'+i+'" data-j="'+j+'" '
+          +'aria-label="Quitar foto">✕</button></div>';
+      });
+      h+='</div>';
+    }
+    h+='<div class="tecbar">'
+      +'<button class="mini" data-act="copiarficha" data-l="'+lista+'" data-i="'+i+'">Copiar</button>'
+      +(fotos.length<3?'<button class="mini" data-act="fotoficha" data-l="'+lista+'" data-i="'+i+'">Añadir foto</button>':'')
+      +'<button class="mini" data-act="borficha" data-l="'+lista+'" data-i="'+i+'">Borrar</button></div></div>';
+  });
+  h+='<button class="act'+(lista==='tecnicas'?' act2':'')+'" data-act="nuevaficha" data-l="'+lista+'">'
+    +(lista==='material'?'Añadir material':'Añadir técnica')+'</button>';
+  return h;
+}
+function cuentaBloque(b){
+  var tot=b.items.length+((D.extras[b.k]||[]).length), hechos=0, i;
+  for(i=0;i<b.items.length;i++) if(D.check[b.k+i]) hechos++;
+  (D.extras[b.k]||[]).forEach(function(x,j){ if(D.check[b.k+'x'+j]) hechos++; });
+  return {tot:tot,hechos:hechos};
+}
+function pantallaMateriales(){
+  var gTot=0,gHechos=0;
+  LISTA.forEach(function(b){ var c=cuentaBloque(b); gTot+=c.tot; gHechos+=c.hechos; });
+  var pc=gTot?Math.round(gHechos*100/gTot):0;
+  var h='<div class="card"><div class="chead"><h2>Materiales</h2>'
+    +'<span>'+gHechos+' de '+gTot+'</span></div>'
+    +'<div class="barra"><i style="width:'+pc+'%"></i></div>'
+    +'<p class="stat">Quedan <i>'+(gTot-gHechos)+'</i> cosas por conseguir. '
+    +'Toca cualquier línea para marcarla.</p></div>';
+  LISTA.forEach(function(b){
+    var c=cuentaBloque(b), p2=c.tot?Math.round(c.hechos*100/c.tot):0;
+    var abierto=C.bloque===b.k;
+    h+='<div class="card"><div class="chead" data-act="bloque" data-v="'+b.k+'">'
+      +'<h2>'+esc(b.n)+'</h2><span>'+c.hechos+'/'+c.tot+' '+(abierto?'▾':'▸')+'</span></div>'
+      +'<div class="barra"><i style="width:'+p2+'%"></i></div>';
+    if(abierto){
+      b.items.forEach(function(it,i){
+        var on=!!D.check[b.k+i];
+        h+='<div class="chk" data-act="chk" data-k="'+b.k+i+'">'
+          +'<span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
+          +'<div class="ctxt"'+(on?' data-on="1"':'')+'>'+esc(it[0])
+          +(it[1]?'<small>'+esc(it[1])+'</small>':'')+'</div></div>';
+      });
+      (D.extras[b.k]||[]).forEach(function(x,j){
+        var on=!!D.check[b.k+'x'+j];
+        h+='<div class="chk"><span class="tick" data-act="chk" data-k="'+b.k+'x'+j+'" data-on="'+(on?1:0)+'">'
+          +(on?'✓':'')+'</span>'
+          +'<input class="cinp" maxlength="70" data-extra="'+b.k+'" data-j="'+j+'" value="'+esc(x)+'">'
+          +'<button class="mini" data-act="borextra" data-k="'+b.k+'" data-j="'+j+'">✕</button></div>';
+      });
+      h+='<button class="mini" data-act="addextra" data-k="'+b.k+'" style="margin-top:10px">Añadir ítem</button>';
+    }
+    h+='</div>';
+  });
+  return h;
+}
+function pantallaTecnicas(){
+  return fichas('material','Material',
+      'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
+    +'<div style="height:14px"></div>'
+    +fichas('tecnicas','Técnicas',
+      'Tus apuntes: correcciones, sensaciones, entrenamientos.','Título',0)
+    +'<datalist id="sugmat">'+SUGMAT.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
+}
+function renderCampo(){
+  MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
+  var r=recActual();
+  if(C.nCampo==null) C.nCampo=0;
+  if(C.nEstaca==null) C.nEstaca='roja';
+  if(C.nPuestos==null) C.nPuestos=12;
+  if(C.nInicio==null) C.nInicio=1;
+  if(!C.patrulla) C.patrulla=[{nombre:'',arco:ARCOS[0]},{nombre:'',arco:ARCOS[0]}];
+  var h='<div class="wrap">'+cabeceraCampo();
+  if(C.tab==='puesto'){
+    h+= r&&!r.cerrado ? pantallaPuesto(r)
+      : '<div class="card"><p class="empty">No hay ningún recorrido abierto.<br><br>Ve a '
+        +'<i>Recorrido</i>, elige campo, puestos, salida y patrulla, y dale a empezar.</p></div>';
+  }
+  else if(C.tab==='clasif'){
+    h+= r ? pantallaResumen(r)
+      : '<div class="card"><p class="empty">Aún no hay clasificación: empieza un recorrido.</p></div>';
+  }
+  else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
+  else if(C.tab==='tecnicas'){ h+=pantallaTecnicas(); }
+  else if(C.tab==='materiales'){ h+=pantallaMateriales(); }
+  else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
+  h+='</div><datalist id="campospre">'+PRESETS.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'
+    +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
+    +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
+      'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
+    +barraTabs([['puesto','Puesto'],['clasif','Resumen'],['recorrido','Recorrido'],
+      ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material']],'ctab',C.tab);
+  document.getElementById('app').innerHTML=h;
+}
+
+/* ---- render ---- */
+var deferredPrompt=null, eligiendo=false;
+function barraTabs(lista,acto,activa){
+  var cols=Math.ceil(lista.length/2);
+  return '<nav class="tabs" style="grid-template-columns:repeat('+cols+',1fr)">'
+    +lista.map(function(pp){
+      return '<button data-act="'+acto+'" data-v="'+pp[0]+'" data-on="'+(activa===pp[0]?1:0)+'">'
+        +pp[1]+'</button>'; }).join('')
+    +'</nav>';
+}
+function segDist(act,cur){ return '<div class="seg">'+DISTS.map(function(d){
+  return '<button data-act="'+act+'" data-v="'+d+'" data-on="'+(d===cur?1:0)+'">'+d+' m</button>'; }).join('')+'</div>'; }
+function segSite(act,cur){ return '<div class="seg">'+D.sites.map(function(s,i){
+  return '<button data-act="'+act+'" data-v="'+i+'" data-on="'+(i===cur?1:0)+'">'+esc(s)+'</button>'; }).join('')+'</div>'; }
+function selArq(){
+  return '<select class="arq" data-selarq>'+D.arqueros.map(function(a,i){
+    return '<option value="'+i+'"'+(i===U.arq?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')+'</select>';
+}
+
+function render(){
+  if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); }
+  if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
+  if(D.modo==='campo'){ renderCampo(); return; }
+  var A=arqActual();
+  var h='<div class="wrap"><div class="top">'
+   +'<svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">'
+   +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
+   +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
+   +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
+   +'<span class="name">Tarjeta de arquero</span>'
+   +'<button class="swmodo" data-act="cambiamodo" style="margin-left:auto">Campo</button>'
+   +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
+      : (A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'')
+        +'<span class="sub" style="margin-left:7px">'
+        +(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span>')
+   +'</div>';
+
+  if(U.tab==='tirada'){
+    var s=draft(), ne=nE(s), na=nA(s), e=Math.min(U.sel.end,ne-1), row=s.ends[e];
+    var n=row.filter(function(x){ return x!=null; }).length;
+    var t=row.reduce(function(a,x){ return a+val(x); },0);
+    var N=shots(s), T2=total(s), rec=best(A.id,U.dist,U.site);
+
+    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
+    h+='<div class="segrow">'+segDist('dist',U.dist)+segSite('site',U.site)+'</div>';
+    h+='<div class="fmt">'
+      +'<div class="step"><span class="lb">Tandas</span>'
+      +'<button data-act="ends" data-v="-1">−</button><b>'+ne+'</b><button data-act="ends" data-v="1">+</button></div>'
+      +'<div class="step"><span class="lb">Flechas<br>por tanda</span>'
+      +'<button data-act="arrows" data-v="-1">−</button><b>'+na+'</b><button data-act="arrows" data-v="1">+</button></div>'
+      +'</div>';
+
+    var slotSz=na<=6?19:na<=9?16:14;
+    h+='<div class="card"><div class="chead"><h2>Tanda '+(e+1)+' de '+ne+'</h2>'
+      +'<span>'+n+'/'+na+' flechas · '+t+' pts</span></div>'
+      +'<div class="slots" style="grid-template-columns:repeat('+Math.min(na,6)+',1fr)">';
+    row.forEach(function(v,i){
+      var cc=v!=null?ringc(v):null;
+      h+='<button class="slot" data-act="slot" data-e="'+e+'" data-a="'+i+'" data-sel="'+(U.sel.arrow===i?1:0)+'"'
+        +' style="font-size:'+slotSz+'px'+(cc?';'+sty(cc):'')+'" aria-label="Flecha '+(i+1)+'">'+(v==null?'':v)+'</button>';
+    });
+    h+='</div><div class="pad">';
+    KEYS.forEach(function(v){ h+='<button data-act="shoot" data-v="'+v+'" style="'+sty(ringc(v))+'">'+v+'</button>'; });
+    h+='<button class="undo" data-act="undo">Borrar última</button></div></div>';
+
+    var chipW=na<=6?21:na<=9?18:15, fz=na<=6?12:na<=9?11:10;
+    h+='<div class="card"><div class="tablewrap"><table class="grid"><thead><tr><th></th>'
+      +'<th colspan="'+na+'" style="font-size:'+fz+'px">Flechas</th><th>Tot</th><th>Media</th></tr></thead><tbody>';
+    s.ends.forEach(function(r,ei){
+      var rn=r.filter(function(x){ return x!=null; }).length;
+      var rt=r.reduce(function(a,x){ return a+val(x); },0);
+      h+='<tr data-on="'+(ei===e?1:0)+'"><td class="num" style="font-size:'+fz+'px" data-act="slot" data-e="'+ei+'" data-a="0">'+(ei+1)+'</td>';
+      r.forEach(function(v,ai){
+        h+='<td data-act="slot" data-e="'+ei+'" data-a="'+ai+'">'
+          +(v!=null?'<span class="chip" style="width:'+chipW+'px;height:'+chipW+'px;font-size:'+(chipW*0.57).toFixed(0)+'px;'+sty(ringc(v))+'">'+v+'</span>'
+                   :'<span class="dash">·</span>')+'</td>';
+      });
+      h+='<td class="tot" style="font-size:'+fz+'px">'+(rn?rt:'')+'</td>'
+        +'<td class="avg" style="font-size:'+fz+'px">'+(rn?dec(rt/rn):'')+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+
+    h+=tarjetaCrono([[120,'2 min'],[240,'4 min'],[60,'1 min']]);
+
+    h+='<div class="card"><div class="chead"><h2>Observaciones</h2>'
+      +'<span>de esta tirada</span></div>'
+      +'<textarea class="obs selec" placeholder="Viento, luz, sensaciones, lo que pasó hoy..." '
+      +'data-obs>'+esc(s.obs||'')+'</textarea>'
+      +'<div class="chead" style="margin:14px 0 8px"><h2>Reglajes a '+U.dist+' m</h2>'
+      +'<span>fijo para esta distancia</span></div>'
+      +'<textarea class="obs selec" placeholder="Altura de visor, libras, notas que se repiten a '+U.dist+' m..." '
+      +'data-nota="'+U.dist+'">'+esc(D.notas[U.dist]||'')+'</textarea></div>';
+
+    h+='<div class="card"><div class="sum"><div class="big">'+T2+'<small>/ '+maxPts(s)+'</small></div>'
+      +'<div class="stat">Media por flecha<b>'+dec(N?T2/N:0)+'</b></div>'
+      +'<div class="stat">Flechas<b>'+N+'</b></div>'
+      +'<div class="stat">X<b>'+xs(s)+'</b></div>'
+      +'<div class="stat">10<b>'+dieces(s)+'</b></div></div>'
+      +'<button class="act" data-act="guardar"'+(N?'':' disabled')+'>'
+      +(complete(s)?'Guardar tirada':'Guardar tirada ('+N+'/'+(ne*na)+' flechas)')+'</button>'
+      +(WV
+        ? '<button class="act act2" data-act="jpgdraft"'+(N?'':' disabled')+'>Ver como imagen</button>'
+        : '<div class="pair" style="margin-top:12px">'
+          +'<button class="act act2" data-act="jpgdraft"'+(N?'':' disabled')+' style="margin-top:0">Ver como imagen</button>'
+          +'<button class="act act2" data-act="pdfdraft"'+(N?'':' disabled')+' style="margin-top:0">PDF</button></div>')
+      +'<button class="ghost" data-act="vaciar">Vaciar tarjeta</button>'
+      +'<p class="stat" style="margin-top:4px">'
+      +(rec?'Mejor media aquí: '+dec(media(rec))+' por flecha · '+total(rec)+' en '+formato(rec)+' · '+fecha(rec.fecha)
+           :'Aún no hay marca en esta distancia y sitio.')+'</p></div>';
+  }
+
+  if(U.tab==='clasif'){
+    var gs=grupos();
+    if(!gs.length){
+      h+='<div class="card"><div class="chead"><h2>Clasificación</h2></div>'
+        +'<p class="empty">Aún no hay ninguna competición.<br><br>Se crea sola: cuando dos o más arqueros '
+        +'guarden una tirada el <i>mismo día</i>, a la <i>misma distancia</i>, en el <i>mismo sitio</i> y con el '
+        +'<i>mismo formato</i>, aparecerá aquí la clasificación ordenada.</p></div>';
+    }
+    gs.slice(0,25).forEach(function(gp){
+      h+='<div class="card"><p class="gtit"><b>'+fecha(gp.fecha)+'</b> · '+gp.dist+' m · '
+        +esc(sitio(gp.site))+' · '+gp.ne+'×'+gp.na+'</p>';
+      gp.filas.forEach(function(s,i){
+        var a=arqPorId(s.arquero);
+        h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
+          +(a.foto?'<img class="avatarmini" src="'+fotoURL(a)+'" alt="">':'')
+          +'<div class="lbl">'+esc(nombreArq(a))
+          +'<small>'+dec(media(s))+' por flecha · X '+xs(s)+' · 10 '+dieces(s)+'</small></div>'
+          +'<div class="v"><b>'+total(s)+'</b></div></div>';
+      });
+      h+='<button class="act act2" data-act="clasifimg" data-k="'+esc(gp.clave)+'">Ver clasificación como imagen</button></div>';
+    });
+  }
+
+  if(U.tab==='progreso'){
+    var serie=D.sessions.filter(function(x){ return x.arquero===A.id && x.dist===U.pDist && x.site===U.pSite; })
+      .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
+      .map(function(x){ return {fecha:x.fecha, media:media(x)}; });
+    var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
+    h+='<div class="selrow">'+selArq()+'</div>';
+    h+='<div class="segrow">'+segDist('pdist',U.pDist)+segSite('psite',U.pSite)+'</div>';
+    h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+' tiradas</span></div>'
+      +chart(serie)
+      +(serie.length?'<div class="legend"><div>Última<b>'+dec(ms[ms.length-1])+'</b></div>'
+        +'<div>Mejor<b>'+dec(Math.max.apply(null,ms))+'</b></div>'
+        +'<div>Media de 5<b>'+dec(u5.reduce(function(a,v){ return a+v; },0)/u5.length)+'</b></div></div>':'')
+      +'</div>';
+
+    h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
+    DISTS.forEach(function(d){ D.sites.forEach(function(sn,i){
+      var b=best(A.id,d,i);
+      h+='<div class="rec"><div class="lbl">'+d+' m<small>'+esc(sn)+'</small></div><div class="v">'
+        +(b?'<b>'+dec(media(b))+'</b><small>'+total(b)+' en '+formato(b)+' · '+fecha(b.fecha)+'</small>'
+            :'<small>Sin registro</small>')+'</div></div>';
+    }); });
+    h+='</div>';
+
+    var hay=D.sessions.length>0;
+    h+='<div class="card"><div class="chead"><h2>Exportar datos</h2><span>'+D.sessions.length+' tiradas</span></div>';
+    if(WV){
+      h+='<p class="stat">Para conservar una tirada o una clasificación, ábrela y '
+        +'usa <i>Ver como imagen</i>, y desde ahí haz una captura de pantalla.</p>';
+    } else {
+      h+='<p class="stat">Excel con tres hojas: tiradas, detalle de tandas y clasificaciones.</p>'
+        +'<button class="act" data-act="xlsx"'+(hay?'':' disabled')+'>Descargar Excel</button>'
+        +'<button class="act act2" data-act="csv"'+(hay?'':' disabled')+'>Descargar CSV</button>'
+        +'<button class="ghost" data-act="copiar">Copiar CSV al portapapeles</button>'
+        +'<button class="ghost" data-act="vercsv">'+(U.verCSV?'Ocultar texto':'Ver texto')+'</button>'
+        +(U.verCSV?'<textarea class="csv" readonly>'+esc(buildCSV())+'</textarea>':'');
+    }
+    h+='</div>';
+  }
+
+  if(U.tab==='historial'){
+    h+='<div class="card"><div class="chead"><h2>Historial</h2><span>'+D.sessions.length+' tiradas</span></div>';
+    if(!D.sessions.length) h+='<p class="empty">Guarda una tirada y aparecerá aquí.</p>';
+    D.sessions.forEach(function(s){
+      var a=arqPorId(s.arquero), b=best(s.arquero,s.dist,s.site);
+      h+='<div class="rec"><div class="lbl">'+s.dist+' m'+(b&&b.id===s.id?' · mejor':'')
+        +'<small>'+esc(nombreArq(a))+' · '+esc(sitio(s.site))+'<br>'+fecha(s.fecha)+' · '+formato(s)+'</small></div>'
+        +'<div class="v"><b>'+total(s)+'</b><small>'+dec(media(s))+' por flecha</small></div>'
+        +'<div class="minis"><button class="mini" data-act="jpg" data-id="'+s.id+'">Imagen</button>'
+        +(WV?'':'<button class="mini" data-act="pdf" data-id="'+s.id+'">PDF</button>')
+        +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div></div>';
+    });
+    h+='</div>';
+  }
+
+  if(U.tab==='tecnicas'){ h+=pantallaTecnicas(); }
+  if(U.tab==='materiales'){ h+=pantallaMateriales(); }
+
+  if(U.tab==='arqueros'){
+    D.arqueros.forEach(function(a,i){
+      h+='<div class="card"><div class="chead"><h2>'+esc(nombreArq(a))+'</h2>'
+        +(D.arqueros.length>1?'<span><button class="mini" data-act="borrararq" data-i="'+i+'">Borrar</button></span>':'')
+        +'</div>'
+        +'<div class="fotorow">'
+        +(a.foto?'<img class="foto" src="'+fotoURL(a)+'" alt="Foto">':'<div class="fotoph">Sin<br>foto</div>')
+        +'<div class="fotobtns">'
+        +'<button class="mini" data-act="fotoadd" data-i="'+i+'">'+(a.foto?'Cambiar foto':'Añadir foto')+'</button>'
+        +(a.foto?'<button class="ghost" data-act="fotodel" data-i="'+i+'" style="padding:0 2px">Quitar</button>':'')
+        +'</div></div>'
+        +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
+        +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
+        +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+        +'</div>';
+    });
+    h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
+    h+=tarjetaCopia();
+    h+='<div class="card"><div class="chead"><h2>Clave de acceso</h2>'
+      +'<span>'+(hayPin()?'activada':'sin clave')+'</span></div>'
+      +(hayPin()
+        ? '<p class="stat">La app pide seis números al abrirse y al volver a ella.</p>'
+          +'<button class="act act2" data-act="cambiapin">Cambiar la clave</button>'
+          +'<button class="ghost" data-act="quitapin">Quitar el bloqueo</button>'
+        : '<p class="stat">Seis números para que nadie más entre. Es un cerrojo, no una caja fuerte: '
+          +'los datos siguen guardados sin cifrar en el móvil. Y no se puede recuperar si se olvida.</p>'
+          +'<button class="act" data-act="ponpin">Activar clave</button>')
+      +'</div>';
+    h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2></div>';
+    D.sites.forEach(function(sn,i){
+      h+='<div class="field"><label for="s'+i+'">Sitio '+(i+1)+'</label>'
+        +'<input id="s'+i+'" data-site="'+i+'" maxlength="18" value="'+esc(sn)+'"></div>';
+    });
+    h+='</div>';
+  }
+
+  var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
+    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Técnicas'],['materiales','Material']];
+  h+='</div>'+barraTabs(pestanas,'tab',U.tab);
+  document.getElementById('app').innerHTML=h;
+}
+
+/* ---- acciones ---- */
+function shoot(v){
+  var s=draft(); s.ends[U.sel.end][U.sel.arrow]=v; save();
+  var e=U.sel.end,a=U.sel.arrow;
+  if(a<nA(s)-1) a++; else if(e<nE(s)-1){ e++; a=0; }
+  U.sel={end:e,arrow:a}; render();
+}
+function undo(){
+  var s=draft(), e=U.sel.end, a=U.sel.arrow;
+  if(s.ends[e][a]==null){ if(a>0) a--; else if(e>0){ e--; a=nA(s)-1; } }
+  s.ends[e][a]=null; U.sel={end:e,arrow:a}; save(); render();
+}
+function guardar(){
+  var s=draft(), t=total(s), rec=best(arqActual().id,U.dist,U.site);
+  var mejor=complete(s) && (!rec || media(s)>media(rec));
+  s.fecha=new Date().toISOString(); s.arquero=arqActual().id;
+  D.sessions.unshift(s); delete D.drafts[claveDraft()];
+  U.sel={end:0,arrow:0}; save(); render();
+  toast(mejor?'¡Mejor marca! '+t+' puntos':'Tirada guardada: '+t+' puntos');
+}
+function cambiaFormato(campo,paso){
+  var s=draft(), ne=nE(s), na=nA(s);
+  var nne=campo==='ends'?Math.max(1,Math.min(MAXE,ne+paso)):ne;
+  var nna=campo==='arrows'?Math.max(1,Math.min(MAXA,na+paso)):na;
+  if(nne===ne&&nna===na) return;
+  var antes=shots(s);
+  reformar(s,nne,nna);
+  var perdidas=antes-shots(s);
+  D.formato={ends:nne,arrows:nna};
+  U.sel=firstEmpty(s); save(); render();
+  if(perdidas>0) toast('Se han quitado '+perdidas+' flecha'+(perdidas>1?'s':'')+' que ya no caben.');
+}
+
+document.getElementById('app').addEventListener('click',function(ev){
+  if(ev.target.hasAttribute&&ev.target.hasAttribute('data-selall')){
+    try{ ev.target.focus(); ev.target.select(); toast('Texto seleccionado. Usa Copiar del menú.'); }catch(e){}
+    return;
+  }
+  var b=ev.target.closest('[data-act]'); if(!b) return;
+  var a=b.dataset.act, v=b.dataset.v;
+  if(a==='dist'){ U.dist=Number(v); U.sel=firstEmpty(draft()); render(); }
+  else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
+  else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
+  else if(a==='shoot'){ shoot(v); }
+  else if(a==='undo'){ undo(); }
+  else if(a==='guardar'){ guardar(); }
+  else if(a==='ends'){ cambiaFormato('ends',Number(v)); }
+  else if(a==='arrows'){ cambiaFormato('arrows',Number(v)); }
+  else if(a==='vaciar'){ var d0=draft(); d0.ends=malla(nE(d0),nA(d0)); U.sel={end:0,arrow:0}; save(); render(); toast('Tarjeta vaciada'); }
+  else if(a==='tab'){ U.tab=v; render(); }
+  else if(a==='pdist'){ U.pDist=Number(v); render(); }
+  else if(a==='psite'){ U.pSite=Number(v); render(); }
+  else if(a==='csv'){ bajar('\ufeff'+buildCSV(),'tarjeta-arquero-'+iso(Date.now())+'.csv','text/csv;charset=utf-8'); }
+  else if(a==='xlsx'){ bajar(buildXLSX(),'tarjeta-arquero-'+iso(Date.now())+'.xlsx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }
+  else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
+    if(s1) bajar(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
+  else if(a==='pdfdraft'){ var s2=draft(); bajar(buildPDF(s2),nombrePDF(s2),'application/pdf'); }
+  else if(a==='jpg'){ var s3=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
+    if(s3) verTarjeta(s3); }
+  else if(a==='jpgdraft'){ verTarjeta(draft()); }
+  else if(a==='clasifimg'){ var gp=grupos().filter(function(x){ return x.clave===b.dataset.k; })[0];
+    if(gp) verClasif(gp); }
+  else if(a==='vercsv'){ U.verCSV=!U.verCSV; render(); }
+  else if(a==='copiar'){
+    navigator.clipboard.writeText(buildCSV()).then(function(){ toast('CSV copiado'); })
+      .catch(function(){ U.verCSV=true; render(); toast('Copia el texto a mano desde el recuadro'); });
+  }
+  else if(a==='borrar'){ D.sessions=D.sessions.filter(function(x){ return x.id!==b.dataset.id; }); save(); render(); }
+  else if(a==='nuevoarq'){
+    D.arqueros.push({id:uid(),nombre:'',federacion:'',licencia:'',foto:null});
+    U.arq=D.arqueros.length-1; U.tab='arqueros'; save(); render();
+    toast('Arquero añadido. Ponle nombre.');
+  }
+  else if(a==='borrararq'){
+    var i=Number(b.dataset.i), quien=D.arqueros[i];
+    if(D.arqueros.length<2) return;
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?';
+      toast('Sus tiradas guardadas no se borran.'); return; }
+    Object.keys(D.drafts).forEach(function(k){ if(k.indexOf(quien.id+'|')===0) delete D.drafts[k]; });
+    D.arqueros.splice(i,1);
+    U.arq=0; save(); render();
+  }
+  else if(a==='fotoadd'){ U.fotoIdx=Number(b.dataset.i);
+    var fi=document.getElementById('fotoinput'); fi.value=''; fi.click(); }
+  else if(a==='fotodel'){ D.arqueros[Number(b.dataset.i)].foto=null; save(); render(); }
+  else if(a==='ponpin'){ abreLock('nuevo'); }
+  else if(a==='cambiapin'){ abreLock('nuevo'); }
+  else if(a==='quitapin'){ abreLock('quitar'); }
+  else if(a==='cambiamodo'){ eligiendo=true; render(); }
+  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='recorrido'; eligiendo=false; save(); render(); }
+  else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
+  else if(a==='slot3'){ C.sel={a:Number(b.dataset.a),f:Number(b.dataset.f)}; render(); }
+  else if(a==='tiro3'){
+    var rr=recActual(); if(!rr) return;
+    var pu=secuencia(rr)[C.idx], ar=rr.patrulla[C.sel.a];
+    tiros(rr,ar.id,pu)[C.sel.f]=v;
+    if(C.sel.f===0) C.sel={a:C.sel.a,f:1};
+    else if(C.sel.a<rr.patrulla.length-1) C.sel={a:C.sel.a+1,f:0};
+    save(); render();
+  }
+  else if(a==='borra3'){
+    var r2=recActual(); if(!r2) return;
+    tiros(r2,r2.patrulla[C.sel.a].id,secuencia(r2)[C.idx])[C.sel.f]=null; save(); render();
+  }
+  else if(a==='puestoant'){ C.idx=Math.max(0,C.idx-1); C.sel={a:0,f:0}; render(); }
+  else if(a==='puestosig'){
+    var r3=recActual();
+    C.idx=Math.min(r3.puestos-1,C.idx+1); C.sel={a:0,f:0}; render();
+    if((C.idx)%3===0) toast('Clasificación actualizada. La tienes en Resumen.');
+  }
+  else if(a==='detalle'){ C.abierto=C.abierto===b.dataset.id?null:b.dataset.id; render(); }
+  else if(a==='nrcampo'){ C.nCampo=Number(v); render(); }
+  else if(a==='nrestaca'){ C.nEstaca=v; render(); }
+  else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
+  else if(a==='crearrec'){
+    var pat=[],i2;
+    for(i2=0;i2<C.nuevos;i2++){
+      var pn=(C.patrulla[i2]&&C.patrulla[i2].nombre||'').trim();
+      pat.push({id:uid(),nombre:pn||('Arquero '+(i2+1)),arco:(C.patrulla[i2]&&C.patrulla[i2].arco)||ARCOS[0]});
+    }
+    nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
+    render(); toast('Recorrido empezado en la estaca '+C.nInicio);
+  }
+  else if(a==='cerrarrec'){ var r4=recActual(); if(r4){ r4.cerrado=true; D.recorridoId=null; C.tab='clasif'; save(); render(); toast('Recorrido cerrado'); } }
+  else if(a==='borrarrec'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se perderá'; return; }
+    D.recorridos=D.recorridos.filter(function(x){ return x.id!==D.recorridoId; });
+    D.recorridoId=null; save(); render();
+  }
+  else if(a==='borrarrecid'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
+    var idb=b.dataset.id;
+    D.recorridos=D.recorridos.filter(function(x){ return x.id!==idb; });
+    if(D.recorridoId===idb) D.recorridoId=null;
+    save(); render();
+  }
+  else if(a==='verrec'){ D.recorridoId=b.dataset.id; C.idx=0; C.sel={a:0,f:0}; C.tab='puesto'; save(); render(); }
+  else if(a==='imgclasif'){ var r5=recActual(); if(r5) clasifRecJPG(r5,function(u){
+      mostrarImagen(u,'Clasificación · '+D.campos[r5.campo].nombre+' · '+fecha(r5.fecha),'Clasificación',
+        baseCampo(r5)+' clasificacion.jpg'); }); }
+  else if(a==='imgarq'){
+    var r6=recActual(); if(!r6) return;
+    var aa=r6.patrulla.filter(function(x){ return x.id===b.dataset.id; })[0];
+    if(aa) resumenArqJPG(r6,aa,function(u){ mostrarImagen(u,aa.nombre+' · '+fecha(r6.fecha),'Resumen',
+      limpiaNombre(baseCampo(r6)+' '+aa.nombre)+'.jpg'); });
+  }
+  else if(a==='fotoanimal'){
+    C.fotoDestino={tipo:'animal',pu:b.dataset.pu};
+    var fi2=document.getElementById('fotoinput'); fi2.value=''; fi2.click();
+  }
+  else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
+  else if(a==='vercopia'){ C.verCopia=!C.verCopia; render(); }
+  else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
+    'copia-arquero-'+iso(Date.now())+'.json','application/json'); }
+  else if(a==='copiarcopia'){ copiar(copiaJSON(C.conFotos!==false),'Copia'); }
+  else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
+  else if(a==='comprobarcopia'){
+    var c=leeCopia((C.pegado||'').trim());
+    if(!c){ toast('Eso no parece una copia válida.'); C.copia=null; }
+    else { C.copia=c; toast('Copia leída correctamente.'); }
+    render();
+  }
+  else if(a==='aplicarcopia'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
+    if(C.copia) aplicaCopia(C.copia);
+  }
+  else if(a==='deshacercopia'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
+    try{
+      var prev=localStorage.getItem(PREVIO);
+      if(prev){ aplicaCopia({datos:JSON.parse(prev)}); localStorage.removeItem(PREVIO);
+        toast('Se ha vuelto a lo anterior'); }
+    }catch(e){ toast('No se pudo deshacer.'); }
+  }
+  else if(a==='mdfijar'){
+    if(MD.dist==null){ toast('Aún no hay medida. Apunta a la base de la diana.'); }
+    else {
+      var tb2=temblor();
+      MD.fijada=MD.dist; render();
+      toast(tb2!=null&&tb2>0.7?'Fijada en '+MD.dist.toFixed(1)+' m, pero temblabas: repítela.'
+        :'Medida fijada en '+MD.dist.toFixed(1)+' m');
+    }
+  }
+  else if(a==='mdcomparar'){
+    var e=parseFloat(String(MD.est).replace(',','.'));
+    var real=MD.fijada!=null?MD.fijada:MD.dist;
+    if(!(e>0)){ toast('Escribe primero tu estimación.'); }
+    else if(real==null){ toast('Fija antes una medida.'); }
+    else {
+      if(!D.estim) D.estim=[];
+      D.estim.push({e:e,r:real}); if(D.estim.length>60) D.estim.shift();
+      MD.est=''; MD.fijada=null; save(); render();
+      var dif=e-real;
+      toast(Math.abs(dif)<=2?'Muy buen ojo: '+dif.toFixed(1)+' m'
+        :(dif>0?'Te has pasado '+dif.toFixed(1)+' m':'Te has quedado corto '+Math.abs(dif).toFixed(1)+' m'));
+    }
+  }
+  else if(a==='mdborrar'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
+    D.estim=[]; save(); render();
+  }
+  else if(a==='crono'){ if(TM.on) paraCrono(); else arrancaCrono(); }
+  else if(a==='cronoreset'){ paraCrono(); TM.left=TM.tot; pintaCrono(); }
+  else if(a==='cronoset'){ ponCrono(Number(v)); }
+  else if(a==='bloque'){ C.bloque=(C.bloque===v?null:v); render(); }
+  else if(a==='chk'){ var kk2=b.dataset.k;
+    if(D.check[kk2]) delete D.check[kk2]; else D.check[kk2]=1;
+    save(); render(); }
+  else if(a==='addextra'){ var bk=b.dataset.k;
+    if(!D.extras[bk]) D.extras[bk]=[]; D.extras[bk].push(''); save(); render(); }
+  else if(a==='borextra'){ var bk2=b.dataset.k, j2=Number(b.dataset.j);
+    D.extras[bk2].splice(j2,1); delete D.check[bk2+'x'+j2]; save(); render(); }
+  else if(a==='nuevaficha'){ D[b.dataset.l].push({titulo:'',texto:'',fotos:[]}); save(); render(); }
+  else if(a==='copiarficha'){ var tf=D[b.dataset.l][Number(b.dataset.i)];
+    copiar((tf.titulo?tf.titulo+'\n\n':'')+tf.texto,b.dataset.l==='material'?'Material':'Técnica'); }
+  else if(a==='fotoficha'){ C.fotoDestino={tipo:'ficha',lista:b.dataset.l,i:Number(b.dataset.i)};
+    var fi3=document.getElementById('fotoinput'); fi3.value=''; fi3.click(); }
+  else if(a==='borfichafoto'){ var tg=D[b.dataset.l][Number(b.dataset.i)];
+    if(tg&&tg.fotos) tg.fotos.splice(Number(b.dataset.j),1); save(); render(); }
+  else if(a==='verfichafoto'){ var th=D[b.dataset.l][Number(b.dataset.i)];
+    if(th&&th.fotos&&th.fotos[b.dataset.j]) mostrarImagen('data:image/jpeg;base64,'+th.fotos[b.dataset.j].data,
+      th.titulo||'Foto','Foto',limpiaNombre(th.titulo||'foto')+'.jpg'); }
+  else if(a==='borficha'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
+    D[b.dataset.l].splice(Number(b.dataset.i),1); save(); render();
+  }
+  else if(a==='instalar' && deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; }
+});
+
+document.getElementById('app').addEventListener('input',function(ev){
+  var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
+  if(i!=null){ D.sites[Number(i)]=t.value; save(); }
+  else if(q){ D.arqueros[Number(t.dataset.i)][q]=t.value; save(); }
+  else if(t.dataset.campo!=null){ D.campos[Number(t.dataset.campo)].nombre=t.value; save(); }
+  else if(t.dataset.animal!=null){ var rr=recActual(); if(rr){ animal(rr,t.dataset.animal).nombre=t.value; save(); } }
+  else if(t.dataset.pnombre!=null){ var k2=Number(t.dataset.pnombre);
+    if(!C.patrulla[k2]) C.patrulla[k2]={nombre:'',arco:ARCOS[0]};
+    C.patrulla[k2].nombre=t.value; }
+  else if(t.dataset.fichatit!=null){ D[t.dataset.l][Number(t.dataset.fichatit)].titulo=t.value; save(); }
+  else if(t.dataset.fichatxt!=null){ D[t.dataset.l][Number(t.dataset.fichatxt)].texto=t.value; save(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-pegar')){ C.pegado=t.value; }
+  else if(t.hasAttribute&&t.hasAttribute('data-obs')){ draft().obs=t.value; save(); }
+  else if(t.dataset.nota!=null){ D.notas[t.dataset.nota]=t.value; save(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-obsrec')){ var rr2=recActual(); if(rr2){ rr2.obs=t.value; save(); } }
+  else if(t.dataset.notacampo!=null){ if(!D.notasCampo) D.notasCampo={};
+    D.notasCampo[t.dataset.notacampo]=t.value; save(); }
+  else if(t.dataset.extra!=null){ D.extras[t.dataset.extra][Number(t.dataset.j)]=t.value; save(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-alturaojo')){
+    var hh=parseInt(t.value,10); if(hh>=100&&hh<=220){ D.alturaOjo=hh; save(); } }
+  else if(t.hasAttribute&&t.hasAttribute('data-est')){ MD.est=t.value; }
+});
+document.getElementById('app').addEventListener('change',function(ev){
+  var t=ev.target;
+  if(t.hasAttribute&&t.hasAttribute('data-selarq')){
+    U.arq=Number(t.value); U.sel=firstEmpty(draft()); render();
+  }
+  else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
+  else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
+  else if(t.dataset&&t.dataset.parco!=null){ var k3=Number(t.dataset.parco);
+    if(!C.patrulla[k3]) C.patrulla[k3]={nombre:'',arco:ARCOS[0]};
+    C.patrulla[k3].arco=t.value; }
+});
+
+document.getElementById('fotoinput').addEventListener('change',function(ev){
+  cargarFoto(ev.target.files && ev.target.files[0]);
+});
+document.getElementById('copiainput').addEventListener('change',function(ev){
+  var f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  var fr=new FileReader();
+  fr.onerror=function(){ toast('No se pudo leer el archivo.'); };
+  fr.onload=function(){
+    C.pegado=String(fr.result||'');
+    var c=leeCopia(C.pegado.trim());
+    if(!c){ toast('Ese archivo no es una copia válida.'); C.copia=null; }
+    else { C.copia=c; toast('Archivo leído correctamente.'); }
+    render();
+  };
+  fr.readAsText(f);
+});
+document.getElementById('visor').addEventListener('click',function(ev){
+  if(this.className==='cap'){ this.className=''; this.scrollTop=0; return; }
+  var fb=ev.target.dataset.fb;
+  if(fb==='cerrar'){ this.style.display='none'; this.innerHTML=''; this.className=''; }
+  else if(fb==='captura'){ this.className='cap'; this.scrollTop=0;
+    toast('Haz la captura ahora con los botones del móvil.'); }
+  else if(fb==='bajarimg' && imgActual){
+    try{
+      var bin=atob(imgActual.url.split(',')[1]);
+      var by=new Uint8Array(bin.length),i;
+      for(i=0;i<bin.length;i++) by[i]=bin.charCodeAt(i);
+      bajar(by,imgActual.nombre,'image/jpeg');
+    }catch(e){ toast('No se pudo preparar la imagen.'); }
+  }
+});
+document.getElementById('fallback').addEventListener('click',function(ev){
+  var fb=ev.target.dataset.fb;
+  if(fb==='cerrar'){ this.style.display='none'; this.innerHTML=''; }
+  else if(fb==='link' && WV){ ev.preventDefault(); toast('Mantén el dedo pulsado sobre el botón, no lo toques.'); }
+});
+window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferredPrompt=e; render(); });
+
+document.getElementById('lock').addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-pin]'); if(!b) return;
+  teclaPin(b.dataset.pin);
+});
+
+/* al volver a la app tras un rato, vuelve a pedirla */
+var salida=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){ salida=Date.now(); }
+  else if(hayPin() && salida && Date.now()-salida>600000
+          && !document.getElementById('lock').dataset.on){ abreLock(''); }
+});
+
+U.sel=firstEmpty(draft());
+eligiendo = true;
+render();
+if(hayPin()) abreLock('');
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
