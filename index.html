@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#121820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Tarjeta de arquero</title>
+<title>Tiro con Arco</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -35,7 +35,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   padding:7px 12px;border-radius:8px;}
 
 .seg{display:flex;gap:5px;background:var(--panel);padding:5px;border-radius:11px;}
-.seg button{flex:1;padding:9px 4px;border-radius:8px;font-size:15px;font-weight:600;color:var(--dim);
+.seg button{flex:1;min-width:0;padding:9px 3px;border-radius:8px;font-size:14px;font-weight:600;color:var(--dim);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .12s,color .12s;}
 .seg button[data-on="1"]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
 .segrow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px;}
@@ -146,10 +146,11 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 
 .tabs{position:fixed;left:0;right:0;bottom:0;display:grid;gap:5px;background:#0F151C;
   border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom));}
-.tabs button{padding:13px 2px;font-size:12.5px;font-weight:500;color:var(--dim);border-radius:10px;
+.tabs button{padding:13px 2px;font-size:12px;font-weight:500;color:var(--dim);border-radius:10px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#151C24;
   box-shadow:inset 0 0 0 1px #212B36;}
-.tabs button[data-on="1"]{color:#181206;background:var(--gold);box-shadow:none;font-weight:600;}
+.tabs button[data-on="1"]{color:var(--gold);background:#0A0F14;font-weight:700;
+  box-shadow:inset 0 0 0 2px var(--gold);}
 .tabs button[data-on="1"]{color:var(--gold);}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--panel2);
   padding:11px 17px;border-radius:11px;font-size:14px;z-index:9;display:none;max-width:88%;
@@ -230,6 +231,18 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .tf button{position:absolute;top:-6px;right:-6px;width:23px;height:23px;border-radius:50%;
   background:var(--panel2);color:var(--ink);font-size:12px;box-shadow:inset 0 0 0 1px var(--line);}
 .tecbar{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+.camwrap{position:relative;width:100%;aspect-ratio:3/4;max-height:58vh;background:#0A0F14;
+  border-radius:12px;overflow:hidden;margin:12px 0 4px;box-shadow:inset 0 0 0 1px var(--line);}
+.camwrap video{width:100%;height:100%;object-fit:cover;display:block;}
+.cammira{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  border:2px solid rgba(242,193,27,.95);border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.5);}
+.cammira:after{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;
+  background:var(--gold);border-radius:50%;}
+.camlinea{position:absolute;left:0;right:0;top:50%;height:0;border-top:1px dashed rgba(242,193,27,.55);}
+.camdato{position:absolute;left:10px;bottom:10px;background:rgba(8,12,16,.72);border-radius:10px;
+  padding:7px 11px;line-height:1.15;}
+.camdato b{display:block;font-size:26px;font-weight:600;color:var(--gold);}
+.camdato span{font-size:12px;color:#D9E2EA;}
 .mdrow{display:flex;gap:26px;align-items:flex-end;margin:12px 0 4px;}
 .mdlab{display:block;font-size:13px;color:var(--dim);margin-bottom:2px;}
 .mdval{font-size:30px;font-weight:600;line-height:1;}
@@ -248,8 +261,11 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .ctxt{font-size:14px;line-height:1.35;min-width:0;}
 .ctxt[data-on="1"]{color:var(--dim);}
 .ctxt small{display:block;color:var(--dim);font-size:12px;margin-top:2px;line-height:1.4;}
-.cinp{flex:1;min-width:0;background:#151C24;border:1px solid var(--line);border-radius:8px;
+.cinp{width:100%;background:#151C24;border:1px solid var(--line);border-radius:8px;
   padding:8px;color:var(--ink);font-size:14px;}
+.cinp2{margin-top:6px;font-size:13px;color:var(--dim);}
+.cedit{flex:1;min-width:0;}
+.chkedit{align-items:center;gap:9px;}
 textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(--line);
   border-radius:9px;padding:11px;color:var(--ink);font-size:14px;line-height:1.5;resize:vertical;}
 #lock{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:40;display:none;
@@ -337,8 +353,8 @@ var LISTA=[{k:'d',n:"Montaje de la diana",items:[["Parapeto / boss de espuma o p
 var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
              {id:'azul',nombre:'Azul',color:'#3D7CC9'},
              {id:'blanca',nombre:'Blanca',color:'#E6E8E4'}];
-var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2'],formato:{ends:10,arrows:6},
-  drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},check:null,extras:{},
+var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
+  drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -347,7 +363,8 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2'],formato:{ends:10,arro
   var p=null;
   try{ var raw=localStorage.getItem(STORE); if(raw) p=JSON.parse(raw); }catch(e){}
   if(!p) { D.arqueros=[{id:uid(),nombre:'',federacion:'',licencia:'',foto:null}]; return; }
-  D.sites=p.sites||D.sites;
+  if(p.sites&&p.sites.length){ D.sites=p.sites.slice(0,4);
+    while(D.sites.length<4) D.sites.push('Sitio '+(D.sites.length+1)); }
   D.sessions=p.sessions||[];
   D.formato=p.formato||D.formato;
   if(p.pin) D.pin=p.pin;
@@ -359,6 +376,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2'],formato:{ends:10,arro
   if(p.notasCampo) D.notasCampo=p.notasCampo;
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
   if(p.estim) D.estim=p.estim;
+  if(p.mat&&p.mat.length) D.mat=p.mat;
   if(p.check) D.check=p.check;
   if(p.extras) D.extras=p.extras;
   if(p.campos&&p.campos.length===4) D.campos=p.campos;
@@ -377,9 +395,21 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2'],formato:{ends:10,arro
 })();
 
 function arrancaCheck(){
-  if(D.check) return;
-  D.check={};
-  LISTA.forEach(function(b){ b.items.forEach(function(it,i){ if(it[2]) D.check[b.k+i]=1; }); });
+  if(D.mat&&D.mat.length) return;
+  /* semilla desde el listado de fábrica, respetando lo que ya estuviera marcado */
+  D.mat=LISTA.map(function(b){
+    return {k:b.k,n:b.n,items:b.items.map(function(it,i){
+      var ok=D.check?!!D.check[b.k+i]:!!it[2];
+      return {id:b.k+i,t:it[0],d:it[1],ok:ok};
+    })};
+  });
+  /* y los que hubiera añadido a mano */
+  if(D.extras) D.mat.forEach(function(b){
+    (D.extras[b.k]||[]).forEach(function(x,j){
+      b.items.push({id:b.k+'x'+j,t:x,d:'',ok:D.check?!!D.check[b.k+'x'+j]:false});
+    });
+  });
+  D.check=null; D.extras=null;
 }
 arrancaCheck();
 var U={dist:18,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
@@ -467,7 +497,8 @@ function copiar(txt,queEs){
 
 /* ---- telémetro por inclinación ----
    d = altura del ojo / tan(ángulo bajo la horizontal). Entrenamiento, no competición. */
-var MD={ang:null,dist:null,buf:[],escucha:false,vista:false,fijada:null,sensor:null,est:''};
+var MD={ang:null,dist:null,buf:[],escucha:false,vista:false,fijada:null,sensor:null,est:'',
+  cam:null,camErr:''};
 function onOrient(ev){
   if(ev==null||ev.beta==null) return;
   MD.sensor=true;
@@ -513,10 +544,13 @@ function pintaMedida(){
         +(hi==null?'mucho más':hi.toFixed(1)+' m');
     }
   }
+  var cd=document.getElementById('camdist'), ca=document.getElementById('camang');
+  if(cd) cd.textContent=(MD.dist==null?'—':MD.dist.toFixed(1)+' m');
+  if(ca) ca.textContent=(MD.ang==null?'—':MD.ang.toFixed(1)+'° bajo la horizontal');
   var tb=document.getElementById('mdpulso'), t=temblor();
   if(tb) tb.textContent=(t==null?'':(t<0.25?'Pulso firme.':(t<0.7?'Aguanta un poco más quieto.':'Te mueves demasiado.')));
   var av=document.getElementById('mdaviso');
-  if(av) av.textContent=(MD.sensor===false
+  if(av) av.textContent=(MD.camErr?MD.camErr:MD.sensor===false
     ?'No detecto el sensor de inclinación en esta versión instalada.'
     :(MD.dist==null&&MD.sensor?'Inclina el móvil hacia la base de la diana.':''));
 }
@@ -526,12 +560,41 @@ function errMedio(){
   for(i=0;i<h.length;i++){ ab+=Math.abs(h[i].e-h[i].r); sg+=(h[i].e-h[i].r); }
   return {abs:ab/h.length,sesgo:sg/h.length,n:h.length};
 }
+function abreCamara(){
+  var v=document.getElementById('camvid');
+  if(!v||MD.cam) return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    MD.camErr='Este navegador no da acceso a la cámara.'; pintaMedida(); return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})
+    .then(function(st){
+      MD.cam=st; var vv=document.getElementById('camvid');
+      if(!vv){ cierraCamara(); return; }
+      vv.srcObject=st; vv.play&&vv.play(); MD.camErr=''; pintaMedida();
+    })
+    .catch(function(e){
+      MD.camErr=(e&&e.name==='NotAllowedError')
+        ?'Has denegado el permiso de cámara. Puedes concederlo desde los ajustes del navegador.'
+        :'No se pudo abrir la cámara.';
+      pintaMedida();
+    });
+}
+function cierraCamara(){
+  if(MD.cam){ try{ MD.cam.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} MD.cam=null; }
+}
 function pantallaDistancia(){
   var em=errMedio();
   var h='<div class="card"><div class="chead"><h2>Medir distancia</h2>'
     +'<span>solo entrenamiento</span></div>'
-    +'<p class="stat">Sujeta el móvil vertical, mira por el canto superior y apunta a la '
-    +'<i>base</i> de la diana, donde toca el suelo. Mantén la postura y fija la medida.</p>'
+    +'<p class="stat">Apunta a la <i>base</i> de la diana, donde toca el suelo. Con la cámara '
+    +'abierta, coloca la mira sobre ese punto; sin cámara, mira por el canto superior del móvil. '
+    +'Mantén la postura y fija la medida.</p>'
+    +(C.camOn
+      ? '<div class="camwrap"><video id="camvid" playsinline autoplay muted></video>'
+        +'<div class="cammira"></div><div class="camlinea"></div>'
+        +'<div class="camdato"><b id="camdist">—</b><span id="camang">—</span></div></div>'
+        +'<button class="mini" data-act="camoff" style="margin:10px 0">Cerrar la cámara</button>'
+      : '<button class="act act2" data-act="camon">Apuntar con la cámara</button>')
     +'<div class="mdrow"><div><span class="mdlab">Ángulo</span>'
     +'<span class="mdval" id="mdang">—</span></div>'
     +'<div><span class="mdlab">Distancia</span>'
@@ -686,14 +749,18 @@ function resumenCopia(c){
     (d.sessions||[]).length+' tiradas de sala',
     (d.recorridos||[]).length+' recorridos',
     (d.material||[]).length+' fichas de material',
-    (function(){ var n=0,k; for(k in (d.check||{})) n++; return n+' materiales marcados'; })(),
+    (function(){ var n=0;
+      (d.mat||[]).forEach(function(b){ b.items.forEach(function(x){ if(x.ok) n++; }); });
+      if(!(d.mat||[]).length && d.check){ for(var k in d.check) n++; }
+      return n+' materiales marcados'; })(),
     (d.tecnicas||[]).length+' técnicas'].join(' · ');
 }
 function aplicaCopia(c){
   try{ localStorage.setItem(PREVIO,JSON.stringify(D)); }catch(e){}
   var d=c.datos;
   D.arqueros=d.arqueros&&d.arqueros.length?d.arqueros:D.arqueros;
-  D.sites=d.sites||D.sites;
+  if(d.sites&&d.sites.length){ D.sites=d.sites.slice(0,4);
+    while(D.sites.length<4) D.sites.push('Sitio '+(D.sites.length+1)); }
   D.formato=d.formato||D.formato;
   D.drafts=d.drafts||{};
   D.sessions=d.sessions||[];
@@ -702,7 +769,8 @@ function aplicaCopia(c){
   D.notas=d.notas||{};
   D.notasCampo=d.notasCampo||{};
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[];
-  D.check=d.check||null; D.extras=d.extras||{}; arrancaCheck();
+  D.mat=(d.mat&&d.mat.length)?d.mat:[];
+  D.check=d.check||null; D.extras=d.extras||null; arrancaCheck();
   D.campos=(d.campos&&d.campos.length===4)?d.campos:D.campos;
   D.recorridos=d.recorridos||[];
   D.recorridoId=d.recorridoId||null;
@@ -715,27 +783,19 @@ function hayPrevio(){ try{ return !!localStorage.getItem(PREVIO); }catch(e){ ret
 function tarjetaCopia(){
   var conF=C.conFotos!==false, txt=copiaJSON(conF);
   var h='<div class="card"><div class="chead"><h2>Copia de seguridad</h2><span>'+pesa(txt)+'</span></div>'
-    +'<p class="stat">Guarda todo: arqueros, tiradas, recorridos, técnicas y ajustes.</p>'
+    +'<p class="stat">Guarda todo: arqueros, tiradas, recorridos, técnicas, materiales y ajustes.</p>'
     +'<div class="seg" style="margin:10px 0">'
     +'<button data-act="copiafotos" data-v="1" data-on="'+(conF?1:0)+'">Con fotos</button>'
-    +'<button data-act="copiafotos" data-v="0" data-on="'+(conF?0:1)+'">Sin fotos (más ligera)</button>'
+    +'<button data-act="copiafotos" data-v="0" data-on="'+(conF?0:1)+'">Sin fotos</button>'
     +'</div>'
-    +(WV?'':'<button class="act act2" data-act="bajarcopia">Descargar archivo</button>')
-    +'<button class="act" data-act="copiarcopia">Copiar al portapapeles</button>'
-    +'<button class="ghost" data-act="vercopia">'+(C.verCopia?'Ocultar texto':'Ver texto')+'</button>'
-    +(C.verCopia?'<textarea class="csv selec" readonly data-selall>'+esc(txt)+'</textarea>'
-        +'<p class="stat">Toca dentro del recuadro y se selecciona todo. Luego usa <i>Copiar</i> '
-        +'del menú que saca Android.</p>':'')
-    +'<p class="stat" style="margin-top:10px">Pega el texto copiado en cualquier dispositivo a través de '
-    +'cualquier aplicación, donde posteriormente pueda ser copiado en la aplicación para restaurar.</p>'
-    +'</div>';
+    +'<button class="act" data-act="bajarcopia">Descargar copia</button>'
+    +'<p class="stat" style="margin-top:10px">Se guarda un archivo en Descargas. '
+    +'Guárdalo donde quieras: correo, nube o el propio móvil. Con él podrás restaurarlo '
+    +'aquí o en cualquier otro teléfono.</p></div>';
 
   h+='<div class="card"><div class="chead"><h2>Restaurar</h2></div>'
-    +'<p class="stat">Pega aquí una copia o elige el archivo guardado. Lo que tengas ahora se sustituye.</p>'
-    +'<textarea class="csv selec" placeholder="Pega aquí el texto de la copia" data-pegar>'+esc(C.pegado||'')+'</textarea>'
-    +'<div class="pair" style="margin-top:10px">'
-    +'<button class="act act2" data-act="elegircopia" style="margin-top:0">Elegir archivo</button>'
-    +'<button class="act act2" data-act="comprobarcopia" style="margin-top:0">Comprobar</button></div>';
+    +'<p class="stat">Elige un archivo de copia. Lo que tengas ahora se sustituye por completo.</p>'
+    +'<button class="act act2" data-act="elegircopia">Elegir archivo de copia</button>';
   if(C.copia){
     h+='<p class="stat" style="margin-top:12px">Copia válida'
       +(C.copia.fecha?' del '+fecha(C.copia.fecha):'')+':<br><i>'+esc(resumenCopia(C.copia))+'</i></p>'
@@ -946,6 +1006,7 @@ function grupos(){
     gp.filas=Object.keys(porArq).map(function(a){ return porArq[a]; }).sort(function(x,y){
       return total(y)-total(x) || xs(y)-xs(x) || dieces(y)-dieces(x);
     });
+    gp.comp=gp.filas.some(function(x){ return !!x.comp; });
     return gp;
   }).filter(function(gp){ return gp.filas.length>1; })
     .sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
@@ -1115,7 +1176,7 @@ function buildPDF(s){
     return T(x,yy,sz,txt); }
 
   y=H-M;
-  c+='0 g\n'+T(M,y,17,'Tarjeta de arquero',true);
+  c+='0 g\n'+T(M,y,17,'Tiro con Arco',true);
   c+=T(W-M-118,y,10,'Serie de '+ne+' tanda'+(ne>1?'s':'')+' x '+na+' flecha'+(na>1?'s':''));
   y-=9; c+='0.2 G 1.4 w '+M+' '+y+' m '+(W-M)+' '+y+' l S\n0.75 G 0.7 w\n';
 
@@ -1294,7 +1355,7 @@ function tarjetaJPG(s,cb){
   }
 
   function pintar(img){
-    T(M,86,40,'Tarjeta de arquero',{b:1});
+    T(M,86,40,'Tiro con Arco',{b:1});
     (function(){ var n=baseSala(s)+'.jpg', sz=19; F(sz,1);
       while(sz>12 && g.measureText(n).width>385){ sz-=1; F(sz,1); }
       T(CW-M,84,sz,n,{a:'right',b:1,c:'#42505C'}); })();
@@ -1416,7 +1477,7 @@ function clasifJPG(gp,cb){
   function LN(x1,y1,x2,y2,col,w){ g.strokeStyle=col||'#C9D0D6'; g.lineWidth=w||1;
     g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); }
 
-  T(M,86,40,'Clasificación',{b:1});
+  T(M,86,40,gp.comp?'Competición':'Clasificación',{b:1});
   (function(){ var n=limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg';
     var sz=19; F(sz,1);
     while(sz>12 && g.measureText(n).width>430){ sz-=1; F(sz,1); }
@@ -1542,7 +1603,7 @@ function clasifRecJPG(r,cb){
   if((D.notasCampo||{})[r.campo]) extra+=Math.ceil(String(D.notasCampo[r.campo]).length/70)*25+25;
   var CH=250+(filas.length+1)*rowH+130+extra;
   var L=lienzo(CW,CH), g=L.g, P=pintor(g);
-  encabezado(P,g,CW,M,'Clasificación',baseCampo(r)+' clasificacion.jpg',
+  encabezado(P,g,CW,M,r.comp?'Competición':'Clasificación',baseCampo(r)+' clasificacion.jpg',
     fecha(r.fecha)+'  ·  '+D.campos[r.campo].nombre+'  ·  '+r.puestos+' puestos  ·  estacas '
     +estaca(r.estacas).nombre.toLowerCase(), filas.length+' arqueros');
   var cPos=M+26,cNom=M+70,cArco=430,cTot=610,cMed=700,c11=780,c10=840;
@@ -1735,7 +1796,8 @@ function pantallaRecorrido(r){
       +'<span>'+fecha(r.fecha)+'</span></div>'
       +'<p class="stat"><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
       +'Estacas '+estaca(r.estacas).nombre.toLowerCase()+' · '+esc(D.campos[r.campo].nombre)+' · '+r.puestos
-      +' puestos · salida en la '+r.inicio+' · '+r.patrulla.length+' arqueros'
+      +' puestos · salida en el puesto '+r.inicio+' · '+r.patrulla.length+' arqueros'
+      +(r.comp?'<br><i>Competición</i>':'')
       +'<br>Llevas <i>'+puestosHechos(r)+'</i> puestos completos.</p>'
       +'<button class="act" data-act="cerrarrec">Cerrar el recorrido</button>'
       +'<button class="ghost" data-act="borrarrec">Descartar este recorrido</button></div>';
@@ -1757,7 +1819,7 @@ function pantallaRecorrido(r){
     +'<button data-act="nrpuestos" data-v="24" data-on="'+(C.nPuestos===24?1:0)+'">24</button></div>'
     +'<div class="field"><label for="nrini">Salida</label>'
     +'<select id="nrini" class="arq" data-nrinicio>';
-  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Estaca '+i+'</option>';
+  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Puesto '+i+'</option>';
   h+='</select></div>'
     +'<div class="field"><label for="nrn">Arqueros</label>'
     +'<select id="nrn" class="arq" data-nrn>';
@@ -1771,6 +1833,11 @@ function pantallaRecorrido(r){
       +ARCOS.map(function(x){ return '<option'+(pa.arco===x?' selected':'')+'>'+x+'</option>'; }).join('')
       +'</select></div>';
   }
+  if(C.nuevos>1){
+    h+='<div class="chk" data-act="nrcomp" style="border-bottom:none;padding-top:4px">'
+      +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
+      +'<div class="ctxt">Es una competición<small>Lo marca en la clasificación y en la imagen</small></div></div>';
+  }
   h+='<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
 
   h+='<div class="card"><div class="chead"><h2>Nombres de los campos</h2></div>';
@@ -1780,7 +1847,6 @@ function pantallaRecorrido(r){
   });
   h+='<p class="stat">Las figuras y sus fotos se guardan por campo, así que la próxima vez que tires '
     +'ahí ya estarán puestas.</p></div>';
-  h+=tarjetaCopia();
 
   if(D.recorridos.length){
     h+='<div class="card"><div class="chead"><h2>Recorridos anteriores</h2>'
@@ -1801,7 +1867,7 @@ function pantallaRecorrido(r){
 }
 function pantallaResumen(r){
   if(!r) return '<div class="card"><p class="empty">No hay ningún recorrido abierto.</p></div>';
-  var h='<div class="card"><div class="chead"><h2>Resumen</h2>'
+  var h='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Resumen')+'</h2>'
     +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
     +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+'</span></div>';
   clasifRec(r).forEach(function(a,i){
@@ -1847,42 +1913,46 @@ function fichas(lista,titulo,ayuda,ph,sug){
   return h;
 }
 function cuentaBloque(b){
-  var tot=b.items.length+((D.extras[b.k]||[]).length), hechos=0, i;
-  for(i=0;i<b.items.length;i++) if(D.check[b.k+i]) hechos++;
-  (D.extras[b.k]||[]).forEach(function(x,j){ if(D.check[b.k+'x'+j]) hechos++; });
-  return {tot:tot,hechos:hechos};
+  var hechos=0,i;
+  for(i=0;i<b.items.length;i++) if(b.items[i].ok) hechos++;
+  return {tot:b.items.length,hechos:hechos};
 }
 function pantallaMateriales(){
   var gTot=0,gHechos=0;
-  LISTA.forEach(function(b){ var c=cuentaBloque(b); gTot+=c.tot; gHechos+=c.hechos; });
+  D.mat.forEach(function(b){ var c=cuentaBloque(b); gTot+=c.tot; gHechos+=c.hechos; });
   var pc=gTot?Math.round(gHechos*100/gTot):0;
-  var h='<div class="card"><div class="chead"><h2>Materiales</h2>'
+  var h='<div class="card"><div class="chead"><h2>Material</h2>'
     +'<span>'+gHechos+' de '+gTot+'</span></div>'
     +'<div class="barra"><i style="width:'+pc+'%"></i></div>'
     +'<p class="stat">Quedan <i>'+(gTot-gHechos)+'</i> cosas por conseguir. '
-    +'Toca cualquier línea para marcarla.</p></div>';
-  LISTA.forEach(function(b){
+    +'Toca una línea para marcarla; usa <i>Editar</i> para cambiar el texto, borrar o añadir.</p></div>';
+
+  D.mat.forEach(function(b,bi){
     var c=cuentaBloque(b), p2=c.tot?Math.round(c.hechos*100/c.tot):0;
-    var abierto=C.bloque===b.k;
+    var abierto=C.bloque===b.k, edit=C.editaBloque===b.k;
     h+='<div class="card"><div class="chead" data-act="bloque" data-v="'+b.k+'">'
       +'<h2>'+esc(b.n)+'</h2><span>'+c.hechos+'/'+c.tot+' '+(abierto?'▾':'▸')+'</span></div>'
       +'<div class="barra"><i style="width:'+p2+'%"></i></div>';
     if(abierto){
       b.items.forEach(function(it,i){
-        var on=!!D.check[b.k+i];
-        h+='<div class="chk" data-act="chk" data-k="'+b.k+i+'">'
-          +'<span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
-          +'<div class="ctxt"'+(on?' data-on="1"':'')+'>'+esc(it[0])
-          +(it[1]?'<small>'+esc(it[1])+'</small>':'')+'</div></div>';
+        if(edit){
+          h+='<div class="chk chkedit">'
+            +'<div class="cedit">'
+            +'<input class="cinp" maxlength="70" placeholder="Nombre" data-mt="'+bi+'" data-i="'+i+'" value="'+esc(it.t)+'">'
+            +'<input class="cinp cinp2" maxlength="120" placeholder="Detalle (opcional)" data-md="'+bi+'" data-i="'+i+'" value="'+esc(it.d||'')+'">'
+            +'</div>'
+            +'<button class="mini" data-act="matbor" data-b="'+bi+'" data-i="'+i+'">✕</button></div>';
+        } else {
+          h+='<div class="chk" data-act="matchk" data-b="'+bi+'" data-i="'+i+'">'
+            +'<span class="tick" data-on="'+(it.ok?1:0)+'">'+(it.ok?'✓':'')+'</span>'
+            +'<div class="ctxt"'+(it.ok?' data-on="1"':'')+'>'+esc(it.t)
+            +(it.d?'<small>'+esc(it.d)+'</small>':'')+'</div></div>';
+        }
       });
-      (D.extras[b.k]||[]).forEach(function(x,j){
-        var on=!!D.check[b.k+'x'+j];
-        h+='<div class="chk"><span class="tick" data-act="chk" data-k="'+b.k+'x'+j+'" data-on="'+(on?1:0)+'">'
-          +(on?'✓':'')+'</span>'
-          +'<input class="cinp" maxlength="70" data-extra="'+b.k+'" data-j="'+j+'" value="'+esc(x)+'">'
-          +'<button class="mini" data-act="borextra" data-k="'+b.k+'" data-j="'+j+'">✕</button></div>';
-      });
-      h+='<button class="mini" data-act="addextra" data-k="'+b.k+'" style="margin-top:10px">Añadir ítem</button>';
+      h+='<div class="tecbar" style="margin-top:12px">'
+        +'<button class="mini" data-act="mateditar" data-v="'+b.k+'">'+(edit?'Terminar':'Editar')+'</button>'
+        +'<button class="mini" data-act="matadd" data-b="'+bi+'">Añadir ítem</button>'
+        +'</div>';
     }
     h+='</div>';
   });
@@ -1898,6 +1968,7 @@ function pantallaTecnicas(){
 }
 function renderCampo(){
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
+  if(!MD.vista){ cierraCamara(); C.camOn=false; }
   var r=recActual();
   if(C.nCampo==null) C.nCampo=0;
   if(C.nEstaca==null) C.nEstaca='roja';
@@ -1917,13 +1988,15 @@ function renderCampo(){
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
   else if(C.tab==='tecnicas'){ h+=pantallaTecnicas(); }
   else if(C.tab==='materiales'){ h+=pantallaMateriales(); }
+  else if(C.tab==='copia'){ h+=tarjetaCopia(); }
   else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
   h+='</div><datalist id="campospre">'+PRESETS.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
     +barraTabs([['puesto','Puesto'],['clasif','Resumen'],['recorrido','Recorrido'],
-      ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material']],'ctab',C.tab);
+      ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material'],
+      ['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
 }
 
@@ -1947,7 +2020,7 @@ function selArq(){
 }
 
 function render(){
-  if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); }
+  if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
   if(D.modo==='campo'){ renderCampo(); return; }
   var A=arqActual();
@@ -1956,7 +2029,7 @@ function render(){
    +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
-   +'<span class="name">Tarjeta de arquero</span>'
+   +'<span class="name">Tiro con Arco</span>'
    +'<button class="swmodo" data-act="cambiamodo" style="margin-left:auto">Campo</button>'
    +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
       : (A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'')
@@ -1971,7 +2044,8 @@ function render(){
     var N=shots(s), T2=total(s), rec=best(A.id,U.dist,U.site);
 
     h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
-    h+='<div class="segrow">'+segDist('dist',U.dist)+segSite('site',U.site)+'</div>';
+    h+=segDist('dist',U.dist)+'<div style="height:8px"></div>'
+      +segSite('site',U.site)+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
       +'<div class="step"><span class="lb">Tandas</span>'
       +'<button data-act="ends" data-v="-1">−</button><b>'+ne+'</b><button data-act="ends" data-v="1">+</button></div>'
@@ -2025,6 +2099,11 @@ function render(){
       +'<div class="stat">Flechas<b>'+N+'</b></div>'
       +'<div class="stat">X<b>'+xs(s)+'</b></div>'
       +'<div class="stat">10<b>'+dieces(s)+'</b></div></div>'
+      +(D.arqueros.length>1
+        ? '<div class="chk" data-act="compsala" style="border-bottom:none;padding:12px 0 2px">'
+          +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
+          +'<div class="ctxt">Es una competición<small>Se marcará en la clasificación del día</small></div></div>'
+        : '')
       +'<button class="act" data-act="guardar"'+(N?'':' disabled')+'>'
       +(complete(s)?'Guardar tirada':'Guardar tirada ('+N+'/'+(ne*na)+' flechas)')+'</button>'
       +(WV
@@ -2047,7 +2126,8 @@ function render(){
         +'<i>mismo formato</i>, aparecerá aquí la clasificación ordenada.</p></div>';
     }
     gs.slice(0,25).forEach(function(gp){
-      h+='<div class="card"><p class="gtit"><b>'+fecha(gp.fecha)+'</b> · '+gp.dist+' m · '
+      h+='<div class="card"><p class="gtit">'+(gp.comp?'<b>Competición</b> · ':'')
+        +'<b>'+fecha(gp.fecha)+'</b> · '+gp.dist+' m · '
         +esc(sitio(gp.site))+' · '+gp.ne+'×'+gp.na+'</p>';
       gp.filas.forEach(function(s,i){
         var a=arqPorId(s.arquero);
@@ -2067,7 +2147,8 @@ function render(){
       .map(function(x){ return {fecha:x.fecha, media:media(x)}; });
     var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
     h+='<div class="selrow">'+selArq()+'</div>';
-    h+='<div class="segrow">'+segDist('pdist',U.pDist)+segSite('psite',U.pSite)+'</div>';
+    h+=segDist('pdist',U.pDist)+'<div style="height:8px"></div>'
+      +segSite('psite',U.pSite)+'<div style="height:12px"></div>';
     h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+' tiradas</span></div>'
       +chart(serie)
       +(serie.length?'<div class="legend"><div>Última<b>'+dec(ms[ms.length-1])+'</b></div>'
@@ -2117,6 +2198,7 @@ function render(){
 
   if(U.tab==='tecnicas'){ h+=pantallaTecnicas(); }
   if(U.tab==='materiales'){ h+=pantallaMateriales(); }
+  if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
   if(U.tab==='arqueros'){
     D.arqueros.forEach(function(a,i){
@@ -2135,7 +2217,6 @@ function render(){
         +'</div>';
     });
     h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
-    h+=tarjetaCopia();
     h+='<div class="card"><div class="chead"><h2>Clave de acceso</h2>'
       +'<span>'+(hayPin()?'activada':'sin clave')+'</span></div>'
       +(hayPin()
@@ -2155,7 +2236,8 @@ function render(){
   }
 
   var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
-    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Técnicas'],['materiales','Material']];
+    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Técnicas'],
+    ['materiales','Material'],['copia','Copia']];
   h+='</div>'+barraTabs(pestanas,'tab',U.tab);
   document.getElementById('app').innerHTML=h;
 }
@@ -2212,8 +2294,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='tab'){ U.tab=v; render(); }
   else if(a==='pdist'){ U.pDist=Number(v); render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
-  else if(a==='csv'){ bajar('\ufeff'+buildCSV(),'tarjeta-arquero-'+iso(Date.now())+'.csv','text/csv;charset=utf-8'); }
-  else if(a==='xlsx'){ bajar(buildXLSX(),'tarjeta-arquero-'+iso(Date.now())+'.xlsx',
+  else if(a==='csv'){ bajar('\ufeff'+buildCSV(),'tiro-con-arco-'+iso(Date.now())+'.csv','text/csv;charset=utf-8'); }
+  else if(a==='xlsx'){ bajar(buildXLSX(),'tiro-con-arco-'+iso(Date.now())+'.xlsx',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
     if(s1) bajar(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
@@ -2274,6 +2356,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='detalle'){ C.abierto=C.abierto===b.dataset.id?null:b.dataset.id; render(); }
   else if(a==='nrcampo'){ C.nCampo=Number(v); render(); }
   else if(a==='nrestaca'){ C.nEstaca=v; render(); }
+  else if(a==='nrcomp'){ C.nComp=!C.nComp; render(); }
+  else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render(); }
   else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
   else if(a==='crearrec'){
     var pat=[],i2;
@@ -2281,8 +2365,9 @@ document.getElementById('app').addEventListener('click',function(ev){
       var pn=(C.patrulla[i2]&&C.patrulla[i2].nombre||'').trim();
       pat.push({id:uid(),nombre:pn||('Arquero '+(i2+1)),arco:(C.patrulla[i2]&&C.patrulla[i2].arco)||ARCOS[0]});
     }
-    nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
-    render(); toast('Recorrido empezado en la estaca '+C.nInicio);
+    var rn=nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
+    rn.comp=!!(C.nuevos>1&&C.nComp); save();
+    render(); toast('Recorrido empezado en el puesto '+C.nInicio);
   }
   else if(a==='cerrarrec'){ var r4=recActual(); if(r4){ r4.cerrado=true; D.recorridoId=null; C.tab='clasif'; save(); render(); toast('Recorrido cerrado'); } }
   else if(a==='borrarrec'){
@@ -2312,17 +2397,9 @@ document.getElementById('app').addEventListener('click',function(ev){
     var fi2=document.getElementById('fotoinput'); fi2.value=''; fi2.click();
   }
   else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
-  else if(a==='vercopia'){ C.verCopia=!C.verCopia; render(); }
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
-    'copia-arquero-'+iso(Date.now())+'.json','application/json'); }
-  else if(a==='copiarcopia'){ copiar(copiaJSON(C.conFotos!==false),'Copia'); }
+    'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
   else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
-  else if(a==='comprobarcopia'){
-    var c=leeCopia((C.pegado||'').trim());
-    if(!c){ toast('Eso no parece una copia válida.'); C.copia=null; }
-    else { C.copia=c; toast('Copia leída correctamente.'); }
-    render();
-  }
   else if(a==='aplicarcopia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
     if(C.copia) aplicaCopia(C.copia);
@@ -2335,6 +2412,8 @@ document.getElementById('app').addEventListener('click',function(ev){
         toast('Se ha vuelto a lo anterior'); }
     }catch(e){ toast('No se pudo deshacer.'); }
   }
+  else if(a==='camon'){ C.camOn=true; render(); setTimeout(abreCamara,120); }
+  else if(a==='camoff'){ C.camOn=false; cierraCamara(); MD.camErr=''; render(); }
   else if(a==='mdfijar'){
     if(MD.dist==null){ toast('Aún no hay medida. Apunta a la base de la diana.'); }
     else {
@@ -2365,14 +2444,16 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='crono'){ if(TM.on) paraCrono(); else arrancaCrono(); }
   else if(a==='cronoreset'){ paraCrono(); TM.left=TM.tot; pintaCrono(); }
   else if(a==='cronoset'){ ponCrono(Number(v)); }
-  else if(a==='bloque'){ C.bloque=(C.bloque===v?null:v); render(); }
-  else if(a==='chk'){ var kk2=b.dataset.k;
-    if(D.check[kk2]) delete D.check[kk2]; else D.check[kk2]=1;
-    save(); render(); }
-  else if(a==='addextra'){ var bk=b.dataset.k;
-    if(!D.extras[bk]) D.extras[bk]=[]; D.extras[bk].push(''); save(); render(); }
-  else if(a==='borextra'){ var bk2=b.dataset.k, j2=Number(b.dataset.j);
-    D.extras[bk2].splice(j2,1); delete D.check[bk2+'x'+j2]; save(); render(); }
+  else if(a==='bloque'){ C.bloque=(C.bloque===v?null:v); C.editaBloque=null; render(); }
+  else if(a==='mateditar'){ C.editaBloque=(C.editaBloque===v?null:v); render(); }
+  else if(a==='matchk'){ var bb=D.mat[Number(b.dataset.b)], ii=Number(b.dataset.i);
+    bb.items[ii].ok=!bb.items[ii].ok; save(); render(); }
+  else if(a==='matadd'){ var bb2=D.mat[Number(b.dataset.b)];
+    bb2.items.push({id:bb2.k+'n'+Date.now(),t:'',d:'',ok:false});
+    C.editaBloque=bb2.k; save(); render(); }
+  else if(a==='matbor'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
+    D.mat[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
   else if(a==='nuevaficha'){ D[b.dataset.l].push({titulo:'',texto:'',fotos:[]}); save(); render(); }
   else if(a==='copiarficha'){ var tf=D[b.dataset.l][Number(b.dataset.i)];
     copiar((tf.titulo?tf.titulo+'\n\n':'')+tf.texto,b.dataset.l==='material'?'Material':'Técnica'); }
@@ -2401,13 +2482,13 @@ document.getElementById('app').addEventListener('input',function(ev){
     C.patrulla[k2].nombre=t.value; }
   else if(t.dataset.fichatit!=null){ D[t.dataset.l][Number(t.dataset.fichatit)].titulo=t.value; save(); }
   else if(t.dataset.fichatxt!=null){ D[t.dataset.l][Number(t.dataset.fichatxt)].texto=t.value; save(); }
-  else if(t.hasAttribute&&t.hasAttribute('data-pegar')){ C.pegado=t.value; }
   else if(t.hasAttribute&&t.hasAttribute('data-obs')){ draft().obs=t.value; save(); }
   else if(t.dataset.nota!=null){ D.notas[t.dataset.nota]=t.value; save(); }
   else if(t.hasAttribute&&t.hasAttribute('data-obsrec')){ var rr2=recActual(); if(rr2){ rr2.obs=t.value; save(); } }
   else if(t.dataset.notacampo!=null){ if(!D.notasCampo) D.notasCampo={};
     D.notasCampo[t.dataset.notacampo]=t.value; save(); }
-  else if(t.dataset.extra!=null){ D.extras[t.dataset.extra][Number(t.dataset.j)]=t.value; save(); }
+  else if(t.dataset.mt!=null){ D.mat[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
+  else if(t.dataset.md!=null){ D.mat[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
   else if(t.hasAttribute&&t.hasAttribute('data-alturaojo')){
     var hh=parseInt(t.value,10); if(hh>=100&&hh<=220){ D.alturaOjo=hh; save(); } }
   else if(t.hasAttribute&&t.hasAttribute('data-est')){ MD.est=t.value; }
