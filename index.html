@@ -16,10 +16,10 @@
   --gold:#F2C11B; --red:#DF4A44; --blue:#3D7CC9; --wht:#E6E8E4; --miss:#4A5765;
 }
 *{box-sizing:border-box;}
-html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;
   overscroll-behavior-y:contain;}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;}
 button{font:inherit;color:inherit;border:none;background:none;cursor:pointer;font-variant-numeric:tabular-nums;}
 input,textarea,select{font:inherit;font-variant-numeric:tabular-nums;}
 input,textarea{-webkit-user-select:text!important;user-select:text!important;
@@ -847,6 +847,17 @@ function fotoURL(a){ return 'data:image/jpeg;base64,'+a.foto.data; }
 /* ---- bloqueo por PIN ----
    Cerrojo local: evita miradas ajenas, no cifra nada. Sin recuperación posible. */
 var PIN={buf:'',modo:'',primero:'',fallos:0};
+/* Memoria de la sesión: sobrevive a una recarga, se olvida al cerrar la app */
+var SES={
+  lee:function(k){ try{ return sessionStorage.getItem('arq:'+k); }catch(e){ return null; } },
+  pon:function(k,v){ try{ sessionStorage.setItem('arq:'+k,String(v)); }catch(e){} },
+  quita:function(k){ try{ sessionStorage.removeItem('arq:'+k); }catch(e){} }
+};
+function sesionViva(){
+  var t=Number(SES.lee('activo')||0);
+  return t>0 && (Date.now()-t)<600000;
+}
+function marcaActividad(){ SES.pon('activo',Date.now()); }
 function hayPin(){ return !!(D.pin && D.pin.length===6); }
 function pintaLock(){
   var L=document.getElementById('lock');
@@ -907,7 +918,7 @@ function teclaPin(k){
     return;
   }
   /* entrada normal */
-  if(v===D.pin){ PIN.fallos=0; cierraLock(); }
+  if(v===D.pin){ PIN.fallos=0; marcaActividad(); cierraLock(); }
   else {
     PIN.fallos++; PIN.buf='';
     PIN.aviso=PIN.fallos>=3?'Clave incorrecta. Llevas '+PIN.fallos+' intentos.':'Clave incorrecta.';
@@ -1826,13 +1837,24 @@ function pantallaRecorrido(r){
   for(var n=1;n<=8;n++) h+='<option value="'+n+'"'+(C.nuevos===n?' selected':'')+'>'+n+' arquero'+(n>1?'s':'')+'</option>';
   h+='</select></div>';
   for(var k=0;k<C.nuevos;k++){
-    var pa=C.patrulla[k]||{nombre:'',arco:ARCOS[0]};
+    var pa=C.patrulla[k]||{arq:'',nombre:'',arco:ARCOS[0]};
     h+='<div class="field"><label>'+(k+1)+'º</label>'
-      +'<input placeholder="Nombre" list="arqnombres" maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'"></div>'
-      +'<div class="field"><label></label><select class="arq" data-parco="'+k+'">'
+      +'<select class="arq" data-parq="'+k+'">'
+      +'<option value="">Elegir arquero…</option>'
+      +D.arqueros.map(function(a){
+        return '<option value="'+a.id+'"'+(pa.arq===a.id?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
+      +'<option value="__nuevo"'+(pa.arq==='__nuevo'?' selected':'')+'>+ Arquero nuevo</option>'
+      +'</select></div>';
+    if(pa.arq==='__nuevo'){
+      h+='<div class="field"><label></label>'
+        +'<input placeholder="Nombre del arquero nuevo" maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'"></div>';
+    }
+    h+='<div class="field"><label></label><select class="arq" data-parco="'+k+'">'
       +ARCOS.map(function(x){ return '<option'+(pa.arco===x?' selected':'')+'>'+x+'</option>'; }).join('')
       +'</select></div>';
   }
+  h+='<p class="stat" style="margin:2px 0 8px">Los arqueros nuevos se añaden también a la lista de sala, '
+    +'con su foto y datos para rellenar en la pestaña Arqueros.</p>';
   if(C.nuevos>1){
     h+='<div class="chk" data-act="nrcomp" style="border-bottom:none;padding-top:4px">'
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
@@ -1974,7 +1996,7 @@ function renderCampo(){
   if(C.nEstaca==null) C.nEstaca='roja';
   if(C.nPuestos==null) C.nPuestos=12;
   if(C.nInicio==null) C.nInicio=1;
-  if(!C.patrulla) C.patrulla=[{nombre:'',arco:ARCOS[0]},{nombre:'',arco:ARCOS[0]}];
+  if(!C.patrulla) C.patrulla=[{arq:'',nombre:'',arco:ARCOS[0]},{arq:'',nombre:'',arco:ARCOS[0]}];
   var h='<div class="wrap">'+cabeceraCampo();
   if(C.tab==='puesto'){
     h+= r&&!r.cerrado ? pantallaPuesto(r)
@@ -1994,7 +2016,7 @@ function renderCampo(){
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
-    +barraTabs([['puesto','Puesto'],['clasif','Resumen'],['recorrido','Recorrido'],
+    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['clasif','Resumen'],
       ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material'],
       ['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
@@ -2020,6 +2042,7 @@ function selArq(){
 }
 
 function render(){
+  SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
   if(D.modo==='campo'){ renderCampo(); return; }
@@ -2276,6 +2299,7 @@ function cambiaFormato(campo,paso){
 }
 
 document.getElementById('app').addEventListener('click',function(ev){
+  if(!document.getElementById('lock').dataset.on) marcaActividad();
   if(ev.target.hasAttribute&&ev.target.hasAttribute('data-selall')){
     try{ ev.target.focus(); ev.target.select(); toast('Texto seleccionado. Usa Copiar del menú.'); }catch(e){}
     return;
@@ -2332,7 +2356,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='cambiapin'){ abreLock('nuevo'); }
   else if(a==='quitapin'){ abreLock('quitar'); }
   else if(a==='cambiamodo'){ eligiendo=true; render(); }
-  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='recorrido'; eligiendo=false; save(); render(); }
+  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='recorrido'; eligiendo=false;
+    SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
   else if(a==='slot3'){ C.sel={a:Number(b.dataset.a),f:Number(b.dataset.f)}; render(); }
   else if(a==='tiro3'){
@@ -2360,11 +2385,25 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render(); }
   else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
   else if(a==='crearrec'){
-    var pat=[],i2;
+    var pat=[],i2,usados={},faltan=0;
     for(i2=0;i2<C.nuevos;i2++){
-      var pn=(C.patrulla[i2]&&C.patrulla[i2].nombre||'').trim();
-      pat.push({id:uid(),nombre:pn||('Arquero '+(i2+1)),arco:(C.patrulla[i2]&&C.patrulla[i2].arco)||ARCOS[0]});
+      var pa2=C.patrulla[i2]||{arq:'',nombre:'',arco:ARCOS[0]};
+      var arco2=pa2.arco||ARCOS[0], ar2=null;
+      if(pa2.arq==='__nuevo'){
+        var nom2=(pa2.nombre||'').trim();
+        if(!nom2){ faltan++; continue; }
+        ar2={id:uid(),nombre:nom2,federacion:'',licencia:'',foto:null,arco:arco2};
+        D.arqueros.push(ar2);
+        pa2.arq=ar2.id;
+      } else if(pa2.arq){
+        ar2=D.arqueros.filter(function(x){ return x.id===pa2.arq; })[0];
+      }
+      if(!ar2){ faltan++; continue; }
+      ar2.arco=arco2;                                  /* recuerda su arco para la próxima vez */
+      var idp=usados[ar2.id]?uid():ar2.id; usados[ar2.id]=1;
+      pat.push({id:idp,arq:ar2.id,nombre:nombreArq(ar2),arco:arco2});
     }
+    if(faltan){ toast('Elige un arquero en cada puesto de la patrulla.'); render(); return; }
     var rn=nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
     rn.comp=!!(C.nuevos>1&&C.nComp); save();
     render(); toast('Recorrido empezado en el puesto '+C.nInicio);
@@ -2500,6 +2539,12 @@ document.getElementById('app').addEventListener('change',function(ev){
   }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
+  else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
+    if(!C.patrulla[k4]) C.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
+    C.patrulla[k4].arq=t.value;
+    var elegido=D.arqueros.filter(function(x){ return x.id===t.value; })[0];
+    if(elegido&&elegido.arco) C.patrulla[k4].arco=elegido.arco;
+    render(); }
   else if(t.dataset&&t.dataset.parco!=null){ var k3=Number(t.dataset.parco);
     if(!C.patrulla[k3]) C.patrulla[k3]={nombre:'',arco:ARCOS[0]};
     C.patrulla[k3].arco=t.value; }
@@ -2553,13 +2598,18 @@ var salida=0;
 document.addEventListener('visibilitychange',function(){
   if(document.hidden){ salida=Date.now(); }
   else if(hayPin() && salida && Date.now()-salida>600000
-          && !document.getElementById('lock').dataset.on){ abreLock(''); }
+          && !document.getElementById('lock').dataset.on){ SES.quita('activo'); abreLock(''); }
 });
 
 U.sel=firstEmpty(draft());
-eligiendo = true;
+var reanuda=sesionViva();
+if(reanuda){
+  if(SES.lee('utab')) U.tab=SES.lee('utab');
+  if(SES.lee('ctab')) C.tab=SES.lee('ctab');
+}
+eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
-if(hayPin()) abreLock('');
+if(hayPin() && !reanuda) abreLock('');
 if('serviceWorker' in navigator && location.protocol==='https:'){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
