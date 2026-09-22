@@ -231,6 +231,14 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .tf button{position:absolute;top:-6px;right:-6px;width:23px;height:23px;border-radius:50%;
   background:var(--panel2);color:var(--ink);font-size:12px;box-shadow:inset 0 0 0 1px var(--line);}
 .tecbar{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
+.mapa{width:100%;height:auto;display:block;border-radius:12px;}
+.rumbo{display:flex;align-items:center;gap:12px;margin:12px 0 4px;}
+.rumbo b{font-size:15px;font-weight:600;line-height:1.35;display:block;}
+.rumbo .stat{margin-top:3px;}
+.flechawrap{width:54px;height:54px;flex:none;border-radius:50%;background:#151C24;
+  box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;}
+.flecha{transition:transform .25s ease-out;line-height:0;}
+.mapsbtn{display:block;text-align:center;text-decoration:none;margin-top:10px;}
 .distrow{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:10px 12px;
   background:#151C24;border-radius:10px;box-shadow:inset 0 0 0 1px var(--line);}
 .distlab{font-size:13px;color:var(--dim);}
@@ -1752,6 +1760,206 @@ function pantallaModo(){
     +'</div></div>';
 }
 
+/* ================= MAPA DE PUESTOS (GPS, sin conexión) ================= */
+var GEO={watch:null,pos:null,err:'',rumbo:null,brujula:false,guardando:null};
+function rad(g){ return g*Math.PI/180; }
+function distM(a,b){
+  var R=6371000, dLa=rad(b.lat-a.lat), dLo=rad(b.lon-a.lon);
+  var h=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function rumboDe(a,b){
+  var y=Math.sin(rad(b.lon-a.lon))*Math.cos(rad(b.lat));
+  var x=Math.cos(rad(a.lat))*Math.sin(rad(b.lat))-Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function cardinal(g){
+  return ['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'][Math.round(g/45)%8];
+}
+function puntos(campo){ var c=D.campos[campo]; if(!c.gps) c.gps={}; return c.gps; }
+function punto(campo,k){ var g=D.campos[campo].gps; return g&&g[k]?g[k]:null; }
+function nombrePunto(k){ return k==='P'?'Entrada':'Puesto '+k; }
+
+function geoOn(){
+  if(GEO.watch!=null) return;
+  if(!navigator.geolocation){ GEO.err='Este móvil no ofrece posición GPS al navegador.'; pintaGeo(); return; }
+  try{
+    GEO.watch=navigator.geolocation.watchPosition(function(p){
+      GEO.pos={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy||99};
+      GEO.err=''; if(GEO.guardando) recogeFix(GEO.pos); pintaGeo();
+    },function(e){
+      GEO.err=(e&&e.code===1)?'Has denegado el permiso de ubicación. Actívalo en los ajustes del navegador.'
+        :'Buscando señal GPS… Si tarda, sal a un claro o espera un poco.';
+      pintaGeo();
+    },{enableHighAccuracy:true,maximumAge:2000,timeout:25000});
+  }catch(e){ GEO.err='No se pudo activar el GPS.'; }
+  brujulaOn();
+}
+function geoOff(){
+  if(GEO.watch!=null&&navigator.geolocation){ try{ navigator.geolocation.clearWatch(GEO.watch); }catch(e){} }
+  GEO.watch=null; brujulaOff();
+}
+function onBrujula(ev){
+  var h=null;
+  if(ev.webkitCompassHeading!=null) h=ev.webkitCompassHeading;
+  else if(ev.absolute&&ev.alpha!=null) h=(360-ev.alpha)%360;
+  if(h!=null){ GEO.rumbo=h; GEO.brujula=true; pintaGeo(); }
+}
+function brujulaOn(){
+  if(GEO.escBr) return;
+  try{ window.addEventListener('deviceorientationabsolute',onBrujula,true);
+       window.addEventListener('deviceorientation',onBrujula,true); GEO.escBr=true; }catch(e){}
+}
+function brujulaOff(){
+  if(!GEO.escBr) return;
+  try{ if(window.removeEventListener){ window.removeEventListener('deviceorientationabsolute',onBrujula,true);
+       window.removeEventListener('deviceorientation',onBrujula,true); } }catch(e){}
+  GEO.escBr=false;
+}
+/* guardar un punto: escucha unos segundos y se queda con la lectura más precisa */
+function guardaPunto(campo,k){
+  geoOn();
+  GEO.guardando={campo:campo,k:k,mejor:null,hasta:Date.now()+9000};
+  toast('Quédate quieto junto al puesto unos segundos…');
+  if(GEO.pos) recogeFix(GEO.pos);
+  setTimeout(function(){ if(GEO.guardando) terminaGuardado(); },9500);
+}
+function recogeFix(p){
+  var g=GEO.guardando; if(!g) return;
+  if(!g.mejor||p.acc<g.mejor.acc) g.mejor={lat:p.lat,lon:p.lon,acc:p.acc};
+  if(g.mejor.acc<=5||Date.now()>g.hasta) terminaGuardado();
+}
+function terminaGuardado(){
+  var g=GEO.guardando; GEO.guardando=null;
+  if(!g) return;
+  if(!g.mejor){ toast('Sin señal GPS. Prueba en un claro.'); return; }
+  puntos(g.campo)[g.k]={lat:g.mejor.lat,lon:g.mejor.lon,acc:Math.round(g.mejor.acc),t:Date.now()};
+  save(); render();
+  toast(nombrePunto(g.k)+' guardado, con un margen de ±'+Math.round(g.mejor.acc)+' m');
+}
+function destinoMapa(campo){
+  if(C.destino!=null) return C.destino;
+  var r=recActual();
+  if(r&&!r.cerrado&&r.campo===campo) return String(secuencia(r)[C.idx]);
+  return '1';
+}
+function proyector(campo,W,H,pad){
+  var g=puntos(campo), ks=Object.keys(g), pts=ks.map(function(k){ return g[k]; });
+  if(GEO.pos) pts.push(GEO.pos);
+  if(!pts.length) return null;
+  var la0=pts.reduce(function(a,p){ return a+p.lat; },0)/pts.length, kx=Math.cos(rad(la0))*111320, ky=110540;
+  var xs=pts.map(function(p){ return p.lon*kx; }), ys=pts.map(function(p){ return p.lat*ky; });
+  var mnx=Math.min.apply(null,xs),mxx=Math.max.apply(null,xs),mny=Math.min.apply(null,ys),mxy=Math.max.apply(null,ys);
+  var span=Math.max(mxx-mnx,mxy-mny,40), esc=(Math.min(W,H)-2*pad)/span;
+  var cx=(mnx+mxx)/2, cy=(mny+mxy)/2;
+  return {f:function(p){ return {x:W/2+(p.lon*kx-cx)*esc, y:H/2-(p.lat*ky-cy)*esc}; }, esc:esc};
+}
+function svgMapa(campo){
+  var W=340,H=340,pad=28, g=puntos(campo), pr=proyector(campo,W,H,pad), dest=destinoMapa(campo);
+  var h='<svg class="mapa" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Mapa de puestos">'
+    +'<rect x="0" y="0" width="'+W+'" height="'+H+'" rx="12" fill="#0F151C"/>';
+  if(!pr){
+    return h+'<text x="170" y="165" text-anchor="middle" fill="#8D9CAB" font-size="13">Aún no hay puestos guardados.</text>'
+      +'<text x="170" y="185" text-anchor="middle" fill="#8D9CAB" font-size="12">Guárdalos al pasar por cada uno.</text></svg>';
+  }
+  var ks=Object.keys(g).filter(function(k){ return k!=='P'; }).sort(function(a,b){ return a-b; });
+  for(var i=1;i<ks.length;i++){
+    if(Number(ks[i])!==Number(ks[i-1])+1) continue;
+    var a=pr.f(g[ks[i-1]]), b=pr.f(g[ks[i]]);
+    h+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)
+      +'" stroke="#3C4855" stroke-width="2" stroke-dasharray="5 4"/>';
+  }
+  if(g.P){ var pp=pr.f(g.P);
+    h+='<rect x="'+(pp.x-9).toFixed(1)+'" y="'+(pp.y-9).toFixed(1)+'" width="18" height="18" rx="4" fill="#6FA85B"/>'
+      +'<text x="'+pp.x.toFixed(1)+'" y="'+(pp.y+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#0F151C">P</text>'; }
+  ks.forEach(function(k){
+    var q=pr.f(g[k]), es=(String(k)===String(dest));
+    if(es) h+='<circle cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="17" fill="none" stroke="#F2C11B" stroke-width="3"/>';
+    h+='<circle cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="11" fill="'+(es?'#F2C11B':'#E6E8E4')+'"/>'
+      +'<text x="'+q.x.toFixed(1)+'" y="'+(q.y+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#0F151C">'+k+'</text>';
+  });
+  h+='<g id="yo"'+(GEO.pos?'':' style="display:none"')+'>';
+  if(GEO.pos){ var y0=pr.f(GEO.pos), ra=Math.max(6,Math.min(80,GEO.pos.acc*pr.esc));
+    h+='<circle cx="'+y0.x.toFixed(1)+'" cy="'+y0.y.toFixed(1)+'" r="'+ra.toFixed(1)+'" fill="#3D7CC9" fill-opacity=".18"/>'
+      +'<circle cx="'+y0.x.toFixed(1)+'" cy="'+y0.y.toFixed(1)+'" r="7" fill="#3D7CC9" stroke="#fff" stroke-width="2"/>'; }
+  h+='</g>';
+  h+='<g transform="translate(24,26)"><path d="M0,-13 L6,7 L0,3 L-6,7 Z" fill="#E6E8E4"/>'
+    +'<text x="0" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#E6E8E4">N</text></g>';
+  var metros=[10,20,25,50,100,200,500].filter(function(m){ return m*pr.esc<=110; }).pop()||10, px=metros*pr.esc;
+  h+='<g transform="translate(18,'+(H-18)+')"><line x1="0" y1="0" x2="'+px.toFixed(1)+'" y2="0" stroke="#E6E8E4" stroke-width="2"/>'
+    +'<line x1="0" y1="-4" x2="0" y2="4" stroke="#E6E8E4" stroke-width="2"/>'
+    +'<line x1="'+px.toFixed(1)+'" y1="-4" x2="'+px.toFixed(1)+'" y2="4" stroke="#E6E8E4" stroke-width="2"/>'
+    +'<text x="'+(px/2).toFixed(1)+'" y="-7" text-anchor="middle" font-size="11" fill="#E6E8E4">'+metros+' m</text></g>';
+  return h+'</svg>';
+}
+function textoRumbo(campo){
+  var dest=destinoMapa(campo), obj=punto(campo,dest);
+  if(!obj) return {txt:'El '+nombrePunto(dest).toLowerCase()+' aún no tiene posición guardada.',giro:null};
+  if(!GEO.pos) return {txt:'Esperando tu posición GPS…',giro:null};
+  var d=distM(GEO.pos,obj), rb=rumboDe(GEO.pos,obj);
+  var txt=d<Math.max(8,GEO.pos.acc)
+    ? 'Estás en el '+nombrePunto(dest).toLowerCase()+'.'
+    : 'Al '+nombrePunto(dest).toLowerCase()+': '+(d<1000?Math.round(d)+' m':(d/1000).toFixed(1).replace('.',',')+' km')
+      +' hacia el '+cardinal(rb)+' ('+Math.round(rb)+'°)';
+  return {txt:txt,giro:GEO.brujula&&GEO.rumbo!=null?(rb-GEO.rumbo+360)%360:rb,conBrujula:GEO.brujula};
+}
+function pintaGeo(){
+  if(D.modo!=='campo'||C.tab!=='mapa') return;
+  var campo=C.mapaCampo==null?0:C.mapaCampo;
+  var m=document.getElementById('mapasvg'); if(m) m.innerHTML=svgMapa(campo);
+  var t=textoRumbo(campo), el=document.getElementById('georumbo'); if(el) el.textContent=t.txt;
+  var fl=document.getElementById('geoflecha');
+  if(fl){ fl.style.display=(t.giro==null?'none':'block'); if(t.giro!=null) fl.style.transform='rotate('+t.giro.toFixed(0)+'deg)'; }
+  var nb=document.getElementById('geonota');
+  if(nb) nb.textContent=GEO.err?GEO.err:(GEO.pos?('Tu posición: ±'+Math.round(GEO.pos.acc)+' m'
+    +(GEO.brujula?' · brújula activa':' · la flecha marca el rumbo respecto al norte')):'');
+}
+function pantallaMapa(){
+  var r=recActual();
+  if(C.mapaCampo==null) C.mapaCampo=(r&&!r.cerrado)?r.campo:0;
+  var campo=C.mapaCampo, g=puntos(campo), dest=destinoMapa(campo), obj=punto(campo,dest);
+  var h='<div class="seg" style="margin-bottom:12px">'
+    +D.campos.map(function(c,i){ return '<button data-act="mapacampo" data-v="'+i+'" data-on="'+(campo===i?1:0)+'">'+esc(c.nombre)+'</button>'; }).join('')
+    +'</div>';
+  h+='<div class="card"><div class="chead"><h2>'+esc(D.campos[campo].nombre)+'</h2>'
+    +'<span>'+Object.keys(g).length+' puntos</span></div>'
+    +'<div id="mapasvg">'+svgMapa(campo)+'</div>'
+    +'<div class="rumbo"><div class="flechawrap"><div id="geoflecha" class="flecha">'
+    +'<svg viewBox="0 0 40 40" width="46" height="46"><path d="M20,3 L31,34 L20,27 L9,34 Z" fill="#F2C11B"/></svg></div></div>'
+    +'<div><b id="georumbo">'+esc(textoRumbo(campo).txt)+'</b><p class="stat" id="geonota"></p></div></div>'
+    +'<div class="navp" style="margin-top:6px">'
+    +'<button data-act="destant">◀ Destino</button><button data-act="destsig">Destino ▶</button></div>'
+    +(obj?'<a class="act act2 mapsbtn" target="_blank" rel="noopener" '
+      +'href="https://www.google.com/maps/dir/?api=1&amp;destination='+obj.lat.toFixed(6)+','+obj.lon.toFixed(6)+'&amp;travelmode=walking">'
+      +'Abrir el '+nombrePunto(dest).toLowerCase()+' en Google Maps</a>':'')
+    +'</div>';
+
+  h+='<div class="card"><div class="chead"><h2>Guardar posiciones</h2></div>'
+    +'<p class="stat">Colócate junto a la estaca, elige el punto y pulsa guardar. La app escucha al GPS unos '
+    +'segundos y se queda con la lectura más precisa.</p>'
+    +'<div class="field" style="margin-top:10px"><label>Punto</label><select class="arq" data-gpsk>'
+    +'<option value="P"'+(C.gpsK==='P'?' selected':'')+'>Entrada / coche</option>';
+  for(var i=1;i<=24;i++) h+='<option value="'+i+'"'+(String(C.gpsK||dest)===String(i)?' selected':'')+'>Puesto '+i+(g[i]?' ✓':'')+'</option>';
+  h+='</select></div><button class="act" data-act="gpsguarda">Guardar aquí esta posición</button>';
+  var lista=Object.keys(g).sort(function(a,b){ return a==='P'?-1:b==='P'?1:a-b; });
+  if(lista.length){
+    h+='<div class="detalle" style="margin-top:12px"><table><tbody>';
+    lista.forEach(function(k){
+      h+='<tr><td>'+(k==='P'?'P':k)+'</td><td>'+nombrePunto(k)+' · ±'+g[k].acc+' m</td>'
+        +'<td><button class="mini" data-act="gpsdest" data-k="'+k+'">Ir</button></td>'
+        +'<td><button class="mini" data-act="gpsbor" data-k="'+k+'">✕</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+  h+='<div class="card"><p class="stat">El GPS funciona sin cobertura; el mapa lo dibuja la app, sin fondo de '
+    +'calles. En campo abierto el margen es de 3 a 10 metros, bajo árboles bastante más: te lleva a la zona del '
+    +'puesto, no a la estaca exacta. Si la brújula da vueltas, dibuja un ocho en el aire con el móvil para calibrarla.'
+    +'<br><br>Google Maps necesita conexión, salvo que antes te descargues la zona sin conexión desde la propia '
+    +'app de Maps.</p></div>';
+  return h;
+}
+
 /* ---- pantallas de campo ---- */
 function cabeceraCampo(){
   return '<div class="top">'
@@ -1808,6 +2016,9 @@ function pantallaPuesto(r){
   h+='</div>';
 
   h+=tarjetaCrono([[120,'2 min'],[240,'4 min'],[60,'1 min']]);
+
+  h+='<button class="act act2" data-act="irmapa" style="margin:-2px 0 12px">'
+    +(punto(r.campo,pu)?'Cómo llegar al puesto '+pu+' en el mapa':'Guardar la posición del puesto '+pu)+'</button>';
 
   h+='<div class="card"><div class="chead"><h2>Observaciones</h2>'
     +'<span>de este recorrido</span></div>'
@@ -2061,6 +2272,7 @@ function pantallaTecnicas(){
 }
 function renderCampo(){
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
+  if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
   if(!MD.vista){ cierraCamara(); C.camOn=false; }
   var r=recActual();
   if(C.nCampo==null) C.nCampo=0;
@@ -2083,14 +2295,16 @@ function renderCampo(){
   else if(C.tab==='materiales'){ h+=pantallaMateriales(); }
   else if(C.tab==='copia'){ h+=tarjetaCopia(); }
   else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
+  else if(C.tab==='mapa'){ h+=pantallaMapa(); }
   h+='</div><datalist id="campospre">'+PRESETS.map(function(x){ return '<option value="'+esc(x)+'">'; }).join('')+'</datalist>'
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
-    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['clasif','Resumen'],
+    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Resumen'],
       ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material'],
       ['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
+  if(C.tab==='mapa') pintaGeo();
 }
 
 /* ---- render ---- */
@@ -2114,7 +2328,7 @@ function selArq(){
 
 function render(){
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
-  if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; }
+  if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
   if(D.modo==='campo'){ renderCampo(); return; }
   var A=arqActual();
@@ -2443,10 +2657,10 @@ document.getElementById('app').addEventListener('click',function(ev){
     var r2=recActual(); if(!r2) return;
     tiros(r2,r2.patrulla[C.sel.a].id,secuencia(r2)[C.idx])[C.sel.f]=null; save(); render();
   }
-  else if(a==='puestoant'){ C.idx=Math.max(0,C.idx-1); C.sel={a:0,f:0}; C.estPu=''; render(); }
+  else if(a==='puestoant'){ C.idx=Math.max(0,C.idx-1); C.sel={a:0,f:0}; C.estPu=''; C.destino=null; C.gpsK=null; render(); }
   else if(a==='puestosig'){
     var r3=recActual();
-    C.idx=Math.min(r3.puestos-1,C.idx+1); C.sel={a:0,f:0}; C.estPu=''; render();
+    C.idx=Math.min(r3.puestos-1,C.idx+1); C.sel={a:0,f:0}; C.estPu=''; C.destino=null; C.gpsK=null; render();
     if((C.idx)%3===0) toast('Clasificación actualizada. La tienes en Resumen.');
   }
   else if(a==='detalle'){ C.abierto=C.abierto===b.dataset.id?null:b.dataset.id; render(); }
@@ -2522,6 +2736,18 @@ document.getElementById('app').addEventListener('click',function(ev){
         toast('Se ha vuelto a lo anterior'); }
     }catch(e){ toast('No se pudo deshacer.'); }
   }
+  else if(a==='mapacampo'){ C.mapaCampo=Number(v); C.destino=null; render(); }
+  else if(a==='destant'||a==='destsig'){
+    var cc=C.mapaCampo||0, dd2=destinoMapa(cc), n2=(dd2==='P')?0:Number(dd2);
+    n2 = a==='destsig' ? (n2%24)+1 : (n2<=1?24:n2-1);
+    C.destino=String(n2); render(); }
+  else if(a==='gpsdest'){ C.destino=b.dataset.k; render(); }
+  else if(a==='gpsguarda'){ var cc2=C.mapaCampo||0; guardaPunto(cc2,String(C.gpsK||destinoMapa(cc2))); }
+  else if(a==='gpsbor'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
+    delete puntos(C.mapaCampo||0)[b.dataset.k]; save(); render(); }
+  else if(a==='irmapa'){ var r9=recActual(); if(r9){ C.mapaCampo=r9.campo; C.destino=null;
+    C.gpsK=String(secuencia(r9)[C.idx]); } C.tab='mapa'; render(); }
   else if(a==='distabre'){ C.distAbre=!C.distAbre; render(); }
   else if(a==='distcampo'){ C.distCampo=Number(v); render(); }
   else if(a==='ocultardist'){ D.ocultarDist=!D.ocultarDist; save(); render(); }
@@ -2631,6 +2857,7 @@ document.getElementById('app').addEventListener('change',function(ev){
   }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-gpsk')){ C.gpsK=t.value; }
   else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
     if(!C.patrulla[k4]) C.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
     C.patrulla[k4].arq=t.value;
