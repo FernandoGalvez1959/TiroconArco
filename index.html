@@ -239,6 +239,9 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .flechawrap{width:54px;height:54px;flex:none;border-radius:50%;background:#151C24;
   box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;}
 .flecha{transition:transform .25s ease-out;line-height:0;}
+.tres{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:12px;}
+.tres .act{margin-top:0;padding:12px 2px;font-size:14px;}
+.minis{flex-wrap:wrap;justify-content:flex-end;max-width:52%;}
 .mapsbtn{display:block;text-align:center;text-decoration:none;margin-top:10px;}
 .distrow{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:10px 12px;
   background:#151C24;border-radius:10px;box-shadow:inset 0 0 0 1px var(--line);}
@@ -847,6 +850,8 @@ function tarjetaCopia(){
     +'</div>'
     +'<button class="act" data-act="bajarcopia">Descargar copia</button>'
     +'<button class="act act2" data-act="compartircopia">Compartir la copia</button>'
+    +'<p class="stat" style="margin-top:8px">Al compartir se envía como archivo de texto, que es lo que '
+    +'admite Android. Para restaurarlo vale igual.</p>'
     +'<p class="stat" style="margin-top:10px">Se guarda un archivo en Descargas. '
     +'Guárdalo donde quieras: correo, nube o el propio móvil. Con él podrás restaurarlo '
     +'aquí o en cualquier otro teléfono.</p></div>';
@@ -1462,11 +1467,15 @@ function comparte(bytes,nombre,tipo){
   try{
     var f=new File([bytes],nombre,{type:tipo});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
-      navigator.share({files:[f],title:nombre}).catch(function(){});
+      navigator.share({files:[f],title:nombre}).then(function(){},function(e){
+        if(!e||e.name!=='AbortError'){ bajar(bytes,nombre,tipo);
+          toast('No se pudo compartir; se ha descargado.'); }
+      });
       return;
     }
   }catch(e){}
   bajar(bytes,nombre,tipo);
+  toast('Este móvil no permite compartir este archivo; se ha descargado.');
 }
 function nombrePDF(s){ return baseSala(s)+'.pdf'; }
 
@@ -1679,6 +1688,122 @@ function clasifJPG(gp,cb){
   LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
   T(CW-M-270,ty+26,18,'Firma del juez',{c:'#5B6975'});
   try{ cb(cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH}); }catch(e){ toast('No se pudo generar la imagen.'); }
+}
+
+/* ---- imagen de progreso: gráfica y mejores marcas ---- */
+function progresoJPG(cb){
+  var A=arqActual(), CW=900, M=60;
+  var serie=D.sessions.filter(function(x){ return x.arquero===A.id && x.dist===U.pDist && x.site===U.pSite; })
+    .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
+    .map(function(x){ return {fecha:x.fecha, media:media(x), total:total(x)}; });
+  var filas=[];
+  DISTS.forEach(function(d){
+    var mejor=null, st=null, i;
+    for(i=0;i<D.sites.length;i++){ var b=best(A.id,d,i); if(b&&(!mejor||media(b)>media(mejor))){ mejor=b; st=i; } }
+    filas.push({d:d,b:mejor,st:st});
+  });
+  var altoG=330, CH=250+altoG+70+filas.length*46+150;
+  var L=lienzo(CW,CH), g=L.g, P=pintor(g);
+  var nom=limpiaNombre(fechaCompacta(Date.now())+' progreso '+nombreArq(A))+'.jpg';
+  encabezado(P,g,CW,M,'Progreso',nom,
+    nombreArq(A)+'  ·  '+U.pDist+' m  ·  '+sitio(U.pSite), serie.length+' tiradas');
+
+  var gx=M, gy=210, gw=CW-2*M, gh=altoG;
+  g.fillStyle='#F7F8F9'; g.fillRect(gx,gy,gw,gh);
+  P.T(M,gy-14,19,'Media por flecha',{b:1,c:'#42505C'});
+  if(serie.length){
+    var vs=serie.map(function(x){ return x.media; });
+    var lo=Math.max(0,Math.floor(Math.min.apply(null,vs)*2)/2-0.5);
+    var hi=Math.min(10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
+    var px=function(i){ return gx+46+(serie.length===1?(gw-70)/2:i*(gw-70)/(serie.length-1)); };
+    var py=function(v){ return gy+18+(gh-46)*(1-(v-lo)/(hi-lo)); };
+    var i2;
+    for(i2=0;i2<=4;i2++){
+      var v2=lo+(hi-lo)*i2/4, yy=py(v2);
+      P.LN(gx+44,yy,gx+gw-14,yy,'#DDE2E7',1);
+      P.T(gx+38,yy+5,16,dec(v2),{a:'right',c:'#7A858F'});
+    }
+    g.strokeStyle='#C79A0E'; g.lineWidth=3; g.beginPath();
+    serie.forEach(function(pt,i3){ var X=px(i3),Y=py(pt.media); if(i3) g.lineTo(X,Y); else g.moveTo(X,Y); });
+    g.stroke();
+    serie.forEach(function(pt,i3){
+      g.fillStyle=(i3===serie.length-1)?'#C79A0E':'#FFFFFF';
+      g.strokeStyle='#C79A0E'; g.lineWidth=3;
+      g.beginPath(); g.arc(px(i3),py(pt.media),6,0,6.2832); g.fill(); g.stroke();
+    });
+    P.T(gx+46,gy+gh-8,16,fechaCorta(serie[0].fecha),{c:'#7A858F'});
+    if(serie.length>1) P.T(gx+gw-14,gy+gh-8,16,fechaCorta(serie[serie.length-1].fecha),{a:'right',c:'#7A858F'});
+    var ms=serie.map(function(x){ return x.media; }), u5=ms.slice(-5);
+    var ty2=gy+gh+42;
+    [['Última',dec(ms[ms.length-1])],['Mejor',dec(Math.max.apply(null,ms))],
+     ['Media de 5',dec(u5.reduce(function(a,v){ return a+v; },0)/u5.length)]].forEach(function(par,i4){
+      var X=M+i4*((CW-2*M)/3);
+      P.T(X,ty2-22,18,par[0],{c:'#5B6975'});
+      P.T(X,ty2+4,30,par[1],{b:1});
+    });
+  } else {
+    P.T(CW/2,gy+gh/2,20,'Todavía no hay tiradas a esta distancia y sitio.',{a:'center',c:'#7A858F'});
+  }
+
+  var ty=gy+gh+100;
+  P.T(M,ty,22,'Mejores marcas',{b:1});
+  ty+=16; P.LN(M,ty,CW-M,ty,'#12181F',1.5);
+  filas.forEach(function(f){
+    ty+=46;
+    P.T(M+2,ty-14,24,f.d+' m',{b:1});
+    if(f.b){
+      P.TF(M+110,ty-14,CW-M-235-(M+110),sitio(f.st)+'  ·  '+formato(f.b)+'  ·  '+fecha(f.b.fecha),{s:19,c:'#5B6975'});
+      P.T(CW-M-215,ty-14,24,total(f.b),{b:1,a:'right'});
+      P.T(CW-M,ty-14,19,dec(media(f.b))+' por flecha',{a:'right',c:'#42505C'});
+    } else P.T(M+110,ty-14,19,'Sin marca',{c:'#9AA3AB'});
+    P.LN(M,ty,CW-M,ty,'#DDE2E7',1);
+  });
+  ty+=44;
+  P.T(M,ty,18,'Generado el '+fecha(Date.now())+'.',{c:'#7A858F'});
+  try{ cb(L.cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH},nom,'Progreso · '+nombreArq(A)); }
+  catch(e){ toast('No se pudo generar la imagen.'); }
+}
+
+/* ---- generación única de imágenes, para imagen / pdf / compartir ---- */
+function generaImagen(k,cb){
+  var i=k.indexOf(':'), tipo=(i<0?k:k.slice(0,i)), id=(i<0?'':k.slice(i+1));
+  if(tipo==='draft'||tipo==='ses'){
+    var s2=(tipo==='draft')?draft():D.sessions.filter(function(x){ return x.id===id; })[0];
+    if(!s2) return;
+    tarjetaJPG(s2,function(u,md){ cb(u,md,baseSala(s2)+'.jpg',
+      s2.dist+' m · '+sitio(s2.site)+' · '+fecha(s2.fecha), s2); });
+  }
+  else if(tipo==='grupo'){
+    var gp=grupos().filter(function(x){ return x.clave===id; })[0]; if(!gp) return;
+    clasifJPG(gp,function(u,md){ cb(u,md,
+      limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg',
+      'Clasificación · '+gp.dist+' m · '+fecha(gp.fecha)); });
+  }
+  else if(tipo==='rec'){
+    var r=recActual(); if(!r) return;
+    clasifRecJPG(r,function(u,md){ cb(u,md,baseCampo(r)+' clasificacion.jpg',
+      'Clasificación · '+D.campos[r.campo].nombre+' · '+fecha(r.fecha)); });
+  }
+  else if(tipo==='arq'){
+    var r2=recActual(); if(!r2) return;
+    var aa=r2.patrulla.filter(function(x){ return x.id===id; })[0]; if(!aa) return;
+    resumenArqJPG(r2,aa,function(u,md){ cb(u,md,limpiaNombre(baseCampo(r2)+' '+aa.nombre)+'.jpg',
+      aa.nombre+' · '+fecha(r2.fecha)); });
+  }
+  else if(tipo==='prog'){
+    progresoJPG(function(u,md,nom,pie){ cb(u,md,nom,pie); });
+  }
+}
+function tresBotones(k){
+  return '<div class="tres">'
+    +'<button class="act act2" data-act="verimg" data-k="'+esc(k)+'">Imagen</button>'
+    +'<button class="act act2" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button>'
+    +'<button class="act" data-act="compimg" data-k="'+esc(k)+'">Compartir</button></div>';
+}
+function tresMinis(k){
+  return '<button class="mini" data-act="verimg" data-k="'+esc(k)+'">Imagen</button>'
+    +'<button class="mini" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button>'
+    +'<button class="mini" data-act="compimg" data-k="'+esc(k)+'">Compartir</button>';
 }
 
 /* ---- visor ---- */
@@ -2300,9 +2425,9 @@ function pantallaResumen(r){
       +'<div class="lbl">'+esc(a.nombre)+'<small>'+esc(a.arco)+' · '+dec(mediaArq(r,a.id))+' por flecha · '
       +cuenta(r,a.id,'11')+' onces · '+cuenta(r,a.id,'10')+' dieces</small></div>'
       +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>de '+maxRec(r)+'</small></div>'
-      +'<div class="minis"><button class="mini" data-act="imgarq" data-id="'+a.id+'">Imagen</button></div></div>';
+      +'<div class="minis">'+tresMinis('arq:'+a.id)+'</div></div>';
   });
-  h+='<button class="act" data-act="imgclasif">Ver clasificación como imagen</button></div>';
+  h+=tresBotones('rec')+'</div>';
   return h;
 }
 var SUGMAT=['Arco','Flechas','Cuerda','Visor','Estabilizador','Botón','Reposaflechas','Clicker',
@@ -2553,11 +2678,7 @@ function render(){
       +'<div class="stat">10<b>'+dieces(s)+'</b></div></div>'
       +'<button class="act" data-act="guardar"'+(N?'':' disabled')+'>'
       +(complete(s)?'Guardar tirada':'Guardar tirada ('+N+'/'+(ne*na)+' flechas)')+'</button>'
-      +(WV
-        ? '<button class="act act2" data-act="jpgdraft"'+(N?'':' disabled')+'>Ver como imagen</button>'
-        : '<div class="pair" style="margin-top:12px">'
-          +'<button class="act act2" data-act="jpgdraft"'+(N?'':' disabled')+' style="margin-top:0">Ver como imagen</button>'
-          +'<button class="act act2" data-act="pdfdraft"'+(N?'':' disabled')+' style="margin-top:0">PDF</button></div>')
+      +(N?tresBotones('draft'):'')
       +'<button class="ghost" data-act="vaciar">Vaciar tarjeta</button>'
       +'<p class="stat" style="margin-top:4px">'
       +(rec?'Mejor media aquí: '+dec(media(rec))+' por flecha · '+total(rec)+' en '+formato(rec)+' · '+fecha(rec.fecha)
@@ -2584,7 +2705,7 @@ function render(){
           +'<small>'+dec(media(s))+' por flecha · X '+xs(s)+' · 10 '+dieces(s)+'</small></div>'
           +'<div class="v"><b>'+total(s)+'</b></div></div>';
       });
-      h+='<button class="act act2" data-act="clasifimg" data-k="'+esc(gp.clave)+'">Ver clasificación como imagen</button></div>';
+      h+=tresBotones('grupo:'+gp.clave)+'</div>';
     });
   }
 
@@ -2614,9 +2735,7 @@ function render(){
 
     var hay=D.sessions.length>0;
     h+='<div class="card"><div class="chead"><h2>Guardar y compartir</h2></div>'
-      +'<p class="stat">Cada tirada, clasificación y resumen se abre como imagen y desde ahí puedes '
-      +'descargarla como imagen o como PDF, o compartirla por WhatsApp, correo o donde quieras. '
-      +'La copia de seguridad tiene su propia pestaña.</p></div>';
+      +tresBotones('prog')+'</div>';
   }
 
   if(U.tab==='historial'){
@@ -2629,8 +2748,7 @@ function render(){
       h+='<div class="rec"><div class="lbl">'+s.dist+' m'+(b&&b.id===s.id?' · mejor':'')
         +'<small>'+esc(nombreArq(a))+' · '+esc(sitio(s.site))+'<br>'+fecha(s.fecha)+' · '+formato(s)+'</small></div>'
         +'<div class="v"><b>'+total(s)+'</b><small>'+dec(media(s))+' por flecha</small></div>'
-        +'<div class="minis"><button class="mini" data-act="jpg" data-id="'+s.id+'">Imagen</button>'
-        +(WV?'':'<button class="mini" data-act="pdf" data-id="'+s.id+'">PDF</button>')
+        +'<div class="minis">'+tresMinis('ses:'+s.id)
         +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div></div>';
     });
     h+='</div>';
@@ -2739,6 +2857,13 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
     if(s1) comparte(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
   else if(a==='pdfdraft'){ var s2=draft(); comparte(buildPDF(s2),nombrePDF(s2),'application/pdf'); }
+  else if(a==='verimg'){ generaImagen(b.dataset.k,function(u,md,nom,pie){ mostrarImagen(u,pie,'',nom,md); }); }
+  else if(a==='pdfimg'){ generaImagen(b.dataset.k,function(u,md,nom,pie,ses){
+    if(ses) bajar(buildPDF(ses),nombrePDF(ses),'application/pdf');
+    else bajar(pdfDeImagen(u,md.w,md.h),nom.replace(/\.jpg$/,'')+'.pdf','application/pdf');
+    toast('PDF descargado'); }); }
+  else if(a==='compimg'){ generaImagen(b.dataset.k,function(u,md,nom){
+    comparte(bytesDeDataURL(u),nom,'image/jpeg'); }); }
   else if(a==='jpg'){ var s3=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
     if(s3) verTarjeta(s3); }
   else if(a==='jpgdraft'){ verTarjeta(draft()); }
@@ -2853,7 +2978,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
     'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
   else if(a==='compartircopia'){ comparte(copiaJSON(C.conFotos!==false),
-    'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
+    'copia-tiro-con-arco-'+iso(Date.now())+'.txt','text/plain'); }
   else if(a==='compartirapp'){
     var enlace=(typeof location!=='undefined'&&location.href)?String(location.href).split('#')[0]:'';
     var txt='Tiro con Arco, la app para anotar. Ábrelo en Chrome y elige "Instalar aplicación": '+enlace;
