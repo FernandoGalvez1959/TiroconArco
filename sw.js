@@ -1,6 +1,6 @@
 /* Copia local de la app. La página se pide siempre a la red primero, para que
    las actualizaciones lleguen solas; si no hay conexión, se sirve la copia. */
-var C='arquero-v7';
+var C='arquero-v8';
 var FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-maskable.png'];
 
 self.addEventListener('install',function(e){

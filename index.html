@@ -40,6 +40,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .seg button[data-on="1"]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
 .segrow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px;}
 
+.compfila{background:var(--panel);border-radius:11px;padding:11px 12px;margin-bottom:10px;border-bottom:none;}
 .selrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
 select.arq{flex:1;min-width:0;background:var(--panel);color:var(--ink);border:none;
   box-shadow:inset 0 0 0 1px var(--line);border-radius:11px;padding:12px 10px;font-size:15px;font-weight:600;}
@@ -433,7 +434,7 @@ function arrancaCheck(){
   D.check=null; D.extras=null;
 }
 arrancaCheck();
-var U={dist:18,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
+var U={dist:10,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:10,pSite:0,verCSV:false,fotoIdx:0};
 var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 function save(){ try{ localStorage.setItem(STORE,JSON.stringify(D)); }
@@ -669,7 +670,20 @@ function pantallaDistancia(){
 }
 
 /* ---- cronómetro con señales de audio ---- */
-var TM={tot:120,left:120,on:false,h:null,aviso:30};
+var TM={tot:60,left:60,on:false,h:null,aviso:30,extra:0,base:60};
+function flechasEnJuego(){
+  if(D.modo==='campo') return 2;
+  var d=D.drafts[claveDraft()];
+  return d?nA(d):(D.formato.arrows||6);
+}
+function ajustaCrono(){
+  if(TM.on) return;
+  var base=flechasEnJuego()*30;
+  TM.base=base;
+  TM.tot=Math.max(30,base+TM.extra);
+  TM.left=TM.tot;
+  TM.aviso=TM.tot>60?30:10;
+}
 var AC=null;
 function pitido(veces,freq,dur){
   try{
@@ -706,7 +720,7 @@ function tic(){
   if(TM.left<=0){
     TM.left=0; paraCrono(); pitido(3,700,0.3);
     var el=document.getElementById('crono'); if(el) el.textContent='0:00';
-    toast('Tiempo.');
+    tiempoAgotado();
     return;
   }
   pintaCrono();
@@ -719,22 +733,44 @@ function arrancaCrono(){
   pintaCrono();
 }
 function paraCrono(){ TM.on=false; clearInterval(TM.h); TM.h=null; pintaCrono(); }
-function ponCrono(sg){ paraCrono(); TM.tot=sg; TM.left=sg; TM.aviso=sg>60?30:10; render(); }
-function tarjetaCrono(presets){
+/* las flechas que no se hayan tirado dentro del tiempo se marcan como cero */
+function tiempoAgotado(){
+  var n=0;
+  if(D.modo==='campo'){
+    var r=recActual();
+    if(r&&!r.cerrado){
+      var pu=secuencia(r)[Math.min(C.idx,r.puestos-1)];
+      r.patrulla.forEach(function(a){
+        var t=tiros(r,a.id,pu);
+        if(t[0]==null){ t[0]='M'; n++; }
+        if(t[1]==null){ t[1]='M'; n++; }
+      });
+    }
+  } else {
+    var d=draft(), e=Math.min(U.sel.end,nE(d)-1), fila=d.ends[e], i;
+    for(i=0;i<fila.length;i++) if(fila[i]==null){ fila[i]='M'; n++; }
+  }
+  if(n){ save(); render(); toast('Tiempo. Se han marcado '+n+' cero'+(n>1?'s':'')+'; corrígelos tocándolos si hace falta.'); }
+  else toast('Tiempo.');
+}
+
+function tarjetaCrono(){
+  ajustaCrono();
+  var nf=flechasEnJuego();
   var h='<div class="card"><div class="chead"><h2>Cronómetro</h2>'
-    +'<span>aviso a '+TM.aviso+' s</span></div>'
+    +'<span>'+nf+' flecha'+(nf>1?'s':'')+' × 30 s</span></div>'
     +'<div class="cronorow"><span id="crono" class="cronon">'+mmss(TM.left)+'</span>'
     +'<div class="cronobt">'
     +'<button class="act" id="cronobtn" data-act="crono" style="margin-top:0">'
     +(TM.on?'Parar':(TM.left===TM.tot?'Empezar':'Seguir'))+'</button>'
-    +'<button class="mini" data-act="cronoreset">Poner a cero</button>'
+    +'<div class="pair"><button class="mini" data-act="cronomas" data-v="-30">− 30 s</button>'
+    +'<button class="mini" data-act="cronomas" data-v="30">+ 30 s</button></div>'
     +'</div></div>'
-    +'<div class="seg" style="margin-top:11px">'
-    +presets.map(function(pp){
-      return '<button data-act="cronoset" data-v="'+pp[0]+'" data-on="'+(TM.tot===pp[0]?1:0)+'">'+pp[1]+'</button>';
-    }).join('')+'</div>'
+    +'<div class="pair" style="margin-top:9px">'
+    +'<button class="mini" data-act="cronoreset">Poner a cero</button>'
+    +'<button class="mini" data-act="cronoauto">Volver a '+mmss(TM.base)+'</button></div>'
     +'<p class="stat" style="margin-top:9px">Un pitido al empezar, dos al quedar '+TM.aviso
-    +' segundos y tres al acabar.</p></div>';
+    +' segundos y tres al acabar. Al acabar, las flechas sin anotar se marcan como cero.</p></div>';
   return h;
 }
 
@@ -810,6 +846,7 @@ function tarjetaCopia(){
     +'<button data-act="copiafotos" data-v="0" data-on="'+(conF?0:1)+'">Sin fotos</button>'
     +'</div>'
     +'<button class="act" data-act="bajarcopia">Descargar copia</button>'
+    +'<button class="act act2" data-act="compartircopia">Compartir la copia</button>'
     +'<p class="stat" style="margin-top:10px">Se guarda un archivo en Descargas. '
     +'Guárdalo donde quieras: correo, nube o el propio móvil. Con él podrás restaurarlo '
     +'aquí o en cualquier otro teléfono.</p></div>';
@@ -824,6 +861,10 @@ function tarjetaCopia(){
   }
   if(hayPrevio()) h+='<button class="ghost" data-act="deshacercopia">Deshacer la última restauración</button>';
   h+='</div>';
+  h+='<div class="card"><div class="chead"><h2>Pasar la app a otro arquero</h2></div>'
+    +'<p class="stat">Comparte el enlace. Quien lo reciba lo abre en Chrome y elige <i>Instalar aplicación</i>: '
+    +'tendrá la app entera en su móvil, con sus propios datos, sin tocar los tuyos.</p>'
+    +'<button class="act act2" data-act="compartirapp">Compartir la app</button></div>';
   return h;
 }
 
@@ -1349,6 +1390,84 @@ function fechaCompacta(f){ return iso(f).replace(/-/g,''); }
 function limpiaNombre(t){ return String(t).replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim(); }
 function baseSala(s){ return limpiaNombre(fechaCompacta(s.fecha)+' '+s.dist+'m '+sitio(s.site)); }
 function baseCampo(r){ return limpiaNombre(fechaCompacta(r.fecha)+' '+r.puestos+'p '+D.campos[r.campo].nombre); }
+function pdfDeImagen(dataURL,anchoPx,altoPx){
+  var bin=atob(dataURL.split(',')[1]);
+  var W=595,H=842,M=28;
+  var dispW=W-2*M, dispH=H-2*M;
+  var esc=Math.min(dispW/anchoPx,dispH/altoPx);
+  var w=anchoPx*esc, h=altoPx*esc, x=(W-w)/2, y=(H-h)/2;
+  var c='q '+w.toFixed(2)+' 0 0 '+h.toFixed(2)+' '+x.toFixed(2)+' '+y.toFixed(2)+' cm /Im1 Do Q\n';
+  var objs=[];
+  objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+  objs[3]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>';
+  objs[4]='<< /Type /XObject /Subtype /Image /Width '+anchoPx+' /Height '+altoPx
+    +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+bin.length+' >>\nstream\n'+bin+'\nendstream';
+  objs[5]='<< /Length '+c.length+' >>\nstream\n'+c+'endstream';
+  var out='%PDF-1.4\n', offs=[], i;
+  for(i=1;i<=5;i++){ offs[i]=out.length; out+=i+' 0 obj\n'+objs[i]+'\nendobj\n'; }
+  var xr=out.length;
+  out+='xref\n0 6\n0000000000 65535 f \n';
+  for(i=1;i<=5;i++) out+=('0000000000'+offs[i]).slice(-10)+' 00000 n \n';
+  out+='trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  var by=new Uint8Array(out.length);
+  for(i=0;i<out.length;i++) by[i]=out.charCodeAt(i)&255;
+  return by;
+}
+function bytesDeDataURL(u){
+  var bin=atob(u.split(',')[1]), by=new Uint8Array(bin.length), i;
+  for(i=0;i<bin.length;i++) by[i]=bin.charCodeAt(i);
+  return by;
+}
+function comparte(bytes,nombre,tipo){
+  try{
+    var f=new File([bytes],nombre,{type:tipo});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
+      navigator.share({files:[f],title:nombre}).catch(function(){});
+      return;
+    }
+  }catch(e){}
+  bajar(bytes,nombre,tipo);
+  toast('Este móvil no ofrece compartir; se descarga el archivo.');
+}
+function pdfDeImagen(dataURL,anchoPx,altoPx){
+  var bin=atob(dataURL.split(',')[1]);
+  var W=595,H=842,M=28;
+  var esc2=Math.min((W-2*M)/anchoPx,(H-2*M)/altoPx);
+  var w=anchoPx*esc2, h=altoPx*esc2, x=(W-w)/2, y=(H-h)/2;
+  var c='q '+w.toFixed(2)+' 0 0 '+h.toFixed(2)+' '+x.toFixed(2)+' '+y.toFixed(2)+' cm /Im1 Do Q\n';
+  var objs=[];
+  objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2]='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+  objs[3]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>';
+  objs[4]='<< /Type /XObject /Subtype /Image /Width '+anchoPx+' /Height '+altoPx
+    +' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+bin.length+' >>\nstream\n'+bin+'\nendstream';
+  objs[5]='<< /Length '+c.length+' >>\nstream\n'+c+'endstream';
+  var out='%PDF-1.4\n', offs=[], i;
+  for(i=1;i<=5;i++){ offs[i]=out.length; out+=i+' 0 obj\n'+objs[i]+'\nendobj\n'; }
+  var xr=out.length;
+  out+='xref\n0 6\n0000000000 65535 f \n';
+  for(i=1;i<=5;i++) out+=('0000000000'+offs[i]).slice(-10)+' 00000 n \n';
+  out+='trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  var by=new Uint8Array(out.length);
+  for(i=0;i<out.length;i++) by[i]=out.charCodeAt(i)&255;
+  return by;
+}
+function bytesDeDataURL(u){
+  var bin=atob(u.split(',')[1]), by=new Uint8Array(bin.length), i;
+  for(i=0;i<bin.length;i++) by[i]=bin.charCodeAt(i);
+  return by;
+}
+function comparte(bytes,nombre,tipo){
+  try{
+    var f=new File([bytes],nombre,{type:tipo});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
+      navigator.share({files:[f],title:nombre}).catch(function(){});
+      return;
+    }
+  }catch(e){}
+  bajar(bytes,nombre,tipo);
+}
 function nombrePDF(s){ return baseSala(s)+'.pdf'; }
 
 /* ---- imagen de la tarjeta ---- */
@@ -1493,7 +1612,7 @@ function tarjetaJPG(s,cb){
     T(M,ty+26,18,'Firma del arquero',{c:'#5B6975'});
     T(CW-M-270,ty+26,18,'Firma del anotador',{c:'#5B6975'});
 
-    try{ cb(cv.toDataURL('image/jpeg',0.92)); }
+    try{ cb(cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH}); }
     catch(e){ toast('No se pudo generar la imagen.'); }
   }
 
@@ -1559,18 +1678,20 @@ function clasifJPG(gp,cb){
   ty+=44;
   LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
   T(CW-M-270,ty+26,18,'Firma del juez',{c:'#5B6975'});
-  try{ cb(cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+  try{ cb(cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH}); }catch(e){ toast('No se pudo generar la imagen.'); }
 }
 
 /* ---- visor ---- */
 var imgActual=null;
-function mostrarImagen(url,pie,alt,nombre){
+function mostrarImagen(url,pie,alt,nombre,medida){
   var v=document.getElementById('visor');
-  imgActual=nombre?{url:url,nombre:nombre}:null;
+  imgActual=nombre?{url:url,nombre:nombre,w:(medida&&medida.w)||900,h:(medida&&medida.h)||1200}:null;
   v.innerHTML='<div class="vcard">'
     +'<button class="capbtn" data-fb="captura">Preparar para captura</button>'
-    +(imgActual?'<button class="cerrar" data-fb="bajarimg" style="margin-bottom:10px">Descargar '
-      +esc(nombre)+'</button>':'')
+    +(imgActual?'<button class="capbtn" data-fb="compartir" style="margin-bottom:10px">Compartir</button>'
+      +'<div class="pair" style="margin-bottom:10px">'
+      +'<button class="cerrar" data-fb="bajarimg">Imagen</button>'
+      +'<button class="cerrar" data-fb="bajarpdf">PDF</button></div>':'')
     +'<p>La imagen ocupará toda la pantalla y desaparecerá todo lo demás. Haz entonces la captura '
     +'con los botones del móvil y quedará guardada en la galería. Toca la pantalla para volver.</p>'
     +'<img src="'+url+'" alt="'+esc(alt||'')+'">'
@@ -1579,14 +1700,14 @@ function mostrarImagen(url,pie,alt,nombre){
   v.className=''; v.style.display='block'; v.scrollTop=0;
 }
 function verTarjeta(s){
-  tarjetaJPG(s,function(url){
-    mostrarImagen(url,s.dist+' m · '+sitio(s.site)+' · '+fecha(s.fecha),'Tarjeta',baseSala(s)+'.jpg');
+  tarjetaJPG(s,function(url,md){
+    mostrarImagen(url,s.dist+' m · '+sitio(s.site)+' · '+fecha(s.fecha),'Tarjeta',baseSala(s)+'.jpg',md);
   });
 }
 function verClasif(gp){
-  clasifJPG(gp,function(url){
+  clasifJPG(gp,function(url,md){
     mostrarImagen(url,'Clasificación · '+gp.dist+' m · '+fecha(gp.fecha),'Clasificación',
-      limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg');
+      limpiaNombre(fechaCompacta(gp.fecha)+' '+gp.dist+'m '+sitio(gp.site)+' clasificacion')+'.jpg',md);
   });
 }
 
@@ -1692,7 +1813,7 @@ function clasifRecJPG(r,cb){
   }
   ty+=46; P.LN(CW-M-270,ty,CW-M,ty,'#8A949E',1);
   P.T(CW-M-270,ty+26,18,'Firma del juez',{c:'#5B6975'});
-  try{ cb(L.cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+  try{ cb(L.cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH}); }catch(e){ toast('No se pudo generar la imagen.'); }
 }
 function resumenArqJPG(r,a,cb){
   var CW=900,M=60,rowH=40, seq=secuencia(r);
@@ -1739,7 +1860,7 @@ function resumenArqJPG(r,a,cb){
   P.T(M+660,ty,20,'Dieces: '+cuenta(r,a.id,'10'),{c:'#42505C'});
   ty+=60; P.LN(M,ty,M+270,ty,'#8A949E',1);
   P.T(M,ty+26,18,'Firma del arquero',{c:'#5B6975'});
-  try{ cb(L.cv.toDataURL('image/jpeg',0.92)); }catch(e){ toast('No se pudo generar la imagen.'); }
+  try{ cb(L.cv.toDataURL('image/jpeg',0.92),{w:CW,h:CH}); }catch(e){ toast('No se pudo generar la imagen.'); }
 }
 
 /* ---- selector de modalidad, dentro de la pantalla normal ---- */
@@ -1968,7 +2089,7 @@ function cabeceraCampo(){
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro en campo</span>'
-   +'<button class="swmodo" data-act="cambiamodo">Cambiar a sala</button></div>';
+   +'<button class="swmodo" data-act="cambiamodo">Pasar a sala</button></div>';
 }
 function pantallaPuesto(r){
   var seq=secuencia(r), pu=seq[Math.min(C.idx,seq.length-1)], an=animal(r,pu);
@@ -2015,7 +2136,7 @@ function pantallaPuesto(r){
     +'<button data-act="puestosig"'+(C.idx>=r.puestos-1?' disabled':'')+'>Siguiente ▶</button></div>';
   h+='</div>';
 
-  h+=tarjetaCrono([[120,'2 min'],[240,'4 min'],[60,'1 min']]);
+  h+=tarjetaCrono();
 
   h+='<button class="act act2" data-act="irmapa" style="margin:-2px 0 12px">'
     +(punto(r.campo,pu)?'Cómo llegar al puesto '+pu+' en el mapa':'Guardar la posición del puesto '+pu)+'</button>';
@@ -2171,7 +2292,7 @@ function pantallaRecorrido(r){
 }
 function pantallaResumen(r){
   if(!r) return '<div class="card"><p class="empty">No hay ningún recorrido abierto.</p></div>';
-  var h='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Resumen')+'</h2>'
+  var h='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Clasificación')+'</h2>'
     +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
     +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+'</span></div>';
   clasifRec(r).forEach(function(a,i){
@@ -2262,6 +2383,24 @@ function pantallaMateriales(){
   });
   return h;
 }
+function mejoresDe(a){
+  var h='<p class="stat" style="margin-top:12px;margin-bottom:4px">Mejores marcas</p>';
+  var hay=false;
+  DISTS.forEach(function(d){
+    var mejor=null, sitio2=null, i;
+    for(i=0;i<D.sites.length;i++){
+      var b=best(a.id,d,i);
+      if(b && (!mejor || media(b)>media(mejor))){ mejor=b; sitio2=i; }
+    }
+    if(mejor) hay=true;
+    h+='<div class="rec" style="padding:8px 0"><div class="lbl">'+d+' m'
+      +(mejor?'<small>'+esc(sitio(sitio2))+' · '+formato(mejor)+' · '+fecha(mejor.fecha)+'</small>':'')
+      +'</div><div class="v">'
+      +(mejor?'<b>'+total(mejor)+'</b><small>'+dec(media(mejor))+' por flecha</small>':'<small>Sin marca</small>')
+      +'</div></div>';
+  });
+  return h+(hay?'':'<p class="stat">Aún no hay tiradas completas guardadas.</p>');
+}
 function pantallaTecnicas(){
   return fichas('material','Material',
       'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
@@ -2300,7 +2439,7 @@ function renderCampo(){
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
-    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Resumen'],
+    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Clasificación'],
       ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material'],
       ['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
@@ -2338,7 +2477,7 @@ function render(){
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro con Arco</span>'
-   +'<button class="swmodo" data-act="cambiamodo" style="margin-left:auto">Campo</button>'
+   +'<button class="swmodo" data-act="cambiamodo" style="margin-left:auto">Pasar a campo</button>'
    +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
       : (A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'')
         +'<span class="sub" style="margin-left:7px">'
@@ -2352,6 +2491,11 @@ function render(){
     var N=shots(s), T2=total(s), rec=best(A.id,U.dist,U.site);
 
     h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
+    if(D.arqueros.length>1){
+      h+='<div class="chk compfila" data-act="compsala">'
+        +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
+        +'<div class="ctxt">¿Es una competición?<small>Se marcará en la clasificación del día</small></div></div>';
+    }
     h+=segDist('dist',U.dist)+'<div style="height:8px"></div>'
       +segSite('site',U.site)+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
@@ -2391,7 +2535,7 @@ function render(){
     });
     h+='</tbody></table></div></div>';
 
-    h+=tarjetaCrono([[120,'2 min'],[240,'4 min'],[60,'1 min']]);
+    h+=tarjetaCrono();
 
     h+='<div class="card"><div class="chead"><h2>Observaciones</h2>'
       +'<span>de esta tirada</span></div>'
@@ -2407,11 +2551,6 @@ function render(){
       +'<div class="stat">Flechas<b>'+N+'</b></div>'
       +'<div class="stat">X<b>'+xs(s)+'</b></div>'
       +'<div class="stat">10<b>'+dieces(s)+'</b></div></div>'
-      +(D.arqueros.length>1
-        ? '<div class="chk" data-act="compsala" style="border-bottom:none;padding:12px 0 2px">'
-          +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
-          +'<div class="ctxt">Es una competición<small>Se marcará en la clasificación del día</small></div></div>'
-        : '')
       +'<button class="act" data-act="guardar"'+(N?'':' disabled')+'>'
       +(complete(s)?'Guardar tirada':'Guardar tirada ('+N+'/'+(ne*na)+' flechas)')+'</button>'
       +(WV
@@ -2474,25 +2613,18 @@ function render(){
     h+='</div>';
 
     var hay=D.sessions.length>0;
-    h+='<div class="card"><div class="chead"><h2>Exportar datos</h2><span>'+D.sessions.length+' tiradas</span></div>';
-    if(WV){
-      h+='<p class="stat">Para conservar una tirada o una clasificación, ábrela y '
-        +'usa <i>Ver como imagen</i>, y desde ahí haz una captura de pantalla.</p>';
-    } else {
-      h+='<p class="stat">Excel con tres hojas: tiradas, detalle de tandas y clasificaciones.</p>'
-        +'<button class="act" data-act="xlsx"'+(hay?'':' disabled')+'>Descargar Excel</button>'
-        +'<button class="act act2" data-act="csv"'+(hay?'':' disabled')+'>Descargar CSV</button>'
-        +'<button class="ghost" data-act="copiar">Copiar CSV al portapapeles</button>'
-        +'<button class="ghost" data-act="vercsv">'+(U.verCSV?'Ocultar texto':'Ver texto')+'</button>'
-        +(U.verCSV?'<textarea class="csv" readonly>'+esc(buildCSV())+'</textarea>':'');
-    }
-    h+='</div>';
+    h+='<div class="card"><div class="chead"><h2>Guardar y compartir</h2></div>'
+      +'<p class="stat">Cada tirada, clasificación y resumen se abre como imagen y desde ahí puedes '
+      +'descargarla como imagen o como PDF, o compartirla por WhatsApp, correo o donde quieras. '
+      +'La copia de seguridad tiene su propia pestaña.</p></div>';
   }
 
   if(U.tab==='historial'){
     h+='<div class="card"><div class="chead"><h2>Historial</h2><span>'+D.sessions.length+' tiradas</span></div>';
     if(!D.sessions.length) h+='<p class="empty">Guarda una tirada y aparecerá aquí.</p>';
-    D.sessions.forEach(function(s){
+    D.sessions.slice().sort(function(x,y){
+      return (x.site-y.site) || (x.dist-y.dist) || (new Date(y.fecha)-new Date(x.fecha));
+    }).forEach(function(s){
       var a=arqPorId(s.arquero), b=best(s.arquero,s.dist,s.site);
       h+='<div class="rec"><div class="lbl">'+s.dist+' m'+(b&&b.id===s.id?' · mejor':'')
         +'<small>'+esc(nombreArq(a))+' · '+esc(sitio(s.site))+'<br>'+fecha(s.fecha)+' · '+formato(s)+'</small></div>'
@@ -2522,6 +2654,7 @@ function render(){
         +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
         +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
         +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+        +mejoresDe(a)
         +'</div>';
     });
     h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
@@ -2603,18 +2736,14 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='tab'){ U.tab=v; render(); }
   else if(a==='pdist'){ U.pDist=Number(v); render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
-  else if(a==='csv'){ bajar('\ufeff'+buildCSV(),'tiro-con-arco-'+iso(Date.now())+'.csv','text/csv;charset=utf-8'); }
-  else if(a==='xlsx'){ bajar(buildXLSX(),'tiro-con-arco-'+iso(Date.now())+'.xlsx',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
-    if(s1) bajar(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
-  else if(a==='pdfdraft'){ var s2=draft(); bajar(buildPDF(s2),nombrePDF(s2),'application/pdf'); }
+    if(s1) comparte(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
+  else if(a==='pdfdraft'){ var s2=draft(); comparte(buildPDF(s2),nombrePDF(s2),'application/pdf'); }
   else if(a==='jpg'){ var s3=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
     if(s3) verTarjeta(s3); }
   else if(a==='jpgdraft'){ verTarjeta(draft()); }
   else if(a==='clasifimg'){ var gp=grupos().filter(function(x){ return x.clave===b.dataset.k; })[0];
     if(gp) verClasif(gp); }
-  else if(a==='vercsv'){ U.verCSV=!U.verCSV; render(); }
   else if(a==='copiar'){
     navigator.clipboard.writeText(buildCSV()).then(function(){ toast('CSV copiado'); })
       .catch(function(){ U.verCSV=true; render(); toast('Copia el texto a mano desde el recuadro'); });
@@ -2707,14 +2836,14 @@ document.getElementById('app').addEventListener('click',function(ev){
     save(); render();
   }
   else if(a==='verrec'){ D.recorridoId=b.dataset.id; C.idx=0; C.sel={a:0,f:0}; C.tab='puesto'; save(); render(); }
-  else if(a==='imgclasif'){ var r5=recActual(); if(r5) clasifRecJPG(r5,function(u){
+  else if(a==='imgclasif'){ var r5=recActual(); if(r5) clasifRecJPG(r5,function(u,md){
       mostrarImagen(u,'Clasificación · '+D.campos[r5.campo].nombre+' · '+fecha(r5.fecha),'Clasificación',
-        baseCampo(r5)+' clasificacion.jpg'); }); }
+        baseCampo(r5)+' clasificacion.jpg',md); }); }
   else if(a==='imgarq'){
     var r6=recActual(); if(!r6) return;
     var aa=r6.patrulla.filter(function(x){ return x.id===b.dataset.id; })[0];
-    if(aa) resumenArqJPG(r6,aa,function(u){ mostrarImagen(u,aa.nombre+' · '+fecha(r6.fecha),'Resumen',
-      limpiaNombre(baseCampo(r6)+' '+aa.nombre)+'.jpg'); });
+    if(aa) resumenArqJPG(r6,aa,function(u,md){ mostrarImagen(u,aa.nombre+' · '+fecha(r6.fecha),'Resumen',
+      limpiaNombre(baseCampo(r6)+' '+aa.nombre)+'.jpg',md); });
   }
   else if(a==='fotoanimal'){
     C.fotoDestino={tipo:'animal',pu:b.dataset.pu};
@@ -2723,6 +2852,14 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
     'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
+  else if(a==='compartircopia'){ comparte(copiaJSON(C.conFotos!==false),
+    'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
+  else if(a==='compartirapp'){
+    var enlace=(typeof location!=='undefined'&&location.href)?String(location.href).split('#')[0]:'';
+    var txt='Tiro con Arco, la app para anotar. Ábrelo en Chrome y elige "Instalar aplicación": '+enlace;
+    if(navigator.share) navigator.share({title:'Tiro con Arco',text:txt,url:enlace}).catch(function(){});
+    else copiar(txt,'Enlace');
+  }
   else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
   else if(a==='aplicarcopia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
@@ -2797,7 +2934,9 @@ document.getElementById('app').addEventListener('click',function(ev){
   }
   else if(a==='crono'){ if(TM.on) paraCrono(); else arrancaCrono(); }
   else if(a==='cronoreset'){ paraCrono(); TM.left=TM.tot; pintaCrono(); }
-  else if(a==='cronoset'){ ponCrono(Number(v)); }
+  else if(a==='cronomas'){ if(TM.on) return; TM.extra+=Number(v);
+    if(TM.base+TM.extra<30) TM.extra=30-TM.base; ajustaCrono(); render(); }
+  else if(a==='cronoauto'){ if(TM.on) return; TM.extra=0; ajustaCrono(); render(); }
   else if(a==='bloque'){ C.bloque=(C.bloque===v?null:v); C.editaBloque=null; render(); }
   else if(a==='mateditar'){ C.editaBloque=(C.editaBloque===v?null:v); render(); }
   else if(a==='matchk'){ var bb=D.mat[Number(b.dataset.b)], ii=Number(b.dataset.i);
@@ -2892,12 +3031,17 @@ document.getElementById('visor').addEventListener('click',function(ev){
   else if(fb==='captura'){ this.className='cap'; this.scrollTop=0;
     toast('Haz la captura ahora con los botones del móvil.'); }
   else if(fb==='bajarimg' && imgActual){
-    try{
-      var bin=atob(imgActual.url.split(',')[1]);
-      var by=new Uint8Array(bin.length),i;
-      for(i=0;i<bin.length;i++) by[i]=bin.charCodeAt(i);
-      bajar(by,imgActual.nombre,'image/jpeg');
-    }catch(e){ toast('No se pudo preparar la imagen.'); }
+    try{ bajar(bytesDeDataURL(imgActual.url),imgActual.nombre,'image/jpeg'); }
+    catch(e){ toast('No se pudo preparar la imagen.'); }
+  }
+  else if(fb==='bajarpdf' && imgActual){
+    try{ bajar(pdfDeImagen(imgActual.url,imgActual.w,imgActual.h),
+      imgActual.nombre.replace(/\.jpg$/,'')+'.pdf','application/pdf'); }
+    catch(e){ toast('No se pudo preparar el PDF.'); }
+  }
+  else if(fb==='compartir' && imgActual){
+    try{ comparte(bytesDeDataURL(imgActual.url),imgActual.nombre,'image/jpeg'); }
+    catch(e){ toast('No se pudo compartir.'); }
   }
 });
 document.getElementById('fallback').addEventListener('click',function(ev){
