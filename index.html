@@ -2615,12 +2615,6 @@ function render(){
     var t=row.reduce(function(a,x){ return a+val(x); },0);
     var N=shots(s), T2=total(s), rec=best(A.id,U.dist,U.site);
 
-    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
-    if(D.arqueros.length>1){
-      h+='<div class="chk compfila" data-act="compsala">'
-        +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
-        +'<div class="ctxt">¿Es una competición?<small>Se marcará en la clasificación del día</small></div></div>';
-    }
     h+=segDist('dist',U.dist)+'<div style="height:8px"></div>'
       +segSite('site',U.site)+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
@@ -2629,6 +2623,15 @@ function render(){
       +'<div class="step"><span class="lb">Flechas<br>por tanda</span>'
       +'<button data-act="arrows" data-v="-1">−</button><b>'+na+'</b><button data-act="arrows" data-v="1">+</button></div>'
       +'</div>';
+
+    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
+    if(D.arqueros.length>1){
+      h+='<div class="chk compfila" data-act="compsala">'
+        +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
+        +'<div class="ctxt">¿Es una competición?'
+        +'<small>'+(s.comp?'Al acabar cada tanda pasa al arquero siguiente'
+                          :'Se marcará en la clasificación del día')+'</small></div></div>';
+    }
 
     var slotSz=na<=6?19:na<=9?16:14;
     h+='<div class="card"><div class="chead"><h2>Tanda '+(e+1)+' de '+ne+'</h2>'
@@ -2805,6 +2808,17 @@ function render(){
 function shoot(v){
   var s=draft(); s.ends[U.sel.end][U.sel.arrow]=v; save();
   var e=U.sel.end,a=U.sel.arrow;
+  var finTanda=(a===nA(s)-1);
+  /* en competición, al cerrar la tanda le toca al siguiente de la lista */
+  if(finTanda && s.comp && D.arqueros.length>1){
+    U.arq=(U.arq+1)%D.arqueros.length;
+    var d2=draft(); d2.comp=true;
+    U.sel=firstEmpty(d2);
+    paraCrono(); TM.left=TM.tot;
+    save(); render();
+    toast('Turno de '+nombreArq(arqActual()));
+    return;
+  }
   if(a<nA(s)-1) a++; else if(e<nE(s)-1){ e++; a=0; }
   U.sel={end:e,arrow:a}; render();
 }
@@ -2921,7 +2935,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='nrcampo'){ C.nCampo=Number(v); render(); }
   else if(a==='nrestaca'){ C.nEstaca=v; render(); }
   else if(a==='nrcomp'){ C.nComp=!C.nComp; render(); }
-  else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render(); }
+  else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render();
+    if(ds.comp&&D.arqueros.length>1) toast('Al cerrar cada tanda pasará al arquero siguiente.'); }
   else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
   else if(a==='crearrec'){
     var pat=[],i2,usados={},faltan=0;
