@@ -775,7 +775,7 @@ function tarjetaCrono(){
     +'<button class="mini" data-act="cronoreset">Poner a cero</button>'
     +'<button class="mini" data-act="cronoauto">Volver a '+mmss(TM.base)+'</button></div>'
     +'<p class="stat" style="margin-top:9px">Un pitido al empezar, dos al quedar '+TM.aviso
-    +' segundos y tres al acabar. Al acabar, las flechas sin anotar se marcan como cero.</p></div>';
+    +' segundos y tres al acabar.</p></div>';
   return h;
 }
 
@@ -1004,6 +1004,13 @@ function color3(v){
   if(v==='8') return {bg:'var(--red)',fg:'#FFF',bd:'transparent'};
   if(v==='5') return {bg:'var(--blue)',fg:'#FFF',bd:'transparent'};
   return {bg:'#151C24',fg:'var(--dim)',bd:'var(--line)'};
+}
+function recVista(){
+  if(C.verRec){
+    var x=D.recorridos.filter(function(y){ return y.id===C.verRec; })[0];
+    if(x) return x;
+  }
+  return recActual()||D.recorridos[0]||null;
 }
 function recActual(){
   if(!D.recorridoId) return null;
@@ -1782,12 +1789,12 @@ function generaImagen(k,cb){
       'Clasificación · '+gp.dist+' m · '+fecha(gp.fecha)); });
   }
   else if(tipo==='rec'){
-    var r=recActual(); if(!r) return;
+    var r=(C.tab==='clasif')?recVista():recActual(); if(!r) return;
     clasifRecJPG(r,function(u,md){ cb(u,md,baseCampo(r)+' clasificacion.jpg',
       'Clasificación · '+D.campos[r.campo].nombre+' · '+fecha(r.fecha)); });
   }
   else if(tipo==='arq'){
-    var r2=recActual(); if(!r2) return;
+    var r2=(C.tab==='clasif')?recVista():recActual(); if(!r2) return;
     var aa=r2.patrulla.filter(function(x){ return x.id===id; })[0]; if(!aa) return;
     resumenArqJPG(r2,aa,function(u,md){ cb(u,md,limpiaNombre(baseCampo(r2)+' '+aa.nombre)+'.jpg',
       aa.nombre+' · '+fecha(r2.fecha)); });
@@ -2352,7 +2359,6 @@ function pantallaRecorrido(r){
         +'maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'">';
     }
   }
-  h+='<p class="stat" style="margin:2px 0 8px">Los arqueros nuevos se añaden también a la lista de sala.</p>';
   if(C.nuevos>1){
     h+='<div class="chk" data-act="nrcomp" style="border-bottom:none;padding-top:4px">'
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
@@ -2428,8 +2434,18 @@ function pantallaRecorrido(r){
   return h;
 }
 function pantallaResumen(r){
-  if(!r) return '<div class="card"><p class="empty">No hay ningún recorrido abierto.</p></div>';
-  var h='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Clasificación')+'</h2>'
+  if(!D.recorridos.length) return '<div class="card"><p class="empty">Todavía no hay ningún recorrido.</p></div>';
+  var ab=recActual();
+  var h='<select class="arq" data-verrec style="width:100%;margin-bottom:12px">'
+    +D.recorridos.slice().sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })
+      .map(function(x){
+        var g2=clasifRec(x)[0];
+        return '<option value="'+x.id+'"'+(r&&x.id===r.id?' selected':'')+'>'
+          +esc((ab&&x.id===ab.id&&!x.cerrado?'▶ ':'')+fecha(x.fecha)+' · '+D.campos[x.campo].nombre
+            +' · '+x.puestos+'p'+(g2?' · '+totalArq(x,g2.id)+' pts':''))+'</option>'; }).join('')
+    +'</select>';
+  if(!r) return h+'<div class="card"><p class="empty">Elige un recorrido.</p></div>';
+  h+='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Clasificación')+'</h2>'
     +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
     +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+'</span></div>';
   clasifRec(r).forEach(function(a,i){
@@ -2562,10 +2578,7 @@ function renderCampo(){
       : '<div class="card"><p class="empty">No hay ningún recorrido abierto.<br><br>Ve a '
         +'<i>Recorrido</i>, elige campo, puestos, salida y patrulla, y dale a empezar.</p></div>';
   }
-  else if(C.tab==='clasif'){
-    h+= r ? pantallaResumen(r)
-      : '<div class="card"><p class="empty">Aún no hay clasificación: empieza un recorrido.</p></div>';
-  }
+  else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
   else if(C.tab==='tecnicas'){ h+=pantallaTecnicas(); }
   else if(C.tab==='materiales'){ h+=pantallaMateriales(); }
@@ -2636,7 +2649,6 @@ function render(){
       +'<button data-act="arrows" data-v="-1">−</button><b>'+na+'</b><button data-act="arrows" data-v="1">+</button></div>'
       +'</div>';
 
-    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
     if(D.arqueros.length>1){
       h+='<div class="chk compfila" data-act="compsala">'
         +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
@@ -2644,6 +2656,7 @@ function render(){
         +'<small>'+(s.comp?'Al acabar cada tanda pasa al arquero siguiente'
                           :'Se marcará en la clasificación del día')+'</small></div></div>';
     }
+    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
 
     var slotSz=na<=6?19:na<=9?16:14;
     h+='<div class="card"><div class="chead"><h2>Tanda '+(e+1)+' de '+ne+'</h2>'
@@ -2677,14 +2690,13 @@ function render(){
 
     h+=tarjetaCrono();
 
-    h+='<div class="card"><div class="chead"><h2>Observaciones</h2>'
-      +'<span>de esta tirada</span></div>'
-      +'<textarea class="obs selec" placeholder="Viento, luz, sensaciones, lo que pasó hoy..." '
-      +'data-obs>'+esc(s.obs||'')+'</textarea>'
-      +'<div class="chead" style="margin:14px 0 8px"><h2>Reglajes a '+U.dist+' m</h2>'
-      +'<span>fijo para esta distancia</span></div>'
+    var tarjetaObs='<div class="card">'
+      +'<div class="chead"><h2>Reglajes a '+U.dist+' m</h2><span>fijo para esta distancia</span></div>'
       +'<textarea class="obs selec" placeholder="Altura de visor, libras, notas que se repiten a '+U.dist+' m..." '
-      +'data-nota="'+U.dist+'">'+esc(D.notas[U.dist]||'')+'</textarea></div>';
+      +'data-nota="'+U.dist+'">'+esc(D.notas[U.dist]||'')+'</textarea>'
+      +'<div class="chead" style="margin:14px 0 8px"><h2>Observaciones</h2><span>de esta tirada</span></div>'
+      +'<textarea class="obs selec" placeholder="Viento, luz, sensaciones, lo que pasó hoy..." '
+      +'data-obs>'+esc(s.obs||'')+'</textarea></div>';
 
     h+='<div class="card"><div class="sum"><div class="big">'+T2+'<small>/ '+maxPts(s)+'</small></div>'
       +'<div class="stat">Media por flecha<b>'+dec(N?T2/N:0)+'</b></div>'
@@ -2698,6 +2710,7 @@ function render(){
       +'<p class="stat" style="margin-top:4px">'
       +(rec?'Mejor media aquí: '+dec(media(rec))+' por flecha · '+total(rec)+' en '+formato(rec)+' · '+fecha(rec.fecha)
            :'Aún no hay marca en esta distancia y sitio.')+'</p></div>';
+    h+=tarjetaObs;
   }
 
   if(U.tab==='clasif'){
@@ -2754,11 +2767,25 @@ function render(){
   }
 
   if(U.tab==='historial'){
-    h+='<div class="card"><div class="chead"><h2>Historial</h2><span>'+D.sessions.length+' tiradas</span></div>';
-    if(!D.sessions.length) h+='<p class="empty">Guarda una tirada y aparecerá aquí.</p>';
-    D.sessions.slice().sort(function(x,y){
+    var lista=D.sessions.filter(function(x){
+      return (U.hSite==='' || U.hSite==null || Number(U.hSite)===x.site)
+          && (U.hDist==='' || U.hDist==null || Number(U.hDist)===x.dist);
+    }).sort(function(x,y){
       return (x.site-y.site) || (x.dist-y.dist) || (new Date(y.fecha)-new Date(x.fecha));
-    }).forEach(function(s){
+    });
+    h+='<div class="dosel"><select class="arq" data-hsite>'
+      +'<option value=""'+(U.hSite?'':' selected')+'>Todos los sitios</option>'
+      +D.sites.map(function(sn,i){ return '<option value="'+i+'"'+(String(U.hSite)===String(i)?' selected':'')+'>'
+        +esc(sn)+'</option>'; }).join('')
+      +'</select><select class="arq" data-hdist>'
+      +'<option value=""'+(U.hDist?'':' selected')+'>Todas las distancias</option>'
+      +DISTS.map(function(d){ return '<option value="'+d+'"'+(String(U.hDist)===String(d)?' selected':'')+'>'
+        +d+' m</option>'; }).join('')
+      +'</select></div>';
+    h+='<div class="card"><div class="chead"><h2>Historial</h2>'
+      +'<span>'+lista.length+(lista.length!==D.sessions.length?' de '+D.sessions.length:'')+'</span></div>';
+    if(!lista.length) h+='<p class="empty">'+(D.sessions.length?'Nada con ese filtro.':'Guarda una tirada y aparecerá aquí.')+'</p>';
+    lista.forEach(function(s){
       var a=arqPorId(s.arquero), b=best(s.arquero,s.dist,s.site);
       h+='<div class="rec"><div class="lbl">'+s.dist+' m'+(b&&b.id===s.id?' · mejor':'')
         +'<small>'+esc(nombreArq(a))+' · '+esc(sitio(s.site))+'<br>'+fecha(s.fecha)+' · '+formato(s)+'</small></div>'
@@ -2987,7 +3014,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(D.recorridoId===idb) D.recorridoId=null;
     save(); render();
   }
-  else if(a==='verrec'){ D.recorridoId=b.dataset.id; C.idx=0; C.sel={a:0,f:0}; C.tab='puesto'; save(); render(); }
+  else if(a==='verrec'){ D.recorridoId=b.dataset.id; C.verRec=null; C.idx=0; C.sel={a:0,f:0}; C.tab='puesto'; save(); render(); }
   else if(a==='imgclasif'){ var r5=recActual(); if(r5) clasifRecJPG(r5,function(u,md){
       mostrarImagen(u,'Clasificación · '+D.campos[r5.campo].nombre+' · '+fecha(r5.fecha),'Clasificación',
         baseCampo(r5)+' clasificacion.jpg',md); }); }
@@ -3150,6 +3177,9 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-campoedita')){ C.campoEdita=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-recsel')){ C.recSel=t.value; render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-hsite')){ U.hSite=t.value; render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-verrec')){ C.verRec=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-gpsk')){ C.gpsK=t.value; }
   else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
     if(!C.patrulla[k4]) C.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
