@@ -1789,13 +1789,18 @@ function generaImagen(k,cb){
       'Clasificación · '+gp.dist+' m · '+fecha(gp.fecha)); });
   }
   else if(tipo==='rec'){
-    var r=(C.tab==='clasif')?recVista():recActual(); if(!r) return;
+    var r=id?D.recorridos.filter(function(x){ return x.id===id; })[0]
+           :((C.tab==='clasif')?recVista():recActual());
+    if(!r) return;
     clasifRecJPG(r,function(u,md){ cb(u,md,baseCampo(r)+' clasificacion.jpg',
       'Clasificación · '+D.campos[r.campo].nombre+' · '+fecha(r.fecha)); });
   }
   else if(tipo==='arq'){
-    var r2=(C.tab==='clasif')?recVista():recActual(); if(!r2) return;
-    var aa=r2.patrulla.filter(function(x){ return x.id===id; })[0]; if(!aa) return;
+    var pp2=id.split('|'), rid=(pp2.length>1?pp2[0]:''), aid=(pp2.length>1?pp2[1]:id);
+    var r2=rid?D.recorridos.filter(function(x){ return x.id===rid; })[0]
+              :((C.tab==='clasif')?recVista():recActual());
+    if(!r2) return;
+    var aa=r2.patrulla.filter(function(x){ return x.id===aid; })[0]; if(!aa) return;
     resumenArqJPG(r2,aa,function(u,md){ cb(u,md,limpiaNombre(baseCampo(r2)+' '+aa.nombre)+'.jpg',
       aa.nombre+' · '+fecha(r2.fecha)); });
   }
@@ -2408,35 +2413,6 @@ function pantallaRecorrido(r){
     +'<input list="campospre" maxlength="22" class="cinp" data-campo="'+cn+'" value="'+esc(D.campos[cn].nombre)+'">'
     +'</div></div>';
 
-  var otros=D.recorridos.filter(function(x){ return !(r&&!r.cerrado&&x.id===r.id); });
-  if(otros.length){
-    var sel3=C.recSel&&otros.filter(function(x){ return x.id===C.recSel; })[0]?C.recSel:otros[0].id;
-    var el3=otros.filter(function(x){ return x.id===sel3; })[0];
-    h+='<div class="card"><div class="chead"><h2>Recorridos anteriores</h2>'
-      +'<span>'+otros.length+'</span></div>'
-      +'<select class="arq" data-recsel style="width:100%">'
-      +otros.map(function(x){
-        var g2=clasifRec(x)[0];
-        return '<option value="'+x.id+'"'+(x.id===sel3?' selected':'')+'>'
-          +esc(fecha(x.fecha)+' · '+D.campos[x.campo].nombre+' · '+x.puestos+'p'
-            +(g2?' · '+totalArq(x,g2.id)+' pts':'')+(x.cerrado?'':' · en curso'))+'</option>'; }).join('')
-      +'</select>';
-    if(el3){
-      var g3=clasifRec(el3);
-      h+='<p class="stat" style="margin-top:10px">'
-        +'<span class="bolita" style="background:'+estaca(el3.estacas).color+'"></span>'
-        +'Estacas '+estaca(el3.estacas).nombre.toLowerCase()+' · salida en el puesto '+el3.inicio
-        +' · '+el3.patrulla.length+' arquero'+(el3.patrulla.length>1?'s':'')
-        +(el3.comp?' · competición':'')+'<br>'
-        +g3.map(function(a,i4){ return (i4+1)+'º '+esc(a.nombre)+' '+totalArq(el3,a.id); }).join(' · ')
-        +'</p>'
-        +'<div class="pair" style="margin-top:10px">'
-        +'<button class="act act2" data-act="verrec" data-id="'+el3.id+'" style="margin-top:0">Abrir</button>'
-        +'<button class="act act2" data-act="borrarrecid" data-id="'+el3.id+'" style="margin-top:0">Borrar</button>'
-        +'</div>';
-    }
-    h+='</div>';
-  }
   return h;
 }
 function pantallaResumen(r){
@@ -2564,6 +2540,54 @@ function mejoresDe(a){
   });
   return h+(hay?'':'<p class="stat">Aún no hay tiradas completas guardadas.</p>');
 }
+function pantallaHistorialCampo(){
+  var lista=D.recorridos.filter(function(x){
+    return (C.hCampo===''||C.hCampo==null||Number(C.hCampo)===x.campo)
+        && (C.hEst===''||C.hEst==null||C.hEst===(x.estacas||'roja'));
+  }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+  var h='<div class="dosel"><select class="arq" data-hcampo>'
+    +'<option value=""'+(C.hCampo?'':' selected')+'>Todos los campos</option>'
+    +D.campos.map(function(c,i){ return '<option value="'+i+'"'+(String(C.hCampo)===String(i)?' selected':'')+'>'
+      +esc(c.nombre)+'</option>'; }).join('')
+    +'</select><select class="arq" data-hest>'
+    +'<option value=""'+(C.hEst?'':' selected')+'>Todas las estacas</option>'
+    +ESTACAS.map(function(e){ return '<option value="'+e.id+'"'+(C.hEst===e.id?' selected':'')+'>Estacas '
+      +e.nombre.toLowerCase()+'</option>'; }).join('')
+    +'</select></div>';
+  h+='<div class="card"><div class="chead"><h2>Historial</h2>'
+    +'<span>'+lista.length+(lista.length!==D.recorridos.length?' de '+D.recorridos.length:'')+'</span></div>';
+  if(!lista.length){
+    h+='<p class="empty">'+(D.recorridos.length?'Nada con ese filtro.':'Cierra un recorrido y aparecerá aquí.')+'</p></div>';
+    return h;
+  }
+  var abierto=recActual();
+  lista.forEach(function(x){
+    var cl=clasifRec(x), yo=cl[0], enCurso=abierto&&abierto.id===x.id&&!x.cerrado;
+    h+='<div class="rec"><div class="lbl">'
+      +'<span class="bolita" style="background:'+estaca(x.estacas).color+'"></span>'
+      +esc(D.campos[x.campo].nombre)+(enCurso?' · en curso':'')
+      +'<small>'+fecha(x.fecha)+' · '+x.puestos+' puestos · '
+      +x.patrulla.length+' arquero'+(x.patrulla.length>1?'s':'')+(x.comp?' · competición':'')+'</small></div>'
+      +'<div class="v"><b>'+(yo?totalArq(x,yo.id):0)+'</b><small>'+(yo?esc(yo.nombre):'')+'</small></div>'
+      +'<div class="minis">'+tresMinis('rec:'+x.id)
+      +'<button class="mini" data-act="borrarrecid" data-id="'+x.id+'">✕</button></div></div>';
+    h+='<div class="chk" data-act="verrecdet" data-id="'+x.id+'" style="border-bottom:none;padding:2px 0 10px">'
+      +'<div class="ctxt" style="color:var(--dim);font-size:13px">'
+      +(C.hVer===x.id?'▾ ocultar las flechas':'▸ ver las flechas puesto a puesto')+'</div></div>';
+    if(C.hVer===x.id){
+      cl.forEach(function(a){
+        h+='<p class="stat" style="margin:4px 0 2px"><i>'+esc(a.nombre)+'</i> · '+totalArq(x,a.id)+' pts · '
+          +dec(mediaArq(x,a.id))+' por flecha · '+cuenta(x,a.id,'11')+' onces</p>'
+          +detallePorPuesto(x,a)
+          +'<div class="minis" style="justify-content:flex-start;margin:-4px 0 12px">'
+          +tresMinis('arq:'+x.id+'|'+a.id)+'</div>';
+      });
+      if(x.cerrado) h+='<button class="mini" data-act="reabririd" data-id="'+x.id+'">Reabrir para seguir anotando</button>';
+    }
+  });
+  return h+'</div>';
+}
+function pantallaTecMat(){ return pantallaTecnicas()+pantallaMateriales(); }
 function pantallaTecnicas(){
   return fichas('material','Material',
       'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
@@ -2573,6 +2597,8 @@ function pantallaTecnicas(){
     +'<datalist id="sugmat">'+SUGMAT.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
 function renderCampo(){
+  if(['recorrido','puesto','mapa','clasif','histcampo','distancia','tecnicas','copia'].indexOf(C.tab)<0)
+    C.tab='recorrido';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
   if(!MD.vista){ cierraCamara(); C.camOn=false; }
@@ -2590,8 +2616,8 @@ function renderCampo(){
   }
   else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
-  else if(C.tab==='tecnicas'){ h+=pantallaTecnicas(); }
-  else if(C.tab==='materiales'){ h+=pantallaMateriales(); }
+  else if(C.tab==='tecnicas'){ h+=pantallaTecMat(); }
+  else if(C.tab==='histcampo'){ h+=pantallaHistorialCampo(); }
   else if(C.tab==='copia'){ h+=tarjetaCopia(); }
   else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
   else if(C.tab==='mapa'){ h+=pantallaMapa(); }
@@ -2600,7 +2626,7 @@ function renderCampo(){
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
     +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Clasificación'],
-      ['distancia','Distancia'],['tecnicas','Técnicas'],['materiales','Material'],
+      ['histcampo','Historial'],['distancia','Distancia'],['tecnicas','Téc./Material'],
       ['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
   if(C.tab==='mapa') pintaGeo();
@@ -2626,6 +2652,7 @@ function selArq(){
 }
 
 function render(){
+  if(['tirada','clasif','progreso','historial','arqueros','tecnicas','copia'].indexOf(U.tab)<0) U.tab='tirada';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
@@ -2806,8 +2833,7 @@ function render(){
     h+='</div>';
   }
 
-  if(U.tab==='tecnicas'){ h+=pantallaTecnicas(); }
-  if(U.tab==='materiales'){ h+=pantallaMateriales(); }
+  if(U.tab==='tecnicas'){ h+=pantallaTecMat(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
   if(U.tab==='arqueros'){
@@ -2847,8 +2873,8 @@ function render(){
   }
 
   var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
-    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Técnicas'],
-    ['materiales','Material'],['copia','Copia']];
+    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Téc./Material'],
+    ['copia','Copia']];
   h+='</div>'+barraTabs(pestanas,'tab',U.tab);
   document.getElementById('app').innerHTML=h;
 }
@@ -2981,6 +3007,12 @@ document.getElementById('app').addEventListener('click',function(ev){
     if((C.idx)%3===0) toast('Clasificación actualizada. La tienes en Resumen.');
   }
   else if(a==='detalle'){ C.abierto=C.abierto===b.dataset.id?null:b.dataset.id; render(); }
+  else if(a==='verrecdet'){ C.hVer=C.hVer===b.dataset.id?null:b.dataset.id; render(); }
+  else if(a==='reabririd'){
+    var rx=D.recorridos.filter(function(x){ return x.id===b.dataset.id; })[0];
+    if(rx){ rx.cerrado=false; D.recorridoId=rx.id; C.idx=0; C.sel={a:0,f:0}; C.tab='puesto';
+      save(); render(); toast('Recorrido reabierto.'); }
+  }
   else if(a==='detrec'){ C.detRec=C.detRec===b.dataset.id?null:b.dataset.id; render(); }
   else if(a==='nrcampo'){ C.nCampo=Number(v); render(); }
   else if(a==='nrestaca'){ C.nEstaca=v; render(); }
@@ -3025,8 +3057,6 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(D.recorridoId===idb) D.recorridoId=null;
     save(); render();
   }
-  else if(a==='verrec'){ D.recorridoId=b.dataset.id; C.verRec=null; C.idx=0; C.sel={a:0,f:0};
-    C.detRec=null; C.tab='puesto'; save(); render(); }
   else if(a==='imgclasif'){ var r5=recActual(); if(r5) clasifRecJPG(r5,function(u,md){
       mostrarImagen(u,'Clasificación · '+D.campos[r5.campo].nombre+' · '+fecha(r5.fecha),'Clasificación',
         baseCampo(r5)+' clasificacion.jpg',md); }); }
@@ -3195,6 +3225,8 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-recsel')){ C.recSel=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hsite')){ U.hSite=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-hcampo')){ C.hCampo=t.value; render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-hest')){ C.hEst=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-verrec')){ C.verRec=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-gpsk')){ C.gpsK=t.value; }
   else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
