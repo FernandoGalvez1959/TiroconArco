@@ -47,6 +47,8 @@ select.arq{flex:1;min-width:0;background:var(--panel);color:var(--ink);border:no
 .addarq{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);
   border-radius:11px;padding:12px 15px;font-size:18px;font-weight:600;flex:none;}
 
+.dosel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;align-items:center;}
+.dosel .arq,.dosel .cinp{width:100%;min-width:0;}
 .fmt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .step{display:flex;align-items:center;background:var(--panel);border-radius:11px;padding:5px;gap:2px;}
 .step .lb{font-size:12px;color:var(--dim);padding-left:7px;flex:1;line-height:1.15;}
@@ -2328,33 +2330,29 @@ function pantallaRecorrido(r){
     +'<p class="stat">Puestos</p><div class="seg" style="margin-bottom:10px">'
     +'<button data-act="nrpuestos" data-v="12" data-on="'+(C.nPuestos===12?1:0)+'">12</button>'
     +'<button data-act="nrpuestos" data-v="24" data-on="'+(C.nPuestos===24?1:0)+'">24</button></div>'
-    +'<div class="field"><label for="nrini">Salida</label>'
-    +'<select id="nrini" class="arq" data-nrinicio>';
-  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Puesto '+i+'</option>';
-  h+='</select></div>'
-    +'<div class="field"><label for="nrn">Arqueros</label>'
-    +'<select id="nrn" class="arq" data-nrn>';
+    +'<div class="dosel">'
+    +'<select class="arq" data-nrinicio>';
+  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Salida: puesto '+i+'</option>';
+  h+='</select><select class="arq" data-nrn>';
   for(var n=1;n<=8;n++) h+='<option value="'+n+'"'+(C.nuevos===n?' selected':'')+'>'+n+' arquero'+(n>1?'s':'')+'</option>';
   h+='</select></div>';
   for(var k=0;k<C.nuevos;k++){
     var pa=C.patrulla[k]||{arq:'',nombre:'',arco:ARCOS[0]};
-    h+='<div class="field"><label>'+(k+1)+'º</label>'
-      +'<select class="arq" data-parq="'+k+'">'
-      +'<option value="">Elegir arquero…</option>'
+    h+='<div class="dosel"><select class="arq" data-parq="'+k+'">'
+      +'<option value="">Arquero '+(k+1)+'…</option>'
       +D.arqueros.map(function(a){
         return '<option value="'+a.id+'"'+(pa.arq===a.id?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
       +'<option value="__nuevo"'+(pa.arq==='__nuevo'?' selected':'')+'>+ Arquero nuevo</option>'
-      +'</select></div>';
-    if(pa.arq==='__nuevo'){
-      h+='<div class="field"><label></label>'
-        +'<input placeholder="Nombre del arquero nuevo" maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'"></div>';
-    }
-    h+='<div class="field"><label></label><select class="arq" data-parco="'+k+'">'
+      +'</select>'
+      +'<select class="arq" data-parco="'+k+'">'
       +ARCOS.map(function(x){ return '<option'+(pa.arco===x?' selected':'')+'>'+x+'</option>'; }).join('')
       +'</select></div>';
+    if(pa.arq==='__nuevo'){
+      h+='<input class="cinp" style="margin-bottom:9px" placeholder="Nombre del arquero nuevo" '
+        +'maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'">';
+    }
   }
-  h+='<p class="stat" style="margin:2px 0 8px">Los arqueros nuevos se añaden también a la lista de sala, '
-    +'con su foto y datos para rellenar en la pestaña Arqueros.</p>';
+  h+='<p class="stat" style="margin:2px 0 8px">Los arqueros nuevos se añaden también a la lista de sala.</p>';
   if(C.nuevos>1){
     h+='<div class="chk" data-act="nrcomp" style="border-bottom:none;padding-top:4px">'
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
@@ -2390,27 +2388,41 @@ function pantallaRecorrido(r){
   }
   h+='</div>';
 
-  h+='<div class="card"><div class="chead"><h2>Nombres de los campos</h2></div>';
-  D.campos.forEach(function(c,i){
-    h+='<div class="field"><label>Campo '+(i+1)+'</label>'
-      +'<input list="campospre" maxlength="22" data-campo="'+i+'" value="'+esc(c.nombre)+'"></div>';
-  });
-  h+='<p class="stat">Las figuras y sus fotos se guardan por campo, así que la próxima vez que tires '
-    +'ahí ya estarán puestas.</p></div>';
+  var cn=(C.campoEdita==null?0:C.campoEdita);
+  h+='<div class="card"><div class="chead"><h2>Nombre de los campos</h2></div>'
+    +'<div class="dosel"><select class="arq" data-campoedita>'
+    +D.campos.map(function(c,i){ return '<option value="'+i+'"'+(cn===i?' selected':'')+'>'+esc(c.nombre)+'</option>'; }).join('')
+    +'</select>'
+    +'<input list="campospre" maxlength="22" class="cinp" data-campo="'+cn+'" value="'+esc(D.campos[cn].nombre)+'">'
+    +'</div></div>';
 
-  if(D.recorridos.length){
+  var otros=D.recorridos.filter(function(x){ return !(r&&!r.cerrado&&x.id===r.id); });
+  if(otros.length){
+    var sel3=C.recSel&&otros.filter(function(x){ return x.id===C.recSel; })[0]?C.recSel:otros[0].id;
+    var el3=otros.filter(function(x){ return x.id===sel3; })[0];
     h+='<div class="card"><div class="chead"><h2>Recorridos anteriores</h2>'
-      +'<span>'+D.recorridos.length+'</span></div>';
-    D.recorridos.slice(0,20).forEach(function(x){
-      var g=clasifRec(x)[0];
-      h+='<div class="rec"><div class="lbl">'+esc(D.campos[x.campo].nombre)
-        +'<small><span class="bolita" style="background:'+estaca(x.estacas).color+'"></span>'
-        +fecha(x.fecha)+' · '+x.puestos+' puestos · '+x.patrulla.length+' arqueros'
-        +(x.cerrado?'':' · en curso')+'</small></div>'
-        +'<div class="v"><b>'+(g?totalArq(x,g.id):0)+'</b><small>'+(g?esc(g.nombre):'—')+'</small></div>'
-        +'<div class="minis"><button class="mini" data-act="verrec" data-id="'+x.id+'">Abrir</button>'
-        +'<button class="mini" data-act="borrarrecid" data-id="'+x.id+'">✕</button></div></div>';
-    });
+      +'<span>'+otros.length+'</span></div>'
+      +'<select class="arq" data-recsel style="width:100%">'
+      +otros.map(function(x){
+        var g2=clasifRec(x)[0];
+        return '<option value="'+x.id+'"'+(x.id===sel3?' selected':'')+'>'
+          +esc(fecha(x.fecha)+' · '+D.campos[x.campo].nombre+' · '+x.puestos+'p'
+            +(g2?' · '+totalArq(x,g2.id)+' pts':'')+(x.cerrado?'':' · en curso'))+'</option>'; }).join('')
+      +'</select>';
+    if(el3){
+      var g3=clasifRec(el3);
+      h+='<p class="stat" style="margin-top:10px">'
+        +'<span class="bolita" style="background:'+estaca(el3.estacas).color+'"></span>'
+        +'Estacas '+estaca(el3.estacas).nombre.toLowerCase()+' · salida en el puesto '+el3.inicio
+        +' · '+el3.patrulla.length+' arquero'+(el3.patrulla.length>1?'s':'')
+        +(el3.comp?' · competición':'')+'<br>'
+        +g3.map(function(a,i4){ return (i4+1)+'º '+esc(a.nombre)+' '+totalArq(el3,a.id); }).join(' · ')
+        +'</p>'
+        +'<div class="pair" style="margin-top:10px">'
+        +'<button class="act act2" data-act="verrec" data-id="'+el3.id+'" style="margin-top:0">Abrir</button>'
+        +'<button class="act act2" data-act="borrarrecid" data-id="'+el3.id+'" style="margin-top:0">Borrar</button>'
+        +'</div>';
+    }
     h+='</div>';
   }
   return h;
@@ -2615,8 +2627,8 @@ function render(){
     var t=row.reduce(function(a,x){ return a+val(x); },0);
     var N=shots(s), T2=total(s), rec=best(A.id,U.dist,U.site);
 
-    h+=segDist('dist',U.dist)+'<div style="height:8px"></div>'
-      +segSite('site',U.site)+'<div style="height:12px"></div>';
+    h+=segSite('site',U.site)+'<div style="height:8px"></div>'
+      +segDist('dist',U.dist)+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
       +'<div class="step"><span class="lb">Tandas</span>'
       +'<button data-act="ends" data-v="-1">−</button><b>'+ne+'</b><button data-act="ends" data-v="1">+</button></div>'
@@ -2718,8 +2730,8 @@ function render(){
       .map(function(x){ return {fecha:x.fecha, media:media(x)}; });
     var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
     h+='<div class="selrow">'+selArq()+'</div>';
-    h+=segDist('pdist',U.pDist)+'<div style="height:8px"></div>'
-      +segSite('psite',U.pSite)+'<div style="height:12px"></div>';
+    h+=segSite('psite',U.pSite)+'<div style="height:8px"></div>'
+      +segDist('pdist',U.pDist)+'<div style="height:12px"></div>';
     h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+' tiradas</span></div>'
       +chart(serie)
       +(serie.length?'<div class="legend"><div>Última<b>'+dec(ms[ms.length-1])+'</b></div>'
@@ -3136,6 +3148,8 @@ document.getElementById('app').addEventListener('change',function(ev){
   }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-campoedita')){ C.campoEdita=Number(t.value); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-recsel')){ C.recSel=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-gpsk')){ C.gpsK=t.value; }
   else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
     if(!C.patrulla[k4]) C.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
