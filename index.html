@@ -233,6 +233,12 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .tf img{width:92px;height:69px;border-radius:8px;object-fit:cover;display:block;background:#151C24;}
 .tf button{position:absolute;top:-6px;right:-6px;width:23px;height:23px;border-radius:50%;
   background:var(--panel2);color:var(--ink);font-size:12px;box-shadow:inset 0 0 0 1px var(--line);}
+.pend{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);}
+.pend:last-of-type{border-bottom:none;}
+.pnum{width:20px;text-align:right;color:var(--dim);font-size:13px;font-weight:600;flex:none;}
+.pend .tick{cursor:pointer;}
+.pend .cinp{flex:1;min-width:0;}
+.cinp.hecho{color:var(--dim);text-decoration:line-through;}
 .tecbar{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;}
 .mapa{width:100%;height:auto;display:block;border-radius:12px;}
 .rumbo{display:flex;align-items:center;gap:12px;margin:12px 0 4px;}
@@ -381,6 +387,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
              {id:'blanca',nombre:'Blanca',color:'#E6E8E4'}];
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
+  pend:{trabajos:[],compras:[]},
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -400,6 +407,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.material) D.material=p.material;
   if(p.notas) D.notas=p.notas;
   if(p.notasCampo) D.notasCampo=p.notasCampo;
+  if(p.pend) D.pend={trabajos:(p.pend.trabajos||[]),compras:(p.pend.compras||[])};
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
   if(p.ocultarDist) D.ocultarDist=true;
   if(p.estim) D.estim=p.estim;
@@ -811,6 +819,7 @@ function resumenCopia(c){
     (d.sessions||[]).length+' tiradas de sala',
     (d.recorridos||[]).length+' recorridos',
     (d.material||[]).length+' fichas de material',
+    (((d.pend||{}).trabajos||[]).length+((d.pend||{}).compras||[]).length)+' pendientes',
     (function(){ var n=0;
       (d.mat||[]).forEach(function(b){ b.items.forEach(function(x){ if(x.ok) n++; }); });
       if(!(d.mat||[]).length && d.check){ for(var k in d.check) n++; }
@@ -830,6 +839,7 @@ function aplicaCopia(c){
   D.material=d.material||[];
   D.notas=d.notas||{};
   D.notasCampo=d.notasCampo||{};
+  D.pend=d.pend?{trabajos:(d.pend.trabajos||[]),compras:(d.pend.compras||[])}:{trabajos:[],compras:[]};
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
   D.mat=(d.mat&&d.mat.length)?d.mat:[];
   D.check=d.check||null; D.extras=d.extras||null; arrancaCheck();
@@ -2587,6 +2597,32 @@ function pantallaHistorialCampo(){
   });
   return h+'</div>';
 }
+function listaPend(clave,titulo,ayuda,ph){
+  var arr=(D.pend&&D.pend[clave])||[];
+  var hechos=arr.filter(function(x){ return x.ok; }).length;
+  var h='<div class="card"><div class="chead"><h2>'+titulo+'</h2>'
+    +'<span>'+(arr.length?hechos+' de '+arr.length:'vacío')+'</span></div>';
+  if(!arr.length) h+='<p class="empty">'+ayuda+'</p>';
+  arr.forEach(function(it,i){
+    h+='<div class="pend">'
+      +'<span class="pnum">'+(i+1)+'</span>'
+      +'<span class="tick" data-act="pendok" data-l="'+clave+'" data-i="'+i+'" data-on="'+(it.ok?1:0)+'">'
+      +(it.ok?'✓':'')+'</span>'
+      +'<input class="cinp'+(it.ok?' hecho':'')+'" maxlength="90" placeholder="'+ph+'" '
+      +'data-pend="'+clave+'" data-i="'+i+'" value="'+esc(it.t)+'">'
+      +'<button class="mini" data-act="pendbor" data-l="'+clave+'" data-i="'+i+'">✕</button></div>';
+  });
+  h+='<button class="act'+(clave==='compras'?' act2':'')+'" data-act="pendadd" data-l="'+clave+'">'
+    +(clave==='compras'?'Añadir compra':'Añadir trabajo')+'</button>';
+  if(hechos) h+='<button class="ghost" data-act="pendlimpia" data-l="'+clave+'">Quitar los '+hechos+' marcados</button>';
+  return h+'</div>';
+}
+function pantallaPendientes(){
+  return listaPend('trabajos','Trabajos pendientes',
+      'Lo que tengas que hacer: reglajes, reparaciones, emplumar flechas…','Qué hay que hacer')
+    +listaPend('compras','Compras',
+      'Lo que haya que comprar: tubos, plumas, culatines…','Qué hay que comprar');
+}
 function pantallaTecMat(){ return pantallaTecnicas()+pantallaMateriales(); }
 function pantallaTecnicas(){
   return fichas('material','Material',
@@ -2597,7 +2633,7 @@ function pantallaTecnicas(){
     +'<datalist id="sugmat">'+SUGMAT.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
 function renderCampo(){
-  if(['recorrido','puesto','mapa','clasif','histcampo','distancia','tecnicas','copia'].indexOf(C.tab)<0)
+  if(['recorrido','puesto','mapa','clasif','histcampo','distancia','tecnicas','pendientes','copia'].indexOf(C.tab)<0)
     C.tab='recorrido';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
@@ -2617,6 +2653,7 @@ function renderCampo(){
   else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
   else if(C.tab==='tecnicas'){ h+=pantallaTecMat(); }
+  else if(C.tab==='pendientes'){ h+=pantallaPendientes(); }
   else if(C.tab==='histcampo'){ h+=pantallaHistorialCampo(); }
   else if(C.tab==='copia'){ h+=tarjetaCopia(); }
   else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
@@ -2625,9 +2662,9 @@ function renderCampo(){
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
-    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Clasificación'],
-      ['histcampo','Historial'],['distancia','Distancia'],['tecnicas','Téc./Material'],
-      ['copia','Copia']],'ctab',C.tab);
+    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['mapa','Mapa'],['clasif','Clasific.'],
+      ['histcampo','Historial'],['distancia','Distancia'],['tecnicas','Téc./Mat.'],
+      ['pendientes','Pendientes'],['copia','Copia']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
   if(C.tab==='mapa') pintaGeo();
 }
@@ -2652,7 +2689,7 @@ function selArq(){
 }
 
 function render(){
-  if(['tirada','clasif','progreso','historial','arqueros','tecnicas','copia'].indexOf(U.tab)<0) U.tab='tirada';
+  if(['tirada','clasif','progreso','historial','arqueros','tecnicas','pendientes','copia'].indexOf(U.tab)<0) U.tab='tirada';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
@@ -2834,6 +2871,7 @@ function render(){
   }
 
   if(U.tab==='tecnicas'){ h+=pantallaTecMat(); }
+  if(U.tab==='pendientes'){ h+=pantallaPendientes(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
   if(U.tab==='arqueros'){
@@ -2874,7 +2912,7 @@ function render(){
 
   var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
     ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Téc./Material'],
-    ['copia','Copia']];
+    ['pendientes','Pendientes'],['copia','Copia']];
   h+='</div>'+barraTabs(pestanas,'tab',U.tab);
   document.getElementById('app').innerHTML=h;
 }
@@ -3172,6 +3210,16 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='matbor'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
     D.mat[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
+  else if(a==='pendadd'){ var lp=b.dataset.l;
+    if(!D.pend) D.pend={trabajos:[],compras:[]};
+    if(!D.pend[lp]) D.pend[lp]=[];
+    D.pend[lp].push({t:'',ok:false}); save(); render(); }
+  else if(a==='pendok'){ var l2=b.dataset.l, i2=Number(b.dataset.i);
+    D.pend[l2][i2].ok=!D.pend[l2][i2].ok; save(); render(); }
+  else if(a==='pendbor'){ D.pend[b.dataset.l].splice(Number(b.dataset.i),1); save(); render(); }
+  else if(a==='pendlimpia'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
+    D.pend[b.dataset.l]=D.pend[b.dataset.l].filter(function(x){ return !x.ok; }); save(); render(); }
   else if(a==='nuevaficha'){ D[b.dataset.l].push({titulo:'',texto:'',fotos:[]}); save(); render(); }
   else if(a==='copiarficha'){ var tf=D[b.dataset.l][Number(b.dataset.i)];
     copiar((tf.titulo?tf.titulo+'\n\n':'')+tf.texto,b.dataset.l==='material'?'Material':'Técnica'); }
@@ -3208,6 +3256,7 @@ document.getElementById('app').addEventListener('input',function(ev){
   else if(t.dataset.distpu!=null){
     ponDist(Number(t.dataset.campo3),Number(t.dataset.distpu),t.dataset.color,t.value); save(); }
   else if(t.hasAttribute&&t.hasAttribute('data-estpu')){ C.estPu=t.value; }
+  else if(t.dataset.pend!=null){ D.pend[t.dataset.pend][Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.mt!=null){ D.mat[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.md!=null){ D.mat[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
   else if(t.hasAttribute&&t.hasAttribute('data-alturaojo')){
