@@ -1831,6 +1831,15 @@ function tresBotones(k){
     +'<button class="act act2" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button>'
     +'<button class="act" data-act="compimg" data-k="'+esc(k)+'">Compartir</button></div>';
 }
+function dosBotones(k){
+  return '<div class="tres" style="grid-template-columns:1fr 1fr">'
+    +'<button class="act act2" data-act="verimg" data-k="'+esc(k)+'">Imagen</button>'
+    +'<button class="act act2" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button></div>';
+}
+function dosMinis(k){
+  return '<button class="mini" data-act="verimg" data-k="'+esc(k)+'">Imagen</button>'
+    +'<button class="mini" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button>';
+}
 function tresMinis(k){
   return '<button class="mini" data-act="verimg" data-k="'+esc(k)+'">Imagen</button>'
     +'<button class="mini" data-act="pdfimg" data-k="'+esc(k)+'">PDF</button>'
@@ -2419,7 +2428,7 @@ function pantallaRecorrido(r){
     +'<div class="dosel"><select class="arq" data-campoedita>'
     +D.campos.map(function(c,i){ return '<option value="'+i+'"'+(cn===i?' selected':'')+'>Campo '+(i+1)+'</option>'; }).join('')
     +'</select>'
-    +'<input list="campospre" maxlength="22" class="cinp" data-campo="'+cn+'" value="'+esc(D.campos[cn].nombre)+'">'
+    +'<input list="campospre" maxlength="40" class="cinp" data-campo="'+cn+'" value="'+esc(D.campos[cn].nombre)+'">'
     +'</div></div>';
 
   return h;
@@ -2851,7 +2860,7 @@ function render(){
 
     var hay=D.sessions.length>0;
     h+='<div class="card"><div class="chead"><h2>Guardar y compartir</h2></div>'
-      +tresBotones('prog')+'</div>';
+      +dosBotones('prog')+'</div>';
   }
 
   if(U.tab==='historial'){
@@ -2881,7 +2890,7 @@ function render(){
         +'<div class="l1"><b>'+s.dist+' m</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
         +'<div class="l3">'+formato(s)+' · '+dec(media(s))+' por flecha · <b>'+total(s)+'</b></div>'
-        +'<div class="hbts">'+tresMinis('ses:'+s.id)
+        +'<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'+dosMinis('ses:'+s.id)
         +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div></div>';
     });
     if(vistos.length<lista.length)
@@ -2924,7 +2933,7 @@ function render(){
     h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2></div>';
     D.sites.forEach(function(sn,i){
       h+='<div class="field"><label for="s'+i+'">Sitio '+(i+1)+'</label>'
-        +'<input id="s'+i+'" data-site="'+i+'" maxlength="18" value="'+esc(sn)+'"></div>';
+        +'<input id="s'+i+'" data-site="'+i+'" maxlength="40" value="'+esc(sn)+'"></div>';
     });
     h+='</div>';
   }
