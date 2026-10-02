@@ -482,12 +482,13 @@ function ringc(s){
 function sty(c){ return 'background:'+c.bg+';color:'+c.fg+';box-shadow:inset 0 0 0 1px '+c.bd; }
 
 /* ---- una tirada conoce su propio formato ---- */
-function nE(s){ return s.ends.length; }
-function nA(s){ return s.ends[0]?s.ends[0].length:0; }
+function nE(s){ return (s&&s.ends&&s.ends.length)||0; }
+function nA(s){ return (s&&s.ends&&s.ends[0]&&s.ends[0].length)||0; }
 function maxPts(s){ return nE(s)*nA(s)*10; }
 function formato(s){ return nE(s)+'×'+nA(s); }
 function malla(ne,na){ var a=[],e,r,i; for(e=0;e<ne;e++){ r=[]; for(i=0;i<na;i++) r.push(null); a.push(r); } return a; }
-function flat(s){ return s.ends.reduce(function(a,r){ return a.concat(r); },[]); }
+function flat(s){ if(!s||!s.ends||!s.ends.length) return [];
+  return s.ends.reduce(function(a,r){ return a.concat(r||[]); },[]); }
 function shots(s){ return flat(s).filter(function(x){ return x!=null; }).length; }
 function total(s){ return flat(s).reduce(function(a,x){ return a+val(x); },0); }
 function xs(s){ return flat(s).filter(function(x){ return x==='X'; }).length; }
@@ -506,6 +507,68 @@ function fecha(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numer
 function fechaCorta(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
 function iso(d){ return new Date(d).toISOString().slice(0,10); }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ---- reparador: Firebase borra los nulos y convierte las listas en objetos ---- */
+function aLista(x){
+  if(x==null) return null;
+  if(Object.prototype.toString.call(x)==='[object Array]') return x;
+  if(typeof x!=='object') return null;
+  var max=-1,k,n;
+  for(k in x){ n=Number(k); if(!isNaN(n)&&n>max) max=n; }
+  if(max<0) return [];
+  var out=[],i;
+  for(i=0;i<=max;i++) out.push(x[i]===undefined?null:x[i]);
+  return out;
+}
+function reparaTirada(s,neGuia,naGuia){
+  var e=aLista(s.ends)||[], i,j,ancho=0;
+  for(i=0;i<e.length;i++){ var f=aLista(e[i])||[]; if(f.length>ancho) ancho=f.length; }
+  if(!ancho) ancho=naGuia||6;
+  var alto=Math.max(e.length, neGuia||0) || 10;
+  var out=[];
+  for(i=0;i<alto;i++){
+    var f=aLista(e[i])||[], fila=[];
+    for(j=0;j<ancho;j++) fila.push(f[j]===undefined||f[j]===null?null:f[j]);
+    out.push(fila);
+  }
+  s.ends=out;
+  return s;
+}
+function reparaDatos(){
+  var fo=D.formato||{ends:10,arrows:6};
+  D.arqueros=aLista(D.arqueros)||[];
+  D.sites=aLista(D.sites)||['Sitio 1','Sitio 2','Sitio 3','Sitio 4'];
+  D.sessions=(aLista(D.sessions)||[]).filter(function(x){ return x&&x.id; });
+  D.sessions.forEach(function(x){ reparaTirada(x,fo.ends,fo.arrows); });
+  var k;
+  for(k in (D.drafts||{})){
+    if(!D.drafts[k]){ delete D.drafts[k]; continue; }
+    reparaTirada(D.drafts[k],fo.ends,fo.arrows);
+  }
+  D.recorridos=(aLista(D.recorridos)||[]).filter(function(x){ return x&&x.id; });
+  D.recorridos.forEach(function(r){
+    r.patrulla=(aLista(r.patrulla)||[]).filter(function(a){ return a&&a.id; });
+    var t=r.tiros||{}, kk;
+    for(kk in t){
+      var par=aLista(t[kk])||[];
+      t[kk]=[par[0]===undefined?null:par[0], par[1]===undefined?null:par[1]];
+    }
+    r.tiros=t;
+  });
+  D.tecnicas=(aLista(D.tecnicas)||[]).filter(Boolean);
+  D.material=(aLista(D.material)||[]).filter(Boolean);
+  [D.tecnicas,D.material].forEach(function(lista){
+    lista.forEach(function(f){ f.fotos=(aLista(f.fotos)||[]).filter(Boolean); });
+  });
+  D.mat=(aLista(D.mat)||[]).filter(Boolean);
+  D.mat.forEach(function(b){ b.items=(aLista(b.items)||[]).filter(Boolean); });
+  D.campos=(aLista(D.campos)||[]).filter(Boolean);
+  while(D.campos.length<4) D.campos.push({nombre:'Campo '+(D.campos.length+1),animales:{}});
+  D.estim=(aLista(D.estim)||[]).filter(Boolean);
+  if(!D.pend) D.pend={trabajos:[],compras:[]};
+  D.pend.trabajos=(aLista(D.pend.trabajos)||[]).filter(Boolean);
+  D.pend.compras=(aLista(D.pend.compras)||[]).filter(Boolean);
+}
 
 /* ---- estado, con conversión de la versión anterior ---- */
 var ARCOS=['Instintivo','Tradicional','Desnudo','Compuesto','Longbow'];
@@ -563,6 +626,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
     Object.keys(dr).forEach(function(k){ D.drafts[a.id+'|'+k.replace('-','|')]=dr[k]; });
   }
   if(!D.arqueros.length) D.arqueros=[{id:uid(),nombre:'',federacion:'',licencia:'',foto:null}];
+  try{ reparaDatos(); }catch(e){}
 })();
 
 function arrancaCheck(){
@@ -605,7 +669,14 @@ function urlSync(){
 function paquete(){
   var d=JSON.parse(JSON.stringify(D));
   delete d.sync;                       /* cada móvil conserva su propia configuración */
-  return {ts:D.ts||Date.now(),datos:d};
+  /* se manda como texto: Firebase borra los nulos y desordena las listas */
+  return {ts:D.ts||Date.now(),v:2,json:JSON.stringify(d)};
+}
+function abrePaquete(rem){
+  if(!rem) return null;
+  if(rem.json){ try{ return JSON.parse(rem.json); }catch(e){ return null; } }
+  if(rem.datos) return rem.datos;      /* paquetes antiguos, se repararán al aplicarlos */
+  return null;
 }
 function subirNube(manual){
   if(!syncListo()) return;
@@ -621,11 +692,16 @@ function subirNube(manual){
       render(); if(manual) toast('No se pudo subir: '+C.syncError); });
 }
 function aplicaNube(rem){
-  var guarda=D.sync;
-  aplicaCopia({datos:rem.datos});
+  var datos=abrePaquete(rem);
+  if(!datos){ toast('La copia de la nube no se pudo leer.'); C.syncEstado='error';
+    C.syncError='contenido ilegible'; render(); return; }
+  var guarda=D.sync, viejo=!rem.json;
+  aplicaCopia({datos:datos});
   D.sync=guarda; D.ts=rem.ts||Date.now(); D.sync.ultima=D.ts;
   C.syncEstado='ok'; C.nube=null;
   save(false); render(); toast('Datos traídos de la nube.');
+  /* si venía en el formato antiguo, lo reescribimos ya en el nuevo */
+  if(viejo) subirNube(false);
 }
 function bajarNube(manual){
   if(!syncListo()) return;
@@ -634,7 +710,7 @@ function bajarNube(manual){
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(rem){
       C.syncError='';
-      if(!rem||!rem.datos){ C.syncEstado='vacia'; render();
+      if(!rem||!abrePaquete(rem)){ C.syncEstado='vacia'; render();
         if(manual) toast('La nube está vacía. Sube primero desde este móvil.'); return; }
       if(manual){ aplicaNube(rem); return; }
       var cambiadoAqui=(D.ts||0)>(D.sync.ultima||0);
@@ -1059,6 +1135,7 @@ function aplicaCopia(c){
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
   D.mat=(d.mat&&d.mat.length)?d.mat:[];
   D.check=d.check||null; D.extras=d.extras||null; arrancaCheck();
+  try{ reparaDatos(); }catch(e){}
   D.campos=(d.campos&&d.campos.length===4)?d.campos:D.campos;
   D.recorridos=d.recorridos||[];
   D.recorridoId=d.recorridoId||null;
