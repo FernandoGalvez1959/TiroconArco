@@ -155,6 +155,16 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .tabs button[data-on="1"]{color:var(--gold);background:#0A0F14;font-weight:700;
   box-shadow:inset 0 0 0 2px var(--gold);}
 .tabs button[data-on="1"]{color:var(--gold);}
+#cargando{padding:40px 20px;text-align:center;color:var(--dim);font-size:15px;}
+#fatal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;background:var(--bg);
+  overflow:auto;padding:22px 18px calc(22px + env(safe-area-inset-bottom));}
+#fatal h2{font-size:19px;margin:0 0 10px;}
+#fatal p{font-size:14px;color:var(--dim);line-height:1.5;margin:0 0 14px;}
+#fatal pre{background:#151C24;border-radius:9px;padding:11px;font-size:11px;color:#C79A0E;
+  white-space:pre-wrap;word-break:break-word;margin:0 0 16px;}
+#fatal button{width:100%;padding:13px;border-radius:11px;font-size:15px;font-weight:600;margin-bottom:10px;
+  background:#242E39;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
+#fatal button.pri{background:var(--gold);color:#181206;box-shadow:none;}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:var(--panel2);
   padding:11px 17px;border-radius:11px;font-size:14px;z-index:9;display:none;max-width:88%;
   box-shadow:0 6px 24px rgba(0,0,0,.45),inset 0 0 0 1px var(--line);}
@@ -195,6 +205,9 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 
 .bolita{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;
   vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.quien{width:100%;display:flex;align-items:center;gap:8px;margin-top:2px;}
+.quien span{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.avatar2{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:none;}
 .nube{background:var(--panel);color:var(--dim);font-size:11.5px;font-weight:600;padding:7px 9px;
   border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;white-space:nowrap;}
 .nube .bolita{margin-right:5px;width:8px;height:8px;}
@@ -334,9 +347,44 @@ textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(
 #lock .pie{margin-top:26px;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
+<script>
+/* Vigilante: va aparte del programa, así avisa aunque el programa no llegue a cargar */
+window.__fallo=function(txt){
+  try{
+    var f=document.getElementById('fatal');
+    if(!f){ f=document.createElement('div'); f.id='fatal'; document.body.appendChild(f); }
+    f.innerHTML='<h2>La app no ha podido arrancar</h2>'
+      +'<p>Tus datos siguen guardados en el móvil: esto no los borra.</p>'
+      +'<pre>'+String(txt).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })+'</pre>'
+      +'<button class="pri" id="fatal1">Volver a intentarlo</button>'
+      +'<button id="fatal2">Renovar la copia local y reintentar</button>'
+      +'<p>Si el segundo botón tampoco arregla nada, abre la dirección de la app en Chrome '
+      +'en vez del icono y dime qué pone aquí arriba.</p>';
+    f.style.display='block';
+    document.getElementById('fatal1').onclick=function(){ location.reload(); };
+    document.getElementById('fatal2').onclick=function(){
+      var fin=function(){ location.reload(); };
+      try{
+        if(window.caches&&caches.keys){
+          caches.keys().then(function(ks){
+            return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+          }).then(function(){
+            if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)
+              return navigator.serviceWorker.getRegistrations().then(function(rs){
+                return Promise.all(rs.map(function(r){ return r.unregister(); }));
+              });
+          }).then(fin,fin);
+        } else fin();
+      }catch(e){ fin(); }
+    };
+  }catch(e){}
+};
+window.onerror=function(msg,src,ln){ window.__fallo(msg+'  (línea '+ln+')'); };
+</script>
 </head>
 <body>
-<div id="app"></div>
+<div id="app"><div id="cargando">Cargando…</div></div>
+<div id="fatal"></div>
 <div id="toast"></div>
 <div id="fallback"></div>
 <div id="visor"></div>
@@ -345,6 +393,36 @@ textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(
 <input type="file" id="copiainput" accept=".json,.txt,application/json,text/plain" style="display:none">
 <script>
 "use strict";
+function muestraFallo(txt){ if(window.__fallo) return window.__fallo(txt); return muestraFalloInterno(txt); }
+function muestraFalloInterno(txt){
+  try{
+    var f=document.getElementById('fatal');
+    if(!f) return;
+    f.innerHTML='<h2>La app no ha podido arrancar</h2>'
+      +'<p>Tus datos siguen guardados en el móvil: esto no los borra. '
+      +'Prueba los botones de abajo, de arriba abajo.</p>'
+      +'<pre>'+String(txt).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })+'</pre>'
+      +'<button class="pri" id="fatal1">Volver a intentarlo</button>'
+      +'<button id="fatal2">Renovar la copia local y reintentar</button>'
+      +'<p>Si el segundo botón tampoco funciona, abre la dirección de la app en Chrome '
+      +'en lugar del icono y dime qué pone en el recuadro de arriba.</p>';
+    f.style.display='block';
+    document.getElementById('fatal1').onclick=function(){ location.reload(); };
+    document.getElementById('fatal2').onclick=function(){
+      var fin=function(){ try{ location.reload(true); }catch(e){ location.reload(); } };
+      try{
+        if(window.caches&&caches.keys) caches.keys().then(function(ks){
+          return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){
+          if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)
+            return navigator.serviceWorker.getRegistrations().then(function(rs){
+              return Promise.all(rs.map(function(r){ return r.unregister(); })); });
+        }).then(fin,fin);
+        else fin();
+      }catch(e){ fin(); }
+    };
+  }catch(e){}
+}
+
 var DISTS=[10,18,30], KEYS=['X','10','9','8','7','6','5','4','3','2','1','M'];
 var MAXE=30, MAXA=12;
 var STORE='arqueria:datos:v1';
@@ -482,7 +560,7 @@ function save(marca){
 }
 
 /* ---- sincronización con Firebase, por llamadas directas ---- */
-function syncListo(){ return !!(D.sync && D.sync.url && D.sync.clave); }
+function syncListo(){ return !!(D.sync && D.sync.url && D.sync.clave && typeof fetch==='function'); }
 function urlSync(){
   return String(D.sync.url).replace(/\/+$/,'')+'/espacios/'+encodeURIComponent(D.sync.clave)+'.json';
 }
@@ -2381,7 +2459,11 @@ function cabeceraCampo(){
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro en campo</span>'
    +'<span style="margin-left:auto"></span>'+pastillaNube()
-   +'<button class="swmodo" data-act="cambiamodo">Pasar a sala</button></div>';
+   +'<button class="swmodo" data-act="cambiamodo">Pasar a sala</button>'
+   +(function(){ var r=recActual();
+     return r?'<div class="quien"><span>'+esc(D.campos[r.campo].nombre)+' · '
+       +r.patrulla.length+' arquero'+(r.patrulla.length>1?'s':'')+'</span></div>':''; })()
+   +'</div>';
 }
 function pantallaPuesto(r){
   var cerrado=!!r.cerrado;
@@ -2863,10 +2945,11 @@ function render(){
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro con Arco</span>'
-   +(A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'<span style="margin-left:auto"></span>')
-   +pastillaNube()
+   +'<span style="margin-left:auto"></span>'+pastillaNube()
    +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
       : '<button class="swmodo" data-act="cambiamodo">Pasar a campo</button>')
+   +'<div class="quien">'+(A.foto?'<img class="avatar2" src="'+fotoURL(A)+'" alt="">':'')
+   +'<span>'+(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span></div>'
    +'</div>';
 
   if(U.tab==='tirada'){
@@ -3543,6 +3626,7 @@ document.addEventListener('visibilitychange',function(){
 });
 
 function compruebaNube(){ if(syncListo()&&D.sync.auto) bajarNube(false); }
+try{
 U.sel=firstEmpty(draft());
 var reanuda=sesionViva();
 if(reanuda){
@@ -3553,9 +3637,21 @@ eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
 if(hayPin() && !reanuda) abreLock('');
 setTimeout(compruebaNube,1200);
+if(!document.getElementById('app').innerHTML) throw new Error('La pantalla se quedó vacía al dibujar.');
+window.__arranco=true;
+}catch(errArranque){ muestraFallo((errArranque&&errArranque.message)||errArranque); }
 if('serviceWorker' in navigator && location.protocol==='https:'){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
+</script>
+<script>
+/* Si el programa no llegó a arrancar (archivo cortado, dañado o a medio subir), avisamos */
+setTimeout(function(){
+  if(!window.__arranco){
+    window.__fallo('El programa no llegó a arrancar. Es muy probable que index.html se haya subido '
+      +'incompleto o dañado: vuelve a subirlo a GitHub.');
+  }
+},2500);
 </script>
 </body>
 </html>
