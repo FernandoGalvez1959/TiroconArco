@@ -187,12 +187,18 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .modolin p{font-size:14px;color:var(--dim);margin:0 0 26px;line-height:1.5;}
 .modobtn{width:100%;padding:20px;border-radius:14px;background:var(--panel);margin-bottom:12px;
   box-shadow:inset 0 0 0 1px var(--line);text-align:left;}
+.nubelin{width:100%;padding:13px;border-radius:12px;background:var(--panel);color:var(--dim);
+  font-size:13px;font-weight:600;box-shadow:inset 0 0 0 1px var(--line);margin-top:4px;}
 .modobtn b{display:block;font-size:18px;font-weight:600;margin-bottom:4px;}
 .modobtn span{font-size:13px;color:var(--dim);line-height:1.45;}
 .modobtn[data-on="1"]{box-shadow:inset 0 0 0 2px var(--gold);}
 
 .bolita{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;
   vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+.nube{background:var(--panel);color:var(--dim);font-size:11.5px;font-weight:600;padding:7px 9px;
+  border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;white-space:nowrap;}
+.nube .bolita{margin-right:5px;width:8px;height:8px;}
+.top{flex-wrap:wrap;}
 .swmodo{background:var(--panel);color:var(--dim);font-size:12px;font-weight:600;padding:7px 11px;
   border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;}
 .tiro{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);}
@@ -524,6 +530,22 @@ function bajarNube(manual){
       else { C.syncEstado='ok'; render(); }
     })
     .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e); render(); });
+}
+function estadoNube(){
+  if(!syncListo()) return {t:'Sin nube',c:'#5B6975',largo:'Nube sin configurar'};
+  if(C.syncEstado==='error') return {t:'Fallo',c:'#DF4A44',largo:'Nube: no se pudo conectar'};
+  if(C.syncEstado==='subiendo') return {t:'Subiendo',c:'#C79A0E',largo:'Nube: subiendo…'};
+  if(C.syncEstado==='bajando') return {t:'Mirando',c:'#C79A0E',largo:'Nube: comprobando…'};
+  if(C.syncEstado==='conflicto') return {t:'Revisar',c:'#DF4A44',largo:'Nube: hay cambios en los dos sitios'};
+  if((D.ts||0)>(D.sync.ultima||0)) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: quedan cambios por subir'};
+  return {t:'Al día',c:'#6FA85B',largo:'Nube: al día'
+    +(D.sync.ultima?' · '+new Date(D.sync.ultima).toLocaleString('es-ES',{day:'numeric',month:'short',
+      hour:'2-digit',minute:'2-digit'}):'')};
+}
+function pastillaNube(){
+  var e=estadoNube();
+  return '<button class="nube" data-act="irnube" title="'+esc(e.largo)+'">'
+    +'<span class="bolita" style="background:'+e.c+'"></span>'+e.t+'</button>';
 }
 function claveNueva(){
   var a='abcdefghijkmnpqrstuvwxyz23456789', s2='', i;
@@ -2147,6 +2169,8 @@ function pantallaModo(){
     +'<button class="modobtn" data-act="modo" data-v="campo" data-on="'+(D.modo==='campo'?1:0)+'">'
     +'<b>Tiro en campo</b><span>Recorrido de figuras 3D, 12 o 24 puestos, dos flechas por puesto '
     +'con 11, 10, 8, 5 y cero. Patrulla con varios arqueros y clasificación en directo.</span></button>'
+    +'<button class="nubelin" data-act="irnube">'
+    +'<span class="bolita" style="background:'+estadoNube().c+'"></span>'+esc(estadoNube().largo)+'</button>'
     +'</div></div>';
 }
 
@@ -2356,6 +2380,7 @@ function cabeceraCampo(){
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro en campo</span>'
+   +'<span style="margin-left:auto"></span>'+pastillaNube()
    +'<button class="swmodo" data-act="cambiamodo">Pasar a sala</button></div>';
 }
 function pantallaPuesto(r){
@@ -2838,11 +2863,10 @@ function render(){
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro con Arco</span>'
-   +'<button class="swmodo" data-act="cambiamodo" style="margin-left:auto">Pasar a campo</button>'
+   +(A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'<span style="margin-left:auto"></span>')
+   +pastillaNube()
    +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
-      : (A.foto?'<img class="avatar" src="'+fotoURL(A)+'" alt="">':'')
-        +'<span class="sub" style="margin-left:7px">'
-        +(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span>')
+      : '<button class="swmodo" data-act="cambiamodo">Pasar a campo</button>')
    +'</div>';
 
   if(U.tab==='tirada'){
@@ -3262,6 +3286,12 @@ document.getElementById('app').addEventListener('click',function(ev){
     var txt='Tiro con Arco, la app para anotar. Ábrelo en Chrome y elige "Instalar aplicación": '+enlace;
     if(navigator.share) navigator.share({title:'Tiro con Arco',text:txt,url:enlace}).catch(function(){});
     else copiar(txt,'Enlace');
+  }
+  else if(a==='irnube'){
+    if(!D.modo) D.modo='sala';
+    eligiendo=false;
+    if(D.modo==='campo') C.tab='copia'; else U.tab='copia';
+    render();
   }
   else if(a==='synccrea'){ D.sync.clave=claveNueva(); save(false); render(); toast('Clave creada. Úsala igual en los otros móviles.'); }
   else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); render(); }
