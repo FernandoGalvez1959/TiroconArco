@@ -307,6 +307,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .cinp2{margin-top:6px;font-size:13px;color:var(--dim);}
 .cedit{flex:1;min-width:0;}
 .chkedit{align-items:center;gap:9px;}
+.mover{display:flex;gap:5px;flex:none;}
+.mini[disabled]{color:#3E4A57;background:#12181F;}
 textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(--line);
   border-radius:9px;padding:11px;color:var(--ink);font-size:14px;line-height:1.5;resize:vertical;}
 #lock{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:40;display:none;
@@ -2488,6 +2490,10 @@ function fichas(lista,titulo,ayuda,ph,sug){
       h+='</div>';
     }
     h+='<div class="tecbar">'
+      +'<button class="mini" data-act="fichasube" data-l="'+lista+'" data-i="'+i+'"'
+      +(i===0?' disabled':'')+' aria-label="Subir">▲</button>'
+      +'<button class="mini" data-act="fichabaja" data-l="'+lista+'" data-i="'+i+'"'
+      +(i===arr.length-1?' disabled':'')+' aria-label="Bajar">▼</button>'
       +'<button class="mini" data-act="copiarficha" data-l="'+lista+'" data-i="'+i+'">Copiar</button>'
       +(fotos.length<3?'<button class="mini" data-act="fotoficha" data-l="'+lista+'" data-i="'+i+'">Añadir foto</button>':'')
       +'<button class="mini" data-act="borficha" data-l="'+lista+'" data-i="'+i+'">Borrar</button></div></div>';
@@ -2525,7 +2531,13 @@ function pantallaMateriales(){
             +'<input class="cinp" maxlength="70" placeholder="Nombre" data-mt="'+bi+'" data-i="'+i+'" value="'+esc(it.t)+'">'
             +'<input class="cinp cinp2" maxlength="120" placeholder="Detalle (opcional)" data-md="'+bi+'" data-i="'+i+'" value="'+esc(it.d||'')+'">'
             +'</div>'
-            +'<button class="mini" data-act="matbor" data-b="'+bi+'" data-i="'+i+'">✕</button></div>';
+            +'<div class="mover">'
+            +'<button class="mini" data-act="matsube" data-b="'+bi+'" data-i="'+i+'"'
+            +(i===0?' disabled':'')+' aria-label="Subir">▲</button>'
+            +'<button class="mini" data-act="matbaja" data-b="'+bi+'" data-i="'+i+'"'
+            +(i===b.items.length-1?' disabled':'')+' aria-label="Bajar">▼</button>'
+            +'<button class="mini" data-act="matbor" data-b="'+bi+'" data-i="'+i+'">✕</button>'
+            +'</div></div>';
         } else {
           h+='<div class="chk" data-act="matchk" data-b="'+bi+'" data-i="'+i+'">'
             +'<span class="tick" data-on="'+(it.ok?1:0)+'">'+(it.ok?'✓':'')+'</span>'
@@ -3234,6 +3246,15 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='mateditar'){ C.editaBloque=(C.editaBloque===v?null:v); render(); }
   else if(a==='matchk'){ var bb=D.mat[Number(b.dataset.b)], ii=Number(b.dataset.i);
     bb.items[ii].ok=!bb.items[ii].ok; save(); render(); }
+  else if(a==='fichasube'||a==='fichabaja'){
+    var la=b.dataset.l, ia=Number(b.dataset.i), ja=ia+(a==='fichasube'?-1:1), ar=D[la];
+    if(ja>=0&&ja<ar.length){ var tmp=ar[ia]; ar[ia]=ar[ja]; ar[ja]=tmp; save(); render(); }
+  }
+  else if(a==='matsube'||a==='matbaja'){
+    var bl=D.mat[Number(b.dataset.b)], ib=Number(b.dataset.i), jb=ib+(a==='matsube'?-1:1);
+    if(jb>=0&&jb<bl.items.length){ var t2=bl.items[ib]; bl.items[ib]=bl.items[jb]; bl.items[jb]=t2;
+      save(); render(); }
+  }
   else if(a==='matadd'){ var bb2=D.mat[Number(b.dataset.b)];
     bb2.items.push({id:bb2.k+'n'+Date.now(),t:'',d:'',ok:false});
     C.editaBloque=bb2.k; save(); render(); }
