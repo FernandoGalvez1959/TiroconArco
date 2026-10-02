@@ -28,8 +28,9 @@ input,textarea{-webkit-user-select:text!important;user-select:text!important;
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .wrap{max-width:520px;margin:0 auto;padding:14px 14px 148px;}
 
-.top{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
-.name{font-size:18px;font-weight:600;letter-spacing:.2px;}
+.top{display:flex;align-items:center;gap:7px;margin-bottom:14px;}
+.name{font-size:17px;font-weight:600;letter-spacing:.2px;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
 .sub{font-size:12px;color:var(--dim);margin-left:auto;text-align:right;}
 .inst{margin-left:auto;background:var(--gold);color:#181206;font-size:13px;font-weight:600;
   padding:7px 12px;border-radius:8px;}
@@ -208,11 +209,11 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .quien{width:100%;display:flex;align-items:center;gap:8px;margin-top:2px;}
 .quien span{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .avatar2{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:none;}
-.nube{background:var(--panel);color:var(--dim);font-size:11.5px;font-weight:600;padding:7px 9px;
+.nube{background:var(--panel);color:var(--dim);font-size:11px;font-weight:600;padding:7px 8px;
   border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;white-space:nowrap;}
 .nube .bolita{margin-right:5px;width:8px;height:8px;}
 .top{flex-wrap:wrap;}
-.swmodo{background:var(--panel);color:var(--dim);font-size:12px;font-weight:600;padding:7px 11px;
+.swmodo{background:var(--panel);color:var(--dim);font-size:12px;font-weight:600;padding:7px 9px;
   border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);flex:none;}
 .tiro{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);}
 .tiro:last-of-type{border-bottom:none;}
@@ -349,18 +350,52 @@ textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(
 </style>
 <script>
 /* Vigilante: va aparte del programa, así avisa aunque el programa no llegue a cargar */
+window.__mostrado=false;
+window.__diag=function(){
+  var d=[];
+  try{ d.push('Navegador: '+navigator.userAgent); }catch(e){ d.push('Navegador: ?'); }
+  try{
+    var n=localStorage.getItem('arqueria:datos:v1');
+    d.push('Datos guardados: '+(n?Math.round(n.length/1024)+' KB':'ninguno'));
+    localStorage.setItem('arq:prueba','1'); localStorage.removeItem('arq:prueba');
+    d.push('Memoria del móvil: se puede escribir');
+  }catch(e){ d.push('Memoria del móvil: FALLA ('+(e&&e.name||e)+')'); }
+  try{ d.push('Pantalla: '+screen.width+'x'+screen.height); }catch(e){}
+  return d.join('\n');
+};
 window.__fallo=function(txt){
   try{
     var f=document.getElementById('fatal');
     if(!f){ f=document.createElement('div'); f.id='fatal'; document.body.appendChild(f); }
+    if(window.__mostrado){                       /* no tapar el primer error, que es el bueno */
+      var extra=document.getElementById('fatalmas');
+      if(extra) extra.textContent+='\n'+txt;
+      return;
+    }
+    window.__mostrado=true;
     f.innerHTML='<h2>La app no ha podido arrancar</h2>'
       +'<p>Tus datos siguen guardados en el móvil: esto no los borra.</p>'
-      +'<pre>'+String(txt).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })+'</pre>'
-      +'<button class="pri" id="fatal1">Volver a intentarlo</button>'
+      +'<pre id="fatalmsg">'+String(txt).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })+'</pre>'
+      +'<pre id="fatalmas" style="color:#8D9CAB"></pre>'
+      +'<pre style="color:#8D9CAB">'+window.__diag().replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; })+'</pre>'
+      +'<button class="pri" id="fatal0">Copiar este mensaje</button>'
+      +'<button id="fatal1">Volver a intentarlo</button>'
       +'<button id="fatal2">Renovar la copia local y reintentar</button>'
-      +'<p>Si el segundo botón tampoco arregla nada, abre la dirección de la app en Chrome '
-      +'en vez del icono y dime qué pone aquí arriba.</p>';
+      +'<p>Copia el mensaje y mándamelo: ahí está la causa.</p>';
     f.style.display='block';
+    document.getElementById('fatal0').onclick=function(){
+      var t=document.getElementById('fatalmsg').textContent+'\n'+
+            document.getElementById('fatalmas').textContent+'\n'+window.__diag();
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t); }
+        else {
+          var ta=document.createElement('textarea'); ta.value=t;
+          ta.style.position='fixed'; ta.style.top='-999px';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.parentNode.removeChild(ta);
+        }
+        this.textContent='Copiado';
+      }catch(e){ this.textContent='No se pudo copiar; hazme una foto'; }
+    };
     document.getElementById('fatal1').onclick=function(){ location.reload(); };
     document.getElementById('fatal2').onclick=function(){
       var fin=function(){ location.reload(); };
@@ -379,7 +414,10 @@ window.__fallo=function(txt){
     };
   }catch(e){}
 };
-window.onerror=function(msg,src,ln){ window.__fallo(msg+'  (línea '+ln+')'); };
+window.onerror=function(msg,src,ln,col){ window.__fallo(msg+'  (línea '+ln+', col '+col+')'); };
+window.addEventListener('unhandledrejection',function(ev){
+  window.__fallo('Promesa rechazada: '+((ev&&ev.reason&&ev.reason.message)||ev.reason||'?'));
+});
 </script>
 </head>
 <body>
@@ -2459,7 +2497,7 @@ function cabeceraCampo(){
    +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
    +'<span class="name">Tiro en campo</span>'
    +'<span style="margin-left:auto"></span>'+pastillaNube()
-   +'<button class="swmodo" data-act="cambiamodo">Pasar a sala</button>'
+   +'<button class="swmodo" data-act="cambiamodo" title="Pasar a tiro en sala">Sala ▸</button>'
    +(function(){ var r=recActual();
      return r?'<div class="quien"><span>'+esc(D.campos[r.campo].nombre)+' · '
        +r.patrulla.length+' arquero'+(r.patrulla.length>1?'s':'')+'</span></div>':''; })()
@@ -2947,7 +2985,7 @@ function render(){
    +'<span class="name">Tiro con Arco</span>'
    +'<span style="margin-left:auto"></span>'+pastillaNube()
    +(deferredPrompt ? '<button class="inst" data-act="instalar">Instalar</button>'
-      : '<button class="swmodo" data-act="cambiamodo">Pasar a campo</button>')
+      : '<button class="swmodo" data-act="cambiamodo" title="Pasar a tiro en campo">Campo ▸</button>')
    +'<div class="quien">'+(A.foto?'<img class="avatar2" src="'+fotoURL(A)+'" alt="">':'')
    +'<span>'+(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span></div>'
    +'</div>';
@@ -3647,9 +3685,9 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 <script>
 /* Si el programa no llegó a arrancar (archivo cortado, dañado o a medio subir), avisamos */
 setTimeout(function(){
-  if(!window.__arranco){
-    window.__fallo('El programa no llegó a arrancar. Es muy probable que index.html se haya subido '
-      +'incompleto o dañado: vuelve a subirlo a GitHub.');
+  if(!window.__arranco && !window.__mostrado){
+    window.__fallo('El programa no llegó a arrancar y no dio ningún error. '
+      +'Lo más probable es que index.html se subiera incompleto: comprueba en GitHub que pesa unos 196 KB.');
   }
 },2500);
 </script>
