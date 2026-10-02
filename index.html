@@ -399,6 +399,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   pend:{trabajos:[],compras:[]},
+  sync:{url:'',clave:'',auto:true,ultima:0},ts:0,
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -419,6 +420,8 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.notas) D.notas=p.notas;
   if(p.notasCampo) D.notasCampo=p.notasCampo;
   if(p.pend) D.pend={trabajos:(p.pend.trabajos||[]),compras:(p.pend.compras||[])};
+  if(p.sync) D.sync={url:p.sync.url||'',clave:p.sync.clave||'',auto:p.sync.auto!==false,ultima:p.sync.ultima||0};
+  if(p.ts) D.ts=p.ts;
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
   if(p.ocultarDist) D.ocultarDist=true;
   if(p.estim) D.estim=p.estim;
@@ -461,8 +464,72 @@ arrancaCheck();
 var U={dist:10,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:10,pSite:0,verCSV:false,fotoIdx:0};
 var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
-function save(){ try{ localStorage.setItem(STORE,JSON.stringify(D)); }
-  catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); } }
+var tSubida=null;
+function save(marca){
+  if(marca!==false) D.ts=Date.now();
+  try{ localStorage.setItem(STORE,JSON.stringify(D)); }
+  catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); }
+  if(marca!==false && syncListo() && D.sync.auto){
+    clearTimeout(tSubida);
+    tSubida=setTimeout(function(){ subirNube(false); },5000);
+  }
+}
+
+/* ---- sincronización con Firebase, por llamadas directas ---- */
+function syncListo(){ return !!(D.sync && D.sync.url && D.sync.clave); }
+function urlSync(){
+  return String(D.sync.url).replace(/\/+$/,'')+'/espacios/'+encodeURIComponent(D.sync.clave)+'.json';
+}
+function paquete(){
+  var d=JSON.parse(JSON.stringify(D));
+  delete d.sync;                       /* cada móvil conserva su propia configuración */
+  return {ts:D.ts||Date.now(),datos:d};
+}
+function subirNube(manual){
+  if(!syncListo()) return;
+  C.syncEstado='subiendo'; if(manual) render();
+  fetch(urlSync(),{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(paquete())})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(){
+      D.sync.ultima=D.ts||Date.now(); C.syncEstado='ok'; C.syncError='';
+      save(false); render(); if(manual) toast('Subido a la nube.');
+    })
+    .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e);
+      render(); if(manual) toast('No se pudo subir: '+C.syncError); });
+}
+function aplicaNube(rem){
+  var guarda=D.sync;
+  aplicaCopia({datos:rem.datos});
+  D.sync=guarda; D.ts=rem.ts||Date.now(); D.sync.ultima=D.ts;
+  C.syncEstado='ok'; C.nube=null;
+  save(false); render(); toast('Datos traídos de la nube.');
+}
+function bajarNube(manual){
+  if(!syncListo()) return;
+  C.syncEstado='bajando'; if(manual) render();
+  fetch(urlSync())
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(rem){
+      C.syncError='';
+      if(!rem||!rem.datos){ C.syncEstado='vacia'; render();
+        if(manual) toast('La nube está vacía. Sube primero desde este móvil.'); return; }
+      if(manual){ aplicaNube(rem); return; }
+      var cambiadoAqui=(D.ts||0)>(D.sync.ultima||0);
+      var nubeNueva=(rem.ts||0)>(D.sync.ultima||0);
+      if(nubeNueva && !cambiadoAqui) aplicaNube(rem);
+      else if(nubeNueva && cambiadoAqui){ C.nube=rem; C.syncEstado='conflicto'; render();
+        toast('Hay cambios en los dos sitios. Elige cuál conservas.'); }
+      else if(cambiadoAqui) subirNube(false);
+      else { C.syncEstado='ok'; render(); }
+    })
+    .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e); render(); });
+}
+function claveNueva(){
+  var a='abcdefghijkmnpqrstuvwxyz23456789', s2='', i;
+  for(i=0;i<20;i++) s2+=a.charAt(Math.floor(Math.random()*a.length));
+  return s2;
+}
 function arqActual(){ return D.arqueros[Math.min(U.arq,D.arqueros.length-1)]; }
 function arqPorId(id){ return D.arqueros.filter(function(a){ return a.id===id; })[0]
   || {nombre:'(borrado)',federacion:'',licencia:'',foto:null}; }
@@ -887,6 +954,41 @@ function tarjetaCopia(){
   }
   if(hayPrevio()) h+='<button class="ghost" data-act="deshacercopia">Deshacer la última restauración</button>';
   h+='</div>';
+  var est=C.syncEstado||'', listo=syncListo();
+  h+='<div class="card"><div class="chead"><h2>Sincronizar con la nube</h2>'
+    +'<span>'+(listo?(est==='error'?'con fallo':(D.sync.ultima?'al día':'sin subir')):'sin configurar')+'</span></div>'
+    +'<p class="stat">Guarda tus datos en tu base de Firebase y los trae a cualquier móvil donde tengas '
+    +'la app con la misma dirección y clave.</p>'
+    +'<div class="field" style="margin-top:10px"><label>Dirección</label>'
+    +'<input class="cinp" placeholder="https://...firebasedatabase.app" data-syncurl value="'+esc(D.sync.url||'')+'"></div>'
+    +'<div class="field"><label>Clave</label>'
+    +'<input class="cinp" placeholder="clave secreta" data-syncclave value="'+esc(D.sync.clave||'')+'"></div>'
+    +'<button class="mini" data-act="synccrea">Crear una clave</button>'
+    +'<div class="chk" data-act="syncauto" style="border-bottom:none;padding:12px 0 4px">'
+    +'<span class="tick" data-on="'+(D.sync.auto?1:0)+'">'+(D.sync.auto?'✓':'')+'</span>'
+    +'<div class="ctxt">Sincronizar sola<small>Sube los cambios a los pocos segundos y comprueba la nube al abrir</small></div></div>';
+  if(listo){
+    h+='<div class="pair" style="margin-top:10px">'
+      +'<button class="act act2" data-act="syncsube" style="margin-top:0">Subir ahora</button>'
+      +'<button class="act act2" data-act="syncbaja" style="margin-top:0">Traer ahora</button></div>'
+      +'<p class="stat" style="margin-top:8px">'
+      +(est==='subiendo'?'Subiendo…':est==='bajando'?'Consultando…'
+        :est==='error'?('Fallo: '+esc(C.syncError||'')) 
+        :est==='vacia'?'La nube todavía está vacía.'
+        :(D.sync.ultima?'Última sincronización: '+new Date(D.sync.ultima).toLocaleString('es-ES'):'Aún no has subido nada.'))
+      +'</p>';
+    if(C.nube){
+      h+='<div class="card" style="background:#2A2118;margin-top:12px"><p class="stat">'
+        +'<i>Hay cambios en los dos sitios.</i><br>En la nube: '
+        +new Date(C.nube.ts).toLocaleString('es-ES')+'.<br>En este móvil: '
+        +new Date(D.ts).toLocaleString('es-ES')+'.</p>'
+        +'<div class="pair"><button class="act" data-act="syncganalocal" style="margin-top:0">Mandar lo de aquí</button>'
+        +'<button class="act act2" data-act="syncganaNube" style="margin-top:0">Traer lo de la nube</button></div></div>';
+    }
+  }
+  h+='<p class="stat" style="margin-top:10px">Quien conozca la dirección y la clave puede ver y cambiar '
+    +'estos datos. No es un secreto fuerte: no pongas ahí nada que no quieras que se vea.</p></div>';
+
   h+='<div class="card"><div class="chead"><h2>Pasar la app a otro arquero</h2></div>'
     +'<p class="stat">Comparte el enlace. Quien lo reciba lo abre en Chrome y elige <i>Instalar aplicación</i>: '
     +'tendrá la app entera en su móvil, con sus propios datos, sin tocar los tuyos.</p>'
@@ -3161,6 +3263,12 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(navigator.share) navigator.share({title:'Tiro con Arco',text:txt,url:enlace}).catch(function(){});
     else copiar(txt,'Enlace');
   }
+  else if(a==='synccrea'){ D.sync.clave=claveNueva(); save(false); render(); toast('Clave creada. Úsala igual en los otros móviles.'); }
+  else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); render(); }
+  else if(a==='syncsube'){ subirNube(true); }
+  else if(a==='syncbaja'){ bajarNube(true); }
+  else if(a==='syncganalocal'){ C.nube=null; C.syncEstado=''; subirNube(true); }
+  else if(a==='syncganaNube'){ if(C.nube) aplicaNube(C.nube); }
   else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
   else if(a==='aplicarcopia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
@@ -3310,6 +3418,8 @@ document.getElementById('app').addEventListener('input',function(ev){
   else if(t.dataset.pend!=null){ D.pend[t.dataset.pend][Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.mt!=null){ D.mat[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.md!=null){ D.mat[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-syncurl')){ D.sync.url=t.value.trim(); save(false); }
+  else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){ D.sync.clave=t.value.trim(); save(false); }
   else if(t.hasAttribute&&t.hasAttribute('data-alturaojo')){
     var hh=parseInt(t.value,10); if(hh>=100&&hh<=220){ D.alturaOjo=hh; save(); } }
   else if(t.hasAttribute&&t.hasAttribute('data-est')){ MD.est=t.value; }
@@ -3396,11 +3506,13 @@ document.getElementById('lock').addEventListener('click',function(ev){
 /* al volver a la app tras un rato, vuelve a pedirla */
 var salida=0;
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden){ salida=Date.now(); }
+  if(document.hidden){ salida=Date.now(); if(syncListo()&&D.sync.auto) subirNube(false); }
+  else if(syncListo()&&D.sync.auto) setTimeout(compruebaNube,600);
   else if(hayPin() && salida && Date.now()-salida>600000
           && !document.getElementById('lock').dataset.on){ SES.quita('activo'); abreLock(''); }
 });
 
+function compruebaNube(){ if(syncListo()&&D.sync.auto) bajarNube(false); }
 U.sel=firstEmpty(draft());
 var reanuda=sesionViva();
 if(reanuda){
@@ -3410,6 +3522,7 @@ if(reanuda){
 eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
 if(hayPin() && !reanuda) abreLock('');
+setTimeout(compruebaNube,1200);
 if('serviceWorker' in navigator && location.protocol==='https:'){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
