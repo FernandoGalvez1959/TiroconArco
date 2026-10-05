@@ -2606,7 +2606,7 @@ var CAMPOSJ=[
  ['pu','Puestos'],['fl','Flechas por puesto'],['co','Componentes'],['pa','En la patrulla'],
  ['lp','Mi lugar en patrulla'],['gt','Puntos del ganador de la tirada'],
  ['pg','Puntos del 1º de patrulla'],['mi','Mis puntos'],
- ['x11','Onces'],['x10','Dieces'],['m0','Ceros'],['cg','Mi puesto general']
+ ['x11','Onces'],['x10','Dieces'],['m0','Ceros'],['cg','Mi puesto en la tirada'],['gl','Mi puesto en la general']
 ];
 function ligaActual(){
   if(!D.ligas.length) return null;
@@ -2630,28 +2630,51 @@ function resumenLiga(L){
     pos:nPos?pos/nPos:0, ultima:js[js.length-1]};
 }
 function graficaLiga(L){
-  var js=(L.jornadas||[]), W=330,H=190,M=12,TOP=26,B=10;
-  var datos=js.map(function(j,i){ return {i:i+1,mi:Number(j.mi)||0}; }).filter(function(d){ return d.mi>0; });
+  var js=(L.jornadas||[]), W=330,H=212,M=34,TOP=24,B=32;
+  var datos=js.map(function(j,i){ return {i:i+1,mi:Number(j.mi)||0,pg:Number(j.pg)||0,gt:Number(j.gt)||0}; })
+    .filter(function(d){ return d.mi>0||d.pg>0||d.gt>0; });
   if(datos.length<1) return '<p class="empty">Añade tiradas con puntuación y aquí verás tu progreso.</p>';
-  var vals=datos.map(function(d){ return d.mi; });
+  var vals=[];
+  datos.forEach(function(d){ if(d.mi) vals.push(d.mi); if(d.pg) vals.push(d.pg); if(d.gt) vals.push(d.gt); });
   var mx=Math.max.apply(null,vals), mn=Math.min.apply(null,vals);
-  var marg=Math.max(8,(mx-mn)*0.25);
-  var hi=mx+marg, lo=Math.max(0,mn-marg);
+  var marg=Math.max(10,(mx-mn)*0.15), hi=mx+marg, lo=Math.max(0,mn-marg);
   if(hi===lo) hi=lo+10;
-  var x=function(k){ return M+10+(datos.length===1?(W-2*M-20)/2:k*(W-2*M-20)/(datos.length-1)); };
+  var x=function(k){ return (M+16)+(datos.length===1?(W-M-16-28)/2:k*(W-M-16-28)/(datos.length-1)); };
   var y=function(v){ return TOP+(H-TOP-B)*(1-(v-lo)/(hi-lo)); };
-  var d=datos.map(function(p,k){ return (k?'L':'M')+x(k).toFixed(1)+','+y(p.mi).toFixed(1); }).join(' ');
-  var pts='';
-  datos.forEach(function(p,k){
-    var ult=(k===datos.length-1);
-    pts+='<circle cx="'+x(k).toFixed(1)+'" cy="'+y(p.mi).toFixed(1)+'" r="'+(ult?5:4)+'" '
+  var g='',k;
+  for(k=0;k<=3;k++){ var v=lo+(hi-lo)*k/3;
+    g+='<line x1="'+M+'" x2="'+(W-10)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="#2E3A47"/>'
+     +'<text x="'+(M-5)+'" y="'+(y(v)+4).toFixed(1)+'" text-anchor="end" fill="#8D9CAB" font-size="9">'+Math.round(v)+'</text>';
+  }
+  function ruta(c){
+    var t='',prim=true;
+    datos.forEach(function(d,q){ if(d[c]>0){ t+=(prim?'M':'L')+x(q).toFixed(1)+','+y(d[c]).toFixed(1)+' '; prim=false; } });
+    return t;
+  }
+  var hayPg=datos.some(function(d){ return d.pg>0; }), hayGt=datos.some(function(d){ return d.gt>0; });
+  var out='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Progreso de la liga">'+g;
+  if(hayPg) out+='<path d="'+ruta('pg')+'" fill="none" stroke="#8D9CAB" stroke-width="2" stroke-dasharray="5 4"/>';
+  if(hayGt){
+    out+='<path d="'+ruta('gt')+'" fill="none" stroke="#3D7CC9" stroke-width="2.5" stroke-linejoin="round"/>';
+    datos.forEach(function(d,q){ if(d.gt>0)
+      out+='<circle cx="'+x(q).toFixed(1)+'" cy="'+y(d.gt).toFixed(1)+'" r="3.5" fill="#121820" stroke="#3D7CC9" stroke-width="2"/>'
+         +'<text x="'+x(q).toFixed(1)+'" y="'+(y(d.gt)-8).toFixed(1)+'" text-anchor="middle" font-size="10" '
+         +'font-weight="700" fill="#7FB2E8">'+d.gt+'</text>'; });
+  }
+  out+='<path d="'+ruta('mi')+'" fill="none" stroke="#F2C11B" stroke-width="2.5" stroke-linejoin="round"/>';
+  datos.forEach(function(d,q){ if(d.mi>0){
+    var ult=(q===datos.length-1), debajo=d.gt>0;
+    out+='<circle cx="'+x(q).toFixed(1)+'" cy="'+y(d.mi).toFixed(1)+'" r="'+(ult?5:4)+'" '
       +'fill="'+(ult?'#F2C11B':'#121820')+'" stroke="#F2C11B" stroke-width="2"/>'
-      +'<text x="'+x(k).toFixed(1)+'" y="'+(y(p.mi)-10).toFixed(1)+'" text-anchor="middle" '
-      +'font-size="11" font-weight="700" fill="#E9EFF4">'+p.mi+'</text>';
-  });
-  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Puntos de cada tirada">'
-    +(datos.length>1?'<path d="'+d+'" fill="none" stroke="#F2C11B" stroke-width="2.5" stroke-linejoin="round"/>':'')
-    +pts+'</svg>';
+      +'<text x="'+x(q).toFixed(1)+'" y="'+(debajo?y(d.mi)+17:y(d.mi)-9).toFixed(1)+'" text-anchor="middle" '
+      +'font-size="11" font-weight="700" fill="#F2C11B">'+d.mi+'</text>'; } });
+  out+='<text x="'+x(0).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" fill="#8D9CAB" font-size="9">'+datos[0].i+'ª</text>'
+     +(datos.length>1?'<text x="'+x(datos.length-1).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" fill="#8D9CAB" font-size="9">'
+       +datos[datos.length-1].i+'ª</text>':'')+'</svg>';
+  out+='<p class="stat" style="margin-top:4px"><span style="color:#F2C11B">━</span> tus puntos'
+     +(hayPg?'   <span style="color:#8D9CAB">╌</span> 1º de tu patrulla':'')
+     +(hayGt?'   <span style="color:#3D7CC9">━</span> ganador de la tirada':'')+'</p>';
+  return out;
 }
 function pantallaLigas(){
   if(!D.ligas.length){
@@ -2676,12 +2699,6 @@ function pantallaLigas(){
   h+='<div class="card"><div class="chead"><h2>Progreso</h2>'
     +'<span>'+(r?dec(r.media)+' de media':'sin datos')+'</span></div>'
     +graficaLiga(L);
-  if(r){
-    h+='<div class="legend"><div>Mejor<b>'+r.mejor+'</b></div>'
-      +'<div>Media<b>'+dec(r.media)+'</b></div>'
-      +'<div>Puesto medio<b>'+(r.pos?dec(r.pos):'—')+'</b></div>'
-      +'<div>Tiradas<b>'+r.n+'</b></div></div>';
-  }
   h+='</div>';
 
   var jr=L.jornadas||[];
@@ -2689,16 +2706,16 @@ function pantallaLigas(){
     h+='<div class="card"><div class="chead"><h2>Resumen por tirada</h2>'
       +'<span>'+jr.length+'</span></div>';
     jr.forEach(function(j,i){
-      var mi=Number(j.mi)||0, mx=maxJor(j), co=Number(j.co)||0, cg=Number(j.cg)||0;
+      var mi=Number(j.mi)||0, mx=maxJor(j), co=Number(j.co)||0, cg=Number(j.cg)||0, gl=Number(j.gl)||0;
       var pc=(mi&&mx)?Math.round(mi*1000/mx)/10:0;
       h+='<div class="resj" data-act="irjor" data-i="'+i+'">'
-        +'<div class="l1"><b>Tirada '+(i+1)+'</b>'
-        +(j.f?' <span class="rdim">· '+fechaCorta(j.f+'T12:00:00')+'</span>':'')
-        +(j.cerrada?' <span class="rok">✓ guardada</span>':' <span class="rdim">· abierta</span>')+'</div>'
-        +'<div class="l2">'+(mi?'<b>'+mi+'</b> puntos'+(mx?' de '+mx:''):'<span class="rdim">sin puntuación</span>')
+        +'<div class="l1"><b>Tirada '+(i+1)+':</b> '
+        +(mi?'<b>'+mi+'</b> puntos'+(mx?' de '+mx:''):'<span class="rdim">sin puntuación</span>')
         +(pc?' · <b>'+String(pc).replace('.',',')+' %</b> del total':'')+'</div>'
-        +'<div class="l2">'+(cg&&co?'Puesto <b>'+cg+'</b> de '+co+' arqueros':'<span class="rdim">sin puesto en la general</span>')
-        +'</div></div>';
+        +'<div class="l2">'
+        +(cg?'Puesto <b>'+cg+'</b>'+(co?' de '+co+' arqueros':'')+' en la tirada':'<span class="rdim">sin puesto en la tirada</span>')
+        +' · '+(gl?'General: <b>'+gl+'º</b>':'<span class="rdim">sin puesto en la general</span>')
+        +(j.cerrada?' <span class="rok">✓</span>':'')+'</div></div>';
     });
     h+='</div>';
   }
@@ -2727,7 +2744,8 @@ function pantallaLigas(){
       +(Number(j.pg)?' · a '+(Number(j.pg)-Number(j.mi))+' del primero de tu patrulla':'')
       +(Number(j.gt)?' · a '+(Number(j.gt)-Number(j.mi))+' del ganador de la tirada':'')
       +(Number(j.lp)&&Number(j.pa)?' · '+j.lp+'º de '+j.pa+' en la patrulla':'')
-      +(Number(j.cg)&&Number(j.co)?' · '+j.cg+'º de '+j.co+' en la general':'')+'</p>';
+      +(Number(j.cg)?' · '+j.cg+'º'+(Number(j.co)?' de '+j.co:'')+' en la tirada':'')
+      +(Number(j.gl)?' · '+j.gl+'º en la general':'')+'</p>';
 
     /* ---- documento o imagen del club ---- */
     var doc=j.doc;
@@ -2753,9 +2771,6 @@ function pantallaLigas(){
       +'<button class="ghost" data-act="jorbor" data-i="'+i+'">Borrar esta tirada</button></div>';
   } else if(!js.length){
     h+='<div class="card"><p class="empty">Todavía no hay ninguna tirada en esta liga.</p></div>';
-  } else {
-    h+='<div class="card"><p class="empty">Todas las tiradas están guardadas'
-      +(hayAbierta?'':'. ')+'Toca una en el resumen, o elígela arriba, para volver a editarla.</p></div>';
   }
   return h;
 }
@@ -3824,7 +3839,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='joradd'){ var Lj=ligaActual(); if(Lj){ if(!Lj.jornadas) Lj.jornadas=[];
     var ult=Lj.jornadas[Lj.jornadas.length-1]||{};
     Lj.jornadas.push({f:iso(Date.now()),pu:ult.pu||'',fl:ult.fl||'',co:'',pa:ult.pa||'',
-      lp:'',gt:'',pg:'',mi:'',x11:'',x10:'',m0:'',cg:'',cerrada:false});
+      lp:'',gt:'',pg:'',mi:'',x11:'',x10:'',m0:'',cg:'',gl:'',cerrada:false});
     C.jorSel=Lj.jornadas.length-1;
     save(); render(); } }
   else if(a==='jorbor'){
