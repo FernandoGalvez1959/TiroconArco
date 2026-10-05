@@ -714,6 +714,37 @@ function explicaError(m){
   if(/Failed to fetch|NetworkError|Load failed|sin red/i.test(m)) return 'Sin conexión, o la dirección está mal escrita.';
   return m;
 }
+/* Enlace de configuración: lleva la dirección y la clave dentro, para no teclearlas en cada móvil */
+function b64u(t){ return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function deb64u(t){ t=String(t).replace(/-/g,'+').replace(/_/g,'/'); while(t.length%4) t+='='; return atob(t); }
+function enlaceNube(){
+  var u=normalizaUrl(D.sync.url);
+  if(!u.ok||!D.sync.clave) return '';
+  var base=String(location.href).split('#')[0].split('?')[0];
+  return base+'#nube='+b64u(JSON.stringify({u:u.base,k:D.sync.clave}));
+}
+function sinDatosPropios(){
+  return !(D.sessions||[]).length && !(D.recorridos||[]).length && !(D.ligas||[]).length
+    && !(D.tecnicas||[]).length && !(D.material||[]).length
+    && !((D.pend||{}).trabajos||[]).length && !((D.pend||{}).compras||[]).length
+    && (D.arqueros||[]).every(function(a){ return !a.nombre && !a.foto; });
+}
+function aplicaEnlaceNube(){
+  try{
+    var m=String(location.hash||'').match(/[#&]nube=([A-Za-z0-9_\-]+)/);
+    if(!m) return false;
+    var c=JSON.parse(deb64u(m[1]));
+    var u=normalizaUrl(c&&c.u);
+    if(!u.ok||!c.k||String(c.k).length<6) return false;
+    D.sync={url:u.base,clave:String(c.k),auto:true,ultima:0};
+    /* un móvil recién instalado trae lo de la nube sin preguntar; uno con datos, deja elegir */
+    if(sinDatosPropios()) D.ts=0;
+    try{ history.replaceState(null,'',String(location.href).split('#')[0]); }catch(e){}
+    save(false);
+    C.recienLigada=true;
+    return true;
+  }catch(e){ return false; }
+}
 function paquete(){
   var d=JSON.parse(JSON.stringify(D));
   delete d.sync;                       /* cada móvil conserva su propia configuración */
@@ -1284,6 +1315,11 @@ function tarjetaCopia(){
     h+='<div class="pair" style="margin-top:10px">'
       +'<button class="act act2" data-act="syncsube" style="margin-top:0">Subir ahora</button>'
       +'<button class="act act2" data-act="syncbaja" style="margin-top:0">Traer ahora</button></div>'
+      +(normalizaUrl(D.sync.url).ok
+        ? '<button class="act" data-act="synclink">Enviar enlace a otro móvil</button>'
+          +'<p class="stat" style="margin-top:6px">Quien abra ese enlace en otro móvil queda conectado sin teclear nada. '
+          +'Mándalo solo a tus propios aparatos: el enlace lleva la clave.</p>'
+        : '')
       +'<p class="stat" style="margin-top:8px">'
       +(est==='subiendo'?'Subiendo…':est==='bajando'?'Consultando…'
         :est==='error'?('Fallo: '+esc(explicaError(C.syncError))) 
@@ -3773,6 +3809,12 @@ document.getElementById('app').addEventListener('click',function(ev){
     render();
   }
   else if(a==='syncprueba'){ probarNube(); }
+  else if(a==='synclink'){
+    var en=enlaceNube();
+    if(!en){ toast('Primero configura la dirección y la clave.'); return; }
+    if(navigator.share) navigator.share({title:'Tiro con Arco: conectar a la nube',
+      text:'Abre este enlace en tu otro móvil para conectar la app a tu nube:',url:en}).catch(function(){});
+    else copiar(en,'Enlace'); }
   else if(a==='synccrea'){ D.sync.clave=claveNueva(); save(false); render(); toast('Clave creada. Úsala igual en los otros móviles.'); }
   else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); render(); }
   else if(a==='syncsube'){ subirNube(true); }
@@ -4114,6 +4156,7 @@ document.addEventListener('visibilitychange',function(){
 
 function compruebaNube(){ if(syncListo()&&D.sync.auto) bajarNube(false); }
 try{
+aplicaEnlaceNube();
 U.sel=firstEmpty(draft());
 var reanuda=sesionViva();
 if(reanuda){
@@ -4124,6 +4167,7 @@ eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
 if(hayPin() && !reanuda) abreLock('');
 setTimeout(compruebaNube,1200);
+if(C.recienLigada){ toast('Nube configurada con el enlace. Trayendo tus datos…'); C.recienLigada=false; }
 if(!document.getElementById('app').innerHTML) throw new Error('La pantalla se quedó vacía al dibujar.');
 window.__arranco=true;
 }catch(errArranque){ muestraFallo((errArranque&&errArranque.message)||errArranque); }
