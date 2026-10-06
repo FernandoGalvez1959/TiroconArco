@@ -756,6 +756,30 @@ function aplicaEnlaceNube(){
     return true;
   }catch(e){ return false; }
 }
+/* Versiones anteriores guardaban en el móvil las respuestas de la nube; las borramos para no leer datos viejos */
+function limpiaCachesNube(){
+  try{
+    if(!(window.caches&&caches.keys)) return Promise.resolve();
+    return caches.keys().then(function(ks){
+      return Promise.all(ks.map(function(k){
+        return caches.open(k).then(function(c){
+          return c.keys().then(function(rs){
+            return Promise.all(rs.map(function(r){
+              try{ if(String(r.url).indexOf(location.origin+'/')!==0) return c.delete(r); }catch(e){}
+            }));
+          });
+        });
+      }));
+    }).catch(function(){});
+  }catch(e){ return Promise.resolve(); }
+}
+/* Cambiar la dirección o la clave es cambiar de nube: este móvil vuelve a comprobarla desde cero */
+function cambiaSync(campo,valor){
+  var antes=(campo==='url')?normalizaUrl(D.sync.url).base:D.sync.clave;
+  var ahora=(campo==='url')?normalizaUrl(valor).base:valor;
+  if(antes!==ahora){ D.sync.ultima=0; C.syncEstado=''; C.nube=null; C.nubeTs=null; }
+  D.sync[campo]=valor;
+}
 function paquete(){
   var d=JSON.parse(JSON.stringify(D));
   delete d.sync;                       /* cada móvil conserva su propia configuración */
@@ -825,7 +849,7 @@ function bajarNube(manual){
   var uu=normalizaUrl(D.sync.url);
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
   C.syncEstado='bajando'; if(manual) render();
-  fetch(urlSync())
+  limpiaCachesNube().then(function(){ return fetch(urlSync(),{cache:'no-store'}); })
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(rem){
       C.syncError='';
@@ -853,7 +877,7 @@ function probarNube(){
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; render(); toast(uu.msg); return; }
   if(!D.sync.clave){ toast('Falta la clave.'); return; }
   C.syncEstado='bajando'; render();
-  fetch(uu.base+'/espacios/'+encodeURIComponent(D.sync.clave)+'/ts.json')
+  limpiaCachesNube().then(function(){ return fetch(uu.base+'/espacios/'+encodeURIComponent(D.sync.clave)+'/ts.json',{cache:'no-store'}); })
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(ts){
       C.syncError=''; C.nubeTs=ts?Number(ts):0;
@@ -3842,7 +3866,9 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(navigator.share) navigator.share({title:'Tiro con Arco: conectar a la nube',
       text:'Abre este enlace en tu otro móvil para conectar la app a tu nube:',url:en}).catch(function(){});
     else copiar(en,'Enlace'); }
-  else if(a==='synccrea'){ D.sync.clave=claveNueva(); save(false); render(); toast('Clave creada. Úsala igual en los otros móviles.'); }
+  else if(a==='synccrea'){ cambiaSync('clave',claveNueva()); save(false); render();
+    toast('Clave nueva creada. Ahora envía el enlace a tus otros móviles.');
+    if(syncListo()) bajarNube(false); }
   else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); render(); }
   else if(a==='syncsube'){ subirNube(true); }
   else if(a==='syncbaja'){ bajarNube(true); }
@@ -4039,8 +4065,8 @@ document.getElementById('app').addEventListener('input',function(ev){
   else if(t.dataset.pend!=null){ D.pend[t.dataset.pend][Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.mt!=null){ D.mat[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
   else if(t.dataset.md!=null){ D.mat[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
-  else if(t.hasAttribute&&t.hasAttribute('data-syncurl')){ D.sync.url=t.value.trim(); save(false); }
-  else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){ D.sync.clave=t.value.trim(); save(false); }
+  else if(t.hasAttribute&&t.hasAttribute('data-syncurl')){ cambiaSync('url',t.value.trim()); save(false); }
+  else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){ cambiaSync('clave',t.value.trim()); save(false); }
   else if(t.hasAttribute&&t.hasAttribute('data-alturaojo')){
     var hh=parseInt(t.value,10); if(hh>=100&&hh<=220){ D.alturaOjo=hh; save(); } }
   else if(t.hasAttribute&&t.hasAttribute('data-est')){ MD.est=t.value; }
@@ -4057,10 +4083,10 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-hsite')){ U.hSite=t.value; U.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; U.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-syncurl')){
-    var nu=normalizaUrl(t.value); D.sync.url=nu.ok?nu.base:String(t.value||'').trim(); save(false); render();
+    var nu=normalizaUrl(t.value); cambiaSync('url',nu.ok?nu.base:String(t.value||'').trim()); save(false); render();
     if(syncListo()) bajarNube(false); }
   else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){
-    D.sync.clave=t.value.trim(); save(false); render(); if(syncListo()) bajarNube(false); }
+    cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()) bajarNube(false); }
   else if(t.hasAttribute&&t.hasAttribute('data-ligasel')){ C.liga=t.value; C.jorSel=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-jorsel')){
     if(t.value===''){ C.jorSel=null; render(); return; }

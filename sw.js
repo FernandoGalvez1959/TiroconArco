@@ -1,6 +1,6 @@
 /* Copia local de la app. La página se pide siempre a la red primero, para que
    las actualizaciones lleguen solas; si no hay conexión, se sirve la copia. */
-var C='arquero-v35';
+var C='arquero-v36';
 var FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-maskable.png'];
 
 self.addEventListener('install',function(e){
@@ -16,8 +16,12 @@ self.addEventListener('activate',function(e){
 
 self.addEventListener('fetch',function(e){
   if(e.request.method!=='GET') return;
+  var url=new URL(e.request.url);
+  /* Lo que viene de otros servidores (la nube de Firebase, por ejemplo) nunca pasa por la copia local:
+     si no, se quedaría para siempre con la primera respuesta. */
+  if(url.origin!==self.location.origin) return;
   var esPagina = e.request.mode==='navigate'
-    || /\/(index\.html)?$/.test(new URL(e.request.url).pathname);
+    || /\/(index\.html)?$/.test(url.pathname);
   if(esPagina){
     e.respondWith(
       fetch(e.request).then(function(r){
