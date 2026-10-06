@@ -679,7 +679,7 @@ function save(marca){
   try{ localStorage.setItem(STORE,JSON.stringify(D)); }
   catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); }
   if(marca!==false && syncListo() && D.sync.auto && D.sync.ultima>0){
-    programaSubida(600); refrescaNube();
+    programaSubida(150); refrescaNube();
   }
 }
 
@@ -896,7 +896,26 @@ function nubePut(ruta,valor){
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
 }
 
-/* subir: solo las partes que han cambiado; la hora va la última, así nadie lee a medias */
+/* una sola petición con todos los cambios (atómica: nadie lee a medias). Si el servidor no la admite,
+   se hace en varias, dejando la hora y las huellas para el final */
+function urlRaiz(){ var u=normalizaUrl(D.sync.url); return (u.ok?u.base:'')+'/espacios/'+encodeURIComponent(D.sync.clave)+'-v3.json'; }
+function escribeSecuencial(cambios){
+  var ps=Object.keys(cambios).filter(function(k){ return k.indexOf('p/')===0; });
+  return Promise.all(ps.map(function(k){ return nubePut(k,cambios[k]); }))
+    .then(function(){ return Promise.all(Object.keys(cambios).filter(function(k){ return k.indexOf('h/')===0; })
+      .map(function(k){ return nubePut(k,cambios[k]); })); })
+    .then(function(){ return nubePut('ts',cambios.ts); });
+}
+function escribeV3(cambios){
+  if(C.sinPatch) return escribeSecuencial(cambios);
+  return fetch(urlRaiz(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(cambios)})
+    .then(function(r){
+      if(r.ok) return r.json();
+      if(r.status===400||r.status===405||r.status===501){ C.sinPatch=true; return escribeSecuencial(cambios); }
+      throw new Error('HTTP '+r.status);
+    });
+}
+/* subir: solo las partes que han cambiado */
 function empujaV3(manual,forzar){
   if(!syncListo()) return;
   var uu=normalizaUrl(D.sync.url);
@@ -905,6 +924,7 @@ function empujaV3(manual,forzar){
     if(manual) toast('Este móvil no tiene datos propios: subir dejaría la nube vacía. Usa «Traer ahora».');
     return;
   }
+  if(C.nube&&!manual&&!forzar) return;                    /* hay un choque sin resolver: no se pisa la nube */
   if(!manual&&!forzar&&!D.sync.ultima){ bajarNube(false); return; }   /* antes de subir, mirar qué hay */
   if(C.subiendo3){ C.resubir=true; return; }
   if(!D.sync.hs) D.sync.hs={};
@@ -915,9 +935,9 @@ function empujaV3(manual,forzar){
   if(!lista.length&&msDeTs(D.sync.ultima)>=(D.ts||0)){ C.syncEstado='ok'; repintaNube(manual); return; }
   var ts=Math.max(Date.now(),msDeTs(D.sync.ultima)+1,Math.floor(D.ts||0)+1)*1000+idDisp();
   C.subiendo3=true; C.tsPropio=ts; C.syncEstado='subiendo'; if(manual) render(); else refrescaNube();
-  Promise.all(lista.map(function(q){
-      return nubePut('p/'+q.k,q.t).then(function(){ return nubePut('h/'+q.k,q.h); }); }))
-    .then(function(){ return nubePut('ts',ts); })
+  var cambios={ts:ts};
+  lista.forEach(function(q){ cambios['p/'+q.k]=q.t; cambios['h/'+q.k]=q.h; });
+  escribeV3(cambios)
     .then(function(){
       lista.forEach(function(q){ D.sync.hs[q.k]=q.h; });
       D.sync.ultima=ts; C.syncEstado='ok'; C.syncError=''; C.subiendo3=false;
@@ -949,8 +969,10 @@ function aplicaPartes(trozos,rts,manual){
 }
 function traeV3(manual,rts,soloK){
   var hrP=soloK?Promise.resolve(null):nubeGet('h');
-  return hrP.then(function(hr){
-    var quiero=[], k, pt;
+  var tsP=(rts==null)?nubeGet('ts'):Promise.resolve(rts);
+  return Promise.all([hrP,tsP]).then(function(r){
+    var hr=r[0], quiero=[], k, pt;
+    rts=Number(r[1])||D.sync.ultima||0;
     if(soloK) quiero=soloK.slice();
     else{
       hr=hr||{}; pt=partes();
@@ -972,14 +994,14 @@ function traeV3(manual,rts,soloK){
       if(manual) toast('La nube está vacía con esta clave. Sube antes los datos desde el móvil que los tiene, o comprueba que la clave sea la misma.');
       return;
     }
-    if(!manual&&escribiendoAhora()){ setTimeout(function(){ bajarNube(false); },2500); return; }
+    if(!manual&&escribiendoAhora()){ setTimeout(function(){ bajarRapido(); },2500); return; }
     aplicaPartes(trozos,rts,manual);
   });
 }
 
 /* los dos móviles han cambiado cosas: si no tocan la misma parte, se mezclan solos */
-function reconcilia(rts){
-  return nubeGet('h').then(function(hr){
+function reconcilia(rts,hrDado){
+  return (hrDado?Promise.resolve(hrDado):nubeGet('h')).then(function(hr){
     hr=hr||{};
     var pt=partes(), hs=D.sync.hs||(D.sync.hs={}), pull=[], push=[], choque=[], nombres={}, k, lh, rh, sh;
     for(k in pt) nombres[k]=1;
@@ -995,13 +1017,14 @@ function reconcilia(rts){
       else choque.push(k);
     }
     if(choque.length){
-      C.nube={v3:true,ts:rts,choque:choque}; C.syncEstado='conflicto'; render();
+      C.nube={v3:true,ts:rts||0,choque:choque}; C.syncEstado='conflicto'; render();
       toast('Hay cambios en los dos sitios. Elige cuál conservas.'); return;
     }
+    C.nube=null;
     var p=pull.length?traeV3(false,rts,pull):Promise.resolve();
     return p.then(function(){
       if(push.length||cambiosPendientes()) empujaV3(false,false);
-      else{ if(!pull.length) D.sync.ultima=rts; C.syncEstado='ok'; repintaNube(false); }
+      else{ if(!pull.length&&rts!=null) D.sync.ultima=rts; C.syncEstado='ok'; repintaNube(false); }
     });
   });
 }
@@ -1069,8 +1092,8 @@ function probarNube(){
 }
 
 /* escuchar la hora de la nube: en cuanto otro móvil sube algo, este se entera */
-var EV={es:null,poll:null,errores:0,t:null,reint:null};
-function avisoRemoto(){ clearTimeout(EV.t); EV.t=setTimeout(function(){ bajarNube(false); },250); }
+var EV={es:null,poll:null,seguro:null,errores:0,t:null,reint:null,h:null};
+function avisoRemoto(){ clearTimeout(EV.t); EV.t=setTimeout(function(){ bajarRapido(); },30); }
 function sondeoOn(){
   if(EV.poll) return;
   EV.poll=setInterval(function(){ if(!document.hidden&&syncListo()&&D.sync.auto) bajarNube(false); },12000);
@@ -1078,22 +1101,45 @@ function sondeoOn(){
 function sondeoOff(){ if(EV.poll){ clearInterval(EV.poll); EV.poll=null; } }
 function vivoOff(){
   clearTimeout(EV.reint); sondeoOff();
+  if(EV.seguro){ clearInterval(EV.seguro); EV.seguro=null; }
   if(EV.es){ try{ EV.es.close(); }catch(e){} EV.es=null; }
-  C.vivo=false;
+  EV.h=null; C.vivo=false;
+}
+/* respuesta a un aviso de la nube: ya sabemos qué huellas hay, solo se pide lo que falta */
+function bajarRapido(){
+  if(!syncListo()||!D.sync.auto) return;
+  if(!EV.h||!Object.keys(EV.h).length){ bajarNube(false); return; }     /* sin formato nuevo conocido: camino completo */
+  if(C.bajando3){ C.rebajar=true; return; }
+  C.bajando3=true;
+  var fin=function(){ C.bajando3=false; if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarRapido(); },30); } };
+  var p=sinDatosPropios()?traeV3(false,null):reconcilia(null,EV.h);
+  p.then(function(){ fin(); },function(e){
+    C.syncEstado='error'; C.syncError=String(e&&e.message||e); repintaNube(false); fin(); });
+}
+function manejaH(tipo,ev){
+  EV.errores=0; C.vivo=true; sondeoOff();
+  var d=null; try{ d=JSON.parse(ev.data); }catch(e){ return; }
+  var ruta=(d&&d.path)||'/', dato=d?d.data:null, k, ps;
+  if(!EV.h) EV.h={};
+  if(ruta==='/'){
+    if(tipo==='put') EV.h=(dato&&typeof dato==='object')?dato:{};
+    else if(dato&&typeof dato==='object'){ for(k in dato){ if(dato[k]===null) delete EV.h[k]; else EV.h[k]=dato[k]; } }
+  } else {
+    ps=ruta.split('/').filter(Boolean);
+    if(ps.length===1){ if(dato===null) delete EV.h[ps[0]]; else EV.h[ps[0]]=dato; }
+    else EV.h=null;                          /* forma inesperada: se pedirá el estado completo */
+  }
+  avisoRemoto();
 }
 function vivoOn(){
   if(!syncListo()||!D.sync.auto||!normalizaUrl(D.sync.url).ok||document.hidden) return;
   if(EV.es) return;
   if(typeof EventSource!=='function'){ sondeoOn(); return; }
   var es;
-  try{ es=new EventSource(urlN('ts')); }catch(e){ sondeoOn(); return; }
-  EV.es=es;
-  es.addEventListener('put',function(ev){
-    EV.errores=0; C.vivo=true; sondeoOff();
-    var d=null; try{ d=JSON.parse(ev.data); }catch(e){ return; }
-    var ts=d&&d.data;
-    if(typeof ts==='number') avisoRemoto();
-  });
+  try{ es=new EventSource(urlN('h')); }catch(e){ sondeoOn(); return; }
+  EV.es=es; EV.h=null;
+  es.addEventListener('put',function(ev){ manejaH('put',ev); });
+  es.addEventListener('patch',function(ev){ manejaH('patch',ev); });
   es.addEventListener('keep-alive',function(){ C.vivo=true; });
   es.addEventListener('cancel',function(){ vivoOff(); EV.reint=setTimeout(vivoOn,5000); });
   es.addEventListener('auth_revoked',function(){ vivoOff(); EV.reint=setTimeout(vivoOn,5000); });
@@ -1103,13 +1149,15 @@ function vivoOn(){
     if(es.readyState===2){ if(EV.es===es) EV.es=null; EV.reint=setTimeout(vivoOn,8000); }
     if(EV.errores>=3) sondeoOn();
   };
+  /* red de seguridad: aunque se perdiera algún aviso, cada 45 s se comprueba el contenido */
+  if(!EV.seguro) EV.seguro=setInterval(function(){ if(!document.hidden&&syncListo()&&D.sync.auto) bajarNube(false); },45000);
 }
 function estadoNube(){
   if(!syncListo()) return {t:'Sin nube',c:'#5B6975',largo:'Nube sin configurar'};
   if(C.syncEstado==='error') return {t:'Fallo',c:'#DF4A44',largo:'Nube: no se pudo conectar'};
   if(C.syncEstado==='subiendo') return {t:'Subiendo',c:'#C79A0E',largo:'Nube: subiendo…'};
   if(C.syncEstado==='bajando') return {t:'Mirando',c:'#C79A0E',largo:'Nube: comprobando…'};
-  if(C.syncEstado==='conflicto') return {t:'Revisar',c:'#DF4A44',largo:'Nube: hay cambios en los dos sitios'};
+  if(C.syncEstado==='conflicto'||C.nube) return {t:'Revisar',c:'#DF4A44',largo:'Nube: hay cambios en los dos sitios'};
   if(C.syncEstado==='vacia') return {t:'Vacía',c:'#C79A0E',largo:'Nube: no hay datos con esta clave'};
   if(!D.sync.ultima) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: este móvil aún no se ha sincronizado'};
   if(cambiosPendientes()) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: quedan cambios por subir'};
@@ -1599,7 +1647,7 @@ function tarjetaCopia(){
       h+='<div class="card" style="background:#2A2118;margin-top:12px"><p class="stat">'
         +'<i>Hay cambios en los dos sitios.</i><br>'
         +(C.nube.choque?'Chocan: '+C.nube.choque.map(nombreParte).join(', ')+'.<br>':'')+'En la nube: '
-        +new Date(msDeTs(C.nube.ts)).toLocaleString('es-ES')+'.<br>En este móvil: '
+        +new Date(msDeTs(C.nube.ts)||Date.now()).toLocaleString('es-ES')+'.<br>En este móvil: '
         +new Date(D.ts).toLocaleString('es-ES')+'.</p>'
         +'<div class="pair"><button class="act" data-act="syncganalocal" style="margin-top:0">Mandar lo de aquí</button>'
         +'<button class="act act2" data-act="syncganaNube" style="margin-top:0">Traer lo de la nube</button></div></div>';
@@ -4093,7 +4141,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='syncsube'){ subirNube(true); }
   else if(a==='syncbaja'){ bajarNube(true); }
   else if(a==='syncganalocal'){ C.nube=null; C.syncEstado=''; empujaV3(true,true); }
-  else if(a==='syncganaNube'){ if(C.nube){ if(C.nube.v3) traeV3(true,C.nube.ts); else aplicaNube(C.nube); } }
+  else if(a==='syncganaNube'){ if(C.nube){ if(C.nube.v3) traeV3(true,null); else aplicaNube(C.nube); } }
   else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
   else if(a==='aplicarcopia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
