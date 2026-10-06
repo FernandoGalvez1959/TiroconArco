@@ -150,8 +150,9 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 
 .tabs{position:fixed;left:0;right:0;bottom:0;display:grid;gap:5px;background:#0F151C;
   border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom));}
-.tabs button{padding:13px 2px;font-size:12px;font-weight:500;color:var(--dim);border-radius:10px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#151C24;
+.tabs button{padding:6px 2px;min-height:46px;display:flex;align-items:center;justify-content:center;
+  text-align:center;line-height:1.15;font-size:12px;font-weight:500;color:var(--dim);border-radius:10px;
+  overflow:hidden;background:#151C24;
   box-shadow:inset 0 0 0 1px #212B36;}
 .tabs button[data-on="1"]{color:var(--gold);background:#0A0F14;font-weight:700;
   box-shadow:inset 0 0 0 2px var(--gold);}
@@ -603,7 +604,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   pend:{trabajos:[],compras:[]},
-  sync:{url:'',clave:'',auto:true,ultima:0},ts:0,ligas:[],
+  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -624,7 +625,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.notas) D.notas=p.notas;
   if(p.notasCampo) D.notasCampo=p.notasCampo;
   if(p.pend) D.pend={trabajos:(p.pend.trabajos||[]),compras:(p.pend.compras||[])};
-  if(p.sync) D.sync={url:p.sync.url||'',clave:p.sync.clave||'',auto:p.sync.auto!==false,ultima:p.sync.ultima||0};
+  if(p.sync) D.sync={url:p.sync.url||'',clave:p.sync.clave||'',auto:p.sync.auto!==false,ultima:p.sync.ultima||0,hs:p.sync.hs||{}};
   if(p.ts) D.ts=p.ts;
   if(p.ligas) D.ligas=p.ligas;
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
@@ -671,13 +672,14 @@ var U={dist:10,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:10,pSite:0,ve
 var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 var tSubida=null;
+function programaSubida(ms){ clearTimeout(tSubida); tSubida=setTimeout(function(){ empujaV3(false,false); },ms); }
 function save(marca){
   if(marca!==false) D.ts=Date.now();
+  if(typeof C==='object'&&C) C.hlOk=false;
   try{ localStorage.setItem(STORE,JSON.stringify(D)); }
   catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); }
   if(marca!==false && syncListo() && D.sync.auto && D.sync.ultima>0){
-    clearTimeout(tSubida);
-    tSubida=setTimeout(function(){ subirNube(false); },5000);
+    programaSubida(600); refrescaNube();
   }
 }
 
@@ -747,7 +749,7 @@ function aplicaEnlaceNube(){
     var c=JSON.parse(deb64u(m[1]));
     var u=normalizaUrl(c&&c.u);
     if(!u.ok||!c.k||String(c.k).length<6) return false;
-    D.sync={url:u.base,clave:String(c.k),auto:true,ultima:0};
+    D.sync={url:u.base,clave:String(c.k),auto:true,ultima:0,hs:{}};
     /* un móvil recién instalado trae lo de la nube sin preguntar; uno con datos, deja elegir */
     if(sinDatosPropios()) D.ts=0;
     try{ history.replaceState(null,'',String(location.href).split('#')[0]); }catch(e){}
@@ -777,7 +779,7 @@ function limpiaCachesNube(){
 function cambiaSync(campo,valor){
   var antes=(campo==='url')?normalizaUrl(D.sync.url).base:D.sync.clave;
   var ahora=(campo==='url')?normalizaUrl(valor).base:valor;
-  if(antes!==ahora){ D.sync.ultima=0; C.syncEstado=''; C.nube=null; C.nubeTs=null; }
+  if(antes!==ahora){ D.sync.ultima=0; D.sync.hs={}; C.syncEstado=''; C.nube=null; C.nubeTs=null; vivoOff(); }
   D.sync[campo]=valor;
 }
 function paquete(){
@@ -808,84 +810,299 @@ function repintaNube(manual){
   var escribiendo=!!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName||''));
   if(enCopia&&!escribiendo&&!eligiendo) render(); else refrescaNube();
 }
-function subirNube(manual){
-  if(!syncListo()) return;
-  if(sinDatosPropios()){
-    if(manual) toast('Este móvil no tiene datos propios: subir dejaría la nube vacía. Usa «Traer ahora».');
-    return;
-  }
-  var uu=normalizaUrl(D.sync.url);
-  if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
-  C.syncEstado='subiendo'; if(manual) render();
-  fetch(urlSync(),{method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(paquete())})
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(){
-      D.sync.ultima=D.ts||Date.now(); C.syncEstado='ok'; C.syncError='';
-      save(false); repintaNube(manual); if(manual) toast('Subido a la nube.');
-    })
-    .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e);
-      repintaNube(manual); if(manual) toast('No se pudo subir: '+explicaError(C.syncError)); });
-}
+function subirNube(manual){ empujaV3(manual,!!manual); }
 function aplicaNube(rem){
   var datos=abrePaquete(rem);
   if(!datos){ toast('La copia de la nube no se pudo leer.'); C.syncEstado='error';
     C.syncError='contenido ilegible'; render(); return; }
-  var guarda=D.sync, viejo=!rem.json;
+  var guarda=D.sync, viejo=!rem.json, modoLocal=D.modo, pinLocal=D.pin;
   var docsLocales={};
   (D.ligas||[]).forEach(function(L){ (L.jornadas||[]).forEach(function(j,i){
     if(j.doc&&j.doc.data) docsLocales[L.id+'|'+i]=j.doc; }); });
   aplicaCopia({datos:datos});
   (D.ligas||[]).forEach(function(L){ (L.jornadas||[]).forEach(function(j,i){
     if(j.doc&&j.doc.soloAqui){ var l=docsLocales[L.id+'|'+i]; if(l) j.doc=l; else delete j.doc; } }); });
-  D.sync=guarda; D.ts=rem.ts||Date.now(); D.sync.ultima=D.ts;
+  D.sync=guarda; D.sync.hs={}; D.modo=modoLocal; if(pinLocal) D.pin=pinLocal; else delete D.pin;
+  D.ts=rem.ts||Date.now(); D.sync.ultima=D.ts;
   C.syncEstado='ok'; C.nube=null;
   save(false); render(); toast('Datos traídos de la nube.');
   /* si venía en el formato antiguo, lo reescribimos ya en el nuevo */
-  if(viejo) subirNube(false);
+  empujaV3(false,true);
+}
+/* ================= SINCRONIZACIÓN POR PARTES Y EN VIVO ================= */
+/* La nube guarda cada parte de los datos por separado (/espacios/CLAVE-v3/p/…), con su huella (h/…) y la hora
+   del último cambio (ts). Solo se sube lo que cambia, y los demás móviles se enteran escuchando «ts». */
+var NO_SYNC={sync:1,ts:1,modo:1,pin:1,campos:1};
+var NOMBRES_PARTES={arqueros:'arqueros',sessions:'tiradas de sala',recorridos:'recorridos',drafts:'tarjetas en curso',
+  tecnicas:'técnicas',material:'fichas de material',mat:'listado de material',pend:'pendientes',ligas:'ligas',
+  notas:'reglajes',notasCampo:'notas de campo',sites:'sitios',formato:'formato',estim:'telémetro'};
+function nombreParte(k){ var m=k.match(/^campo(\d)$/); if(m) return 'campo '+(Number(m[1])+1); return NOMBRES_PARTES[k]||k; }
+function cyrb53(str){
+  var h1=0xdeadbeef, h2=0x41c6ce57, i, ch;
+  for(i=0;i<str.length;i++){ ch=str.charCodeAt(i);
+    h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+var HC={};
+function hashParte(k,t){ var c=HC[k]; if(c&&c.t===t) return c.h; var h=cyrb53(t); HC[k]={t:t,h:h}; return h; }
+function ligasSinDocs(){
+  var l=JSON.parse(JSON.stringify(D.ligas||[]));
+  l.forEach(function(L){ (L.jornadas||[]).forEach(function(j){
+    if(j.doc) j.doc={tipo:j.doc.tipo,nombre:j.doc.nombre,soloAqui:true}; }); });
+  return l;
+}
+function partes(){
+  var o={}, k, i;
+  for(k in D){
+    if(NO_SYNC[k]||typeof D[k]==='function'||D[k]===undefined) continue;
+    o[k]=JSON.stringify(k==='ligas'?ligasSinDocs():D[k]);
+  }
+  for(i=0;i<(D.campos||[]).length;i++) o['campo'+i]=JSON.stringify(D.campos[i]);
+  return o;
+}
+function ponParte(dest,k,valor){
+  var m=k.match(/^campo(\d)$/);
+  if(m){ if(!dest.campos) dest.campos=[]; dest.campos[Number(m[1])]=valor; }
+  else dest[k]=valor;
+}
+function cambiosLocales(){
+  var pt=partes(), hs=D.sync.hs||{}, k;
+  for(k in pt) if(hs[k]!==hashParte(k,pt[k])) return true;
+  return false;
+}
+function msDeTs(t){ t=Number(t)||0; return t>1e14?Math.floor(t/1000):t; }   /* marcas nuevas (×1000) y antiguas (ms) */
+function idDisp(){
+  if(D.sync.id==null){
+    var n=Math.random();
+    try{ if(window.crypto&&crypto.getRandomValues){ var u=new Uint32Array(1); crypto.getRandomValues(u); n=u[0]/4294967296; } }catch(e){}
+    D.sync.id=Math.floor(n*1000);
+  }
+  return D.sync.id;
+}
+function cambiosPendientes(){ return (D.ts||0)>msDeTs(D.sync.ultima) && !sinDatosPropios(); }
+function escribiendoAhora(){ return !!C.tecla && Date.now()-C.tecla<3000; }
+function urlN(ruta){
+  var u=normalizaUrl(D.sync.url);
+  return (u.ok?u.base:'')+'/espacios/'+encodeURIComponent(D.sync.clave)+'-v3/'+ruta+'.json';
+}
+function nubeGet(ruta){
+  return fetch(urlN(ruta),{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+}
+function nubePut(ruta,valor){
+  return fetch(urlN(ruta),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(valor)})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+}
+
+/* subir: solo las partes que han cambiado; la hora va la última, así nadie lee a medias */
+function empujaV3(manual,forzar){
+  if(!syncListo()) return;
+  var uu=normalizaUrl(D.sync.url);
+  if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
+  if(sinDatosPropios()){
+    if(manual) toast('Este móvil no tiene datos propios: subir dejaría la nube vacía. Usa «Traer ahora».');
+    return;
+  }
+  if(!manual&&!forzar&&!D.sync.ultima){ bajarNube(false); return; }   /* antes de subir, mirar qué hay */
+  if(C.subiendo3){ C.resubir=true; return; }
+  if(!D.sync.hs) D.sync.hs={};
+  var pt=partes(), lista=[], k, h, bytes=0;
+  for(k in pt){ h=hashParte(k,pt[k]); if(forzar||D.sync.hs[k]!==h){ lista.push({k:k,t:pt[k],h:h}); bytes+=pt[k].length; } }
+  if(!manual&&!forzar&&bytes>200000&&!C.esperaGrande){ C.esperaGrande=true; programaSubida(2500); return; }
+  C.esperaGrande=false;
+  if(!lista.length&&msDeTs(D.sync.ultima)>=(D.ts||0)){ C.syncEstado='ok'; repintaNube(manual); return; }
+  var ts=Math.max(Date.now(),msDeTs(D.sync.ultima)+1,Math.floor(D.ts||0)+1)*1000+idDisp();
+  C.subiendo3=true; C.tsPropio=ts; C.syncEstado='subiendo'; if(manual) render(); else refrescaNube();
+  Promise.all(lista.map(function(q){
+      return nubePut('p/'+q.k,q.t).then(function(){ return nubePut('h/'+q.k,q.h); }); }))
+    .then(function(){ return nubePut('ts',ts); })
+    .then(function(){
+      lista.forEach(function(q){ D.sync.hs[q.k]=q.h; });
+      D.sync.ultima=ts; C.syncEstado='ok'; C.syncError=''; C.subiendo3=false;
+      save(false); repintaNube(manual); if(manual) toast('Subido a la nube.');
+      if(C.resubir||(D.ts||0)>msDeTs(D.sync.ultima)){ C.resubir=false; programaSubida(300); }
+    })
+    .catch(function(e){ C.subiendo3=false; C.syncEstado='error'; C.syncError=String(e&&e.message||e);
+      repintaNube(manual); if(manual) toast('No se pudo subir: '+explicaError(C.syncError)); });
+}
+
+/* traer: solo las partes que se diferencian de las de este móvil */
+function aplicaPartes(trozos,rts,manual){
+  if(manual){ try{ localStorage.setItem(PREVIO,JSON.stringify(D)); }catch(e){} }
+  var docs={};
+  (D.ligas||[]).forEach(function(L){ (L.jornadas||[]).forEach(function(j,i){
+    if(j.doc&&j.doc.data) docs[L.id+'|'+i]=j.doc; }); });
+  trozos.forEach(function(z){ try{ ponParte(D,z.k,JSON.parse(z.t)); }catch(e){} });
+  try{ reparaDatos(); }catch(e){}
+  (D.ligas||[]).forEach(function(L){ (L.jornadas||[]).forEach(function(j,i){
+    if(j.doc&&j.doc.soloAqui){ var l=docs[L.id+'|'+i]; if(l) j.doc=l; else delete j.doc; } }); });
+  if(!D.arqueros||!D.arqueros.length) D.arqueros=[{id:uid(),nombre:'',federacion:'',licencia:'',foto:null}];
+  if(U.arq>=D.arqueros.length) U.arq=0;
+  try{ var dd=draft(); if(!dd.ends[U.sel.end]||U.sel.arrow>=nA(dd)) U.sel=firstEmpty(dd); }catch(e){}
+  var pt=partes(); if(!D.sync.hs) D.sync.hs={};
+  trozos.forEach(function(z){ if(pt.hasOwnProperty(z.k)) D.sync.hs[z.k]=hashParte(z.k,pt[z.k]); });
+  D.ts=msDeTs(rts); D.sync.ultima=rts; C.nube=null; C.syncError='';
+  C.syncEstado=sinDatosPropios()?'vacia':'ok';
+  save(false); render(); if(manual) toast('Datos traídos de la nube.');
+}
+function traeV3(manual,rts,soloK){
+  var hrP=soloK?Promise.resolve(null):nubeGet('h');
+  return hrP.then(function(hr){
+    var quiero=[], k, pt;
+    if(soloK) quiero=soloK.slice();
+    else{
+      hr=hr||{}; pt=partes();
+      for(k in hr){ if(NO_SYNC[k]) continue;
+        if(!pt.hasOwnProperty(k)||hashParte(k,pt[k])!==hr[k]) quiero.push(k); }
+    }
+    return Promise.all(quiero.map(function(q){
+      return nubeGet('p/'+q).then(function(t){ return {k:q,t:t}; }); }));
+  }).then(function(trozos){
+    trozos=trozos.filter(function(z){ return typeof z.t==='string'; });
+    var cand={}, k;
+    for(k in D) cand[k]=D[k];
+    cand.campos=(D.campos||[]).slice();
+    trozos.forEach(function(z){ try{ ponParte(cand,z.k,JSON.parse(z.t)); }catch(e){} });
+    var propios=!sinDatosPropios();
+    if(sinDatosEn(cand)){                      /* la nube no tiene nada útil: nunca se aplica */
+      if(propios){ if(manual) toast('La nube estaba vacía: subo los datos de este móvil.'); empujaV3(manual,true); return; }
+      C.syncEstado='vacia'; repintaNube(manual);
+      if(manual) toast('La nube está vacía con esta clave. Sube antes los datos desde el móvil que los tiene, o comprueba que la clave sea la misma.');
+      return;
+    }
+    if(!manual&&escribiendoAhora()){ setTimeout(function(){ bajarNube(false); },2500); return; }
+    aplicaPartes(trozos,rts,manual);
+  });
+}
+
+/* los dos móviles han cambiado cosas: si no tocan la misma parte, se mezclan solos */
+function reconcilia(rts){
+  return nubeGet('h').then(function(hr){
+    hr=hr||{};
+    var pt=partes(), hs=D.sync.hs||(D.sync.hs={}), pull=[], push=[], choque=[], nombres={}, k, lh, rh, sh;
+    for(k in pt) nombres[k]=1;
+    for(k in hr) nombres[k]=1;
+    for(k in nombres){
+      if(NO_SYNC[k]) continue;
+      lh=pt.hasOwnProperty(k)?hashParte(k,pt[k]):undefined; rh=hr[k]; sh=hs[k];
+      if(lh===rh){ hs[k]=lh; continue; }
+      if(rh===undefined){ push.push(k); continue; }
+      if(lh===undefined){ pull.push(k); continue; }
+      if(rh!==sh&&lh===sh) pull.push(k);
+      else if(lh!==sh&&rh===sh) push.push(k);
+      else choque.push(k);
+    }
+    if(choque.length){
+      C.nube={v3:true,ts:rts,choque:choque}; C.syncEstado='conflicto'; render();
+      toast('Hay cambios en los dos sitios. Elige cuál conservas.'); return;
+    }
+    var p=pull.length?traeV3(false,rts,pull):Promise.resolve();
+    return p.then(function(){
+      if(push.length||cambiosPendientes()) empujaV3(false,false);
+      else{ if(!pull.length) D.sync.ultima=rts; C.syncEstado='ok'; repintaNube(false); }
+    });
+  });
+}
+
+/* nube con el formato anterior (una sola pieza): se lee una vez y se pasa al nuevo */
+function legadoV2(manual){
+  return fetch(urlSync(),{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(rem){
+      var datosRem=abrePaquete(rem), propios=!sinDatosPropios();
+      if(!rem||!datosRem||sinDatosEn(datosRem)){
+        if(propios){ if(manual) toast('La nube estaba vacía: subo los datos de este móvil.'); empujaV3(manual,true); return; }
+        C.syncEstado='vacia'; repintaNube(manual);
+        if(manual) toast('La nube está vacía con esta clave. Sube antes los datos desde el móvil que los tiene, o comprueba que la clave sea la misma.');
+        return;
+      }
+      var cambiadoAqui=propios&&(((D.ts||0)>msDeTs(D.sync.ultima))||!D.sync.ultima);
+      var nubeNueva=(rem.ts||0)>msDeTs(D.sync.ultima);
+      if(manual||!propios||(nubeNueva&&!cambiadoAqui)){ aplicaNube(rem); return; }
+      if(nubeNueva&&cambiadoAqui){ C.nube=rem; C.syncEstado='conflicto'; render();
+        toast('Hay cambios en los dos sitios. Elige cuál conservas.'); return; }
+      empujaV3(false,true);
+    });
 }
 function bajarNube(manual){
   if(!syncListo()) return;
   var uu=normalizaUrl(D.sync.url);
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
-  C.syncEstado='bajando'; if(manual) render();
-  limpiaCachesNube().then(function(){ return fetch(urlSync(),{cache:'no-store'}); })
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(rem){
+  if(C.bajando3){ C.rebajar=true; if(manual) toast('Ya estoy consultando la nube…'); return; }
+  C.bajando3=true; C.syncEstado='bajando'; if(manual) render(); else refrescaNube();
+  var fin=function(){ C.bajando3=false; if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarNube(false); },60); } };
+  limpiaCachesNube().then(function(){ return nubeGet('ts'); })
+    .then(function(rts){
       C.syncError='';
-      var datosRem=abrePaquete(rem), propios=!sinDatosPropios();
-      if(!rem||!datosRem||sinDatosEn(datosRem)){            /* la nube no tiene nada útil */
-        if(propios){ if(manual) toast('La nube estaba vacía: subo los datos de este móvil.'); subirNube(manual); return; }
-        C.syncEstado='vacia'; repintaNube(manual);
-        if(manual) toast('La nube está vacía con esta clave. Sube antes los datos desde el móvil que los tiene, o comprueba que la clave sea la misma.');
-        return;
-      }
-      if(manual){ aplicaNube(rem); return; }
-      var cambiadoAqui=((D.ts||0)>(D.sync.ultima||0)) || (!D.sync.ultima && propios);
-      var nubeNueva=(rem.ts||0)>(D.sync.ultima||0);
-      if(nubeNueva && !cambiadoAqui) aplicaNube(rem);
-      else if(nubeNueva && cambiadoAqui){ C.nube=rem; C.syncEstado='conflicto'; render();
-        toast('Hay cambios en los dos sitios. Elige cuál conservas.'); }
-      else if(cambiadoAqui) subirNube(false);
-      else { C.syncEstado='ok'; repintaNube(false); }
+      if(rts==null) return legadoV2(manual);
+      rts=Number(rts);
+      if(manual) return traeV3(true,rts);
+      if(sinDatosPropios()) return traeV3(false,rts);   /* móvil sin datos: solo trae */
+      /* la hora de la nube no basta (la del último que sube tapa a la del anterior): se compara el contenido */
+      return reconcilia(rts);
     })
-    .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e);
-      repintaNube(manual); if(manual) toast('No se pudo conectar: '+explicaError(C.syncError)); });
+    .then(function(){ fin(); },function(e){
+      C.syncEstado='error'; C.syncError=String(e&&e.message||e); repintaNube(manual);
+      if(manual) toast('No se pudo conectar: '+explicaError(C.syncError)); fin(); });
 }
 function probarNube(){
   var uu=normalizaUrl(D.sync.url);
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; render(); toast(uu.msg); return; }
   if(!D.sync.clave){ toast('Falta la clave.'); return; }
   C.syncEstado='bajando'; render();
-  limpiaCachesNube().then(function(){ return fetch(uu.base+'/espacios/'+encodeURIComponent(D.sync.clave)+'/ts.json',{cache:'no-store'}); })
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  limpiaCachesNube().then(function(){ return nubeGet('ts'); })
     .then(function(ts){
-      C.syncError=''; C.nubeTs=ts?Number(ts):0;
-      C.syncEstado=ts?'ok':'vacia'; render();
-      toast(ts?'Conexión correcta. En la nube hay datos del '+new Date(Number(ts)).toLocaleString('es-ES')+'.'
-              :'Conexión correcta, pero la nube está vacía con esta clave.'); })
+      if(ts) return {ts:Number(ts),v3:true};
+      return fetch(urlSync().replace(/\.json$/,'/ts.json'),{cache:'no-store'})
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(function(t2){ return {ts:t2?Number(t2):0,v3:false}; });
+    })
+    .then(function(r){
+      r.ts=msDeTs(r.ts); C.syncError=''; C.nubeTs=r.ts; C.syncEstado=r.ts?'ok':'vacia'; render();
+      toast(r.ts?'Conexión correcta. En la nube hay datos del '+new Date(r.ts).toLocaleString('es-ES')
+                   +(r.v3?'.':' (formato antiguo; se pasará al nuevo al sincronizar).')
+               :'Conexión correcta, pero la nube está vacía con esta clave.'); })
     .catch(function(e){ C.syncEstado='error'; C.syncError=String(e&&e.message||e); render();
       toast(explicaError(C.syncError)); });
+}
+
+/* escuchar la hora de la nube: en cuanto otro móvil sube algo, este se entera */
+var EV={es:null,poll:null,errores:0,t:null,reint:null};
+function avisoRemoto(){ clearTimeout(EV.t); EV.t=setTimeout(function(){ bajarNube(false); },250); }
+function sondeoOn(){
+  if(EV.poll) return;
+  EV.poll=setInterval(function(){ if(!document.hidden&&syncListo()&&D.sync.auto) bajarNube(false); },12000);
+}
+function sondeoOff(){ if(EV.poll){ clearInterval(EV.poll); EV.poll=null; } }
+function vivoOff(){
+  clearTimeout(EV.reint); sondeoOff();
+  if(EV.es){ try{ EV.es.close(); }catch(e){} EV.es=null; }
+  C.vivo=false;
+}
+function vivoOn(){
+  if(!syncListo()||!D.sync.auto||!normalizaUrl(D.sync.url).ok||document.hidden) return;
+  if(EV.es) return;
+  if(typeof EventSource!=='function'){ sondeoOn(); return; }
+  var es;
+  try{ es=new EventSource(urlN('ts')); }catch(e){ sondeoOn(); return; }
+  EV.es=es;
+  es.addEventListener('put',function(ev){
+    EV.errores=0; C.vivo=true; sondeoOff();
+    var d=null; try{ d=JSON.parse(ev.data); }catch(e){ return; }
+    var ts=d&&d.data;
+    if(typeof ts==='number') avisoRemoto();
+  });
+  es.addEventListener('keep-alive',function(){ C.vivo=true; });
+  es.addEventListener('cancel',function(){ vivoOff(); EV.reint=setTimeout(vivoOn,5000); });
+  es.addEventListener('auth_revoked',function(){ vivoOff(); EV.reint=setTimeout(vivoOn,5000); });
+  es.onopen=function(){ C.vivo=true; };
+  es.onerror=function(){
+    C.vivo=false; EV.errores++;
+    if(es.readyState===2){ if(EV.es===es) EV.es=null; EV.reint=setTimeout(vivoOn,8000); }
+    if(EV.errores>=3) sondeoOn();
+  };
 }
 function estadoNube(){
   if(!syncListo()) return {t:'Sin nube',c:'#5B6975',largo:'Nube sin configurar'};
@@ -895,9 +1112,9 @@ function estadoNube(){
   if(C.syncEstado==='conflicto') return {t:'Revisar',c:'#DF4A44',largo:'Nube: hay cambios en los dos sitios'};
   if(C.syncEstado==='vacia') return {t:'Vacía',c:'#C79A0E',largo:'Nube: no hay datos con esta clave'};
   if(!D.sync.ultima) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: este móvil aún no se ha sincronizado'};
-  if((D.ts||0)>(D.sync.ultima||0)) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: quedan cambios por subir'};
-  return {t:'Al día',c:'#6FA85B',largo:'Nube: al día'
-    +(D.sync.ultima?' · '+new Date(D.sync.ultima).toLocaleString('es-ES',{day:'numeric',month:'short',
+  if(cambiosPendientes()) return {t:'Sin subir',c:'#C79A0E',largo:'Nube: quedan cambios por subir'};
+  return {t:'Al día',c:'#6FA85B',largo:'Nube: al día'+(C.vivo?' · en vivo':'')
+    +(D.sync.ultima?' · '+new Date(msDeTs(D.sync.ultima)).toLocaleString('es-ES',{day:'numeric',month:'short',
       hour:'2-digit',minute:'2-digit'}):'')};
 }
 function pastillaNube(){
@@ -1349,9 +1566,9 @@ function tarjetaCopia(){
     +'la app con la misma dirección y clave.</p>'
     +'<div class="field" style="margin-top:10px"><label>Dirección</label>'
     +'<input class="cinp" placeholder="https://...firebasedatabase.app" data-syncurl value="'+esc(D.sync.url||'')+'"></div>'
-    +'<div class="field"><label>Clave</label>'
+    +'<div class="field"><label>Clave de la nube</label>'
     +'<input class="cinp" placeholder="clave secreta" data-syncclave value="'+esc(D.sync.clave||'')+'"></div>'
-    +'<button class="mini" data-act="synccrea">Crear una clave</button>'
+    +'<button class="mini" data-act="synccrea">Crear clave de la nube</button>'
     +'<button class="mini" data-act="syncprueba" style="margin-left:6px">Probar conexión</button>'
     +(function(){ if(!D.sync.url) return '';
         var uu=normalizaUrl(D.sync.url);
@@ -1360,7 +1577,7 @@ function tarjetaCopia(){
           :'<span style="color:#DF4A44">'+esc(uu.msg)+'</span>')+'</p>'; })()
     +'<div class="chk" data-act="syncauto" style="border-bottom:none;padding:12px 0 4px">'
     +'<span class="tick" data-on="'+(D.sync.auto?1:0)+'">'+(D.sync.auto?'✓':'')+'</span>'
-    +'<div class="ctxt">Sincronizar sola<small>Sube los cambios a los pocos segundos y comprueba la nube al abrir</small></div></div>';
+    +'<div class="ctxt">Sincronizar sola<small>Sube los cambios al momento y recibe los del otro móvil sin tener que abrir nada</small></div></div>';
   if(listo){
     h+='<div class="pair" style="margin-top:10px">'
       +'<button class="act act2" data-act="syncsube" style="margin-top:0">Subir ahora</button>'
@@ -1374,13 +1591,15 @@ function tarjetaCopia(){
       +(est==='subiendo'?'Subiendo…':est==='bajando'?'Consultando…'
         :est==='error'?('Fallo: '+esc(explicaError(C.syncError))) 
         :est==='vacia'?'La nube está vacía con esta clave. Si el otro móvil tiene datos, súbelos desde allí o comprueba que la clave sea la misma.'
-        :(D.sync.ultima?'Última sincronización: '+new Date(D.sync.ultima).toLocaleString('es-ES'):'Aún no has subido nada.'))
+        :(D.sync.ultima?'Última sincronización: '+new Date(msDeTs(D.sync.ultima)).toLocaleString('es-ES'):'Aún no has subido nada.'))
       +(C.nubeTs!=null?' En la nube: '+(C.nubeTs?'datos del '+new Date(C.nubeTs).toLocaleString('es-ES'):'nada con esta clave')+'.':'')
+      +(D.sync.auto?' Actualización en vivo: '+(C.vivo?'sí':'no')+'.':'')
       +'</p>';
     if(C.nube){
       h+='<div class="card" style="background:#2A2118;margin-top:12px"><p class="stat">'
-        +'<i>Hay cambios en los dos sitios.</i><br>En la nube: '
-        +new Date(C.nube.ts).toLocaleString('es-ES')+'.<br>En este móvil: '
+        +'<i>Hay cambios en los dos sitios.</i><br>'
+        +(C.nube.choque?'Chocan: '+C.nube.choque.map(nombreParte).join(', ')+'.<br>':'')+'En la nube: '
+        +new Date(msDeTs(C.nube.ts)).toLocaleString('es-ES')+'.<br>En este móvil: '
         +new Date(D.ts).toLocaleString('es-ES')+'.</p>'
         +'<div class="pair"><button class="act" data-act="syncganalocal" style="margin-top:0">Mandar lo de aquí</button>'
         +'<button class="act act2" data-act="syncganaNube" style="margin-top:0">Traer lo de la nube</button></div></div>';
@@ -1395,6 +1614,17 @@ function tarjetaCopia(){
     +'<p class="stat">Comparte el enlace. Quien lo reciba lo abre en Chrome y elige <i>Instalar aplicación</i>: '
     +'tendrá la app entera en su móvil, con sus propios datos, sin tocar los tuyos.</p>'
     +'<button class="act act2" data-act="compartirapp">Compartir la app</button></div>';
+
+  h+='<div class="card"><div class="chead"><h2>Clave de acceso</h2>'
+    +'<span>'+(hayPin()?'activada':'sin clave')+'</span></div>'
+    +(hayPin()
+      ? '<p class="stat">La app pide seis números al abrirse y al volver a ella.</p>'
+        +'<button class="act act2" data-act="cambiapin">Cambiar la clave</button>'
+        +'<button class="ghost" data-act="quitapin">Quitar el bloqueo</button>'
+      : '<p class="stat">Seis números para que nadie más entre. Es un cerrojo, no una caja fuerte: '
+        +'los datos siguen guardados sin cifrar en el móvil. Y no se puede recuperar si se olvida.</p>'
+        +'<button class="act" data-act="ponpin">Activar clave</button>')
+    +'</div>';
   return h;
 }
 
@@ -3381,7 +3611,7 @@ function renderCampo(){
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
     +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['clasif','Clasific.'],
       ['histcampo','Historial'],['ligas','Ligas'],['mapa','Mapa'],['distancia','Distancia'],
-      ['tecnicas','Téc./Mat.'],['pendientes','Pendientes'],['copia','Copia']],'ctab',C.tab);
+      ['tecnicas','Téc./Mat.'],['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
   if(C.tab==='mapa') pintaGeo();
 }
@@ -3624,16 +3854,6 @@ function render(){
         +'</div>';
     });
     h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
-    h+='<div class="card"><div class="chead"><h2>Clave de acceso</h2>'
-      +'<span>'+(hayPin()?'activada':'sin clave')+'</span></div>'
-      +(hayPin()
-        ? '<p class="stat">La app pide seis números al abrirse y al volver a ella.</p>'
-          +'<button class="act act2" data-act="cambiapin">Cambiar la clave</button>'
-          +'<button class="ghost" data-act="quitapin">Quitar el bloqueo</button>'
-        : '<p class="stat">Seis números para que nadie más entre. Es un cerrojo, no una caja fuerte: '
-          +'los datos siguen guardados sin cifrar en el móvil. Y no se puede recuperar si se olvida.</p>'
-          +'<button class="act" data-act="ponpin">Activar clave</button>')
-      +'</div>';
     h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2></div>';
     D.sites.forEach(function(sn,i){
       h+='<div class="field"><label for="s'+i+'">Sitio '+(i+1)+'</label>'
@@ -3643,8 +3863,8 @@ function render(){
   }
 
   var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
-    ['historial','Historial'],['arqueros','Arqueros'],['tecnicas','Téc./Material'],
-    ['pendientes','Pendientes'],['copia','Copia']];
+    ['historial','Historial'],['arqueros','Arqueros/<wbr>Sitios'],['tecnicas','Téc./<wbr>Material'],
+    ['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']];
   h+='</div>'+barraTabs(pestanas,'tab',U.tab);
   document.getElementById('app').innerHTML=h;
 }
@@ -3867,13 +4087,13 @@ document.getElementById('app').addEventListener('click',function(ev){
       text:'Abre este enlace en tu otro móvil para conectar la app a tu nube:',url:en}).catch(function(){});
     else copiar(en,'Enlace'); }
   else if(a==='synccrea'){ cambiaSync('clave',claveNueva()); save(false); render();
-    toast('Clave nueva creada. Ahora envía el enlace a tus otros móviles.');
-    if(syncListo()) bajarNube(false); }
-  else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); render(); }
+    toast('Clave de la nube nueva creada. Ahora envía el enlace a tus otros móviles.');
+    if(syncListo()){ bajarNube(false); vivoOn(); } }
+  else if(a==='syncauto'){ D.sync.auto=!D.sync.auto; save(false); if(D.sync.auto) vivoOn(); else vivoOff(); render(); }
   else if(a==='syncsube'){ subirNube(true); }
   else if(a==='syncbaja'){ bajarNube(true); }
-  else if(a==='syncganalocal'){ C.nube=null; C.syncEstado=''; subirNube(true); }
-  else if(a==='syncganaNube'){ if(C.nube) aplicaNube(C.nube); }
+  else if(a==='syncganalocal'){ C.nube=null; C.syncEstado=''; empujaV3(true,true); }
+  else if(a==='syncganaNube'){ if(C.nube){ if(C.nube.v3) traeV3(true,C.nube.ts); else aplicaNube(C.nube); } }
   else if(a==='elegircopia'){ var ci=document.getElementById('copiainput'); ci.value=''; ci.click(); }
   else if(a==='aplicarcopia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se sustituye todo'; return; }
@@ -4040,6 +4260,7 @@ document.getElementById('app').addEventListener('click',function(ev){
 });
 
 document.getElementById('app').addEventListener('input',function(ev){
+  C.tecla=Date.now();
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
   else if(q){ D.arqueros[Number(t.dataset.i)][q]=t.value; save(); }
@@ -4084,9 +4305,9 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; U.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-syncurl')){
     var nu=normalizaUrl(t.value); cambiaSync('url',nu.ok?nu.base:String(t.value||'').trim()); save(false); render();
-    if(syncListo()) bajarNube(false); }
+    if(syncListo()){ bajarNube(false); vivoOn(); } }
   else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){
-    cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()) bajarNube(false); }
+    cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()){ bajarNube(false); vivoOn(); } }
   else if(t.hasAttribute&&t.hasAttribute('data-ligasel')){ C.liga=t.value; C.jorSel=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-jorsel')){
     if(t.value===''){ C.jorSel=null; render(); return; }
@@ -4204,10 +4425,15 @@ document.getElementById('lock').addEventListener('click',function(ev){
 /* al volver a la app tras un rato, vuelve a pedirla */
 var salida=0;
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden){ salida=Date.now(); if(syncListo()&&D.sync.auto) subirNube(false); }
-  else if(syncListo()&&D.sync.auto) setTimeout(compruebaNube,600);
-  else if(hayPin() && salida && Date.now()-salida>600000
-          && !document.getElementById('lock').dataset.on){ SES.quita('activo'); abreLock(''); }
+  if(document.hidden){
+    salida=Date.now(); vivoOff();
+    if(syncListo()&&D.sync.auto) empujaV3(false,false);
+  } else {
+    if(hayPin() && salida && Date.now()-salida>600000 && !document.getElementById('lock').dataset.on){
+      SES.quita('activo'); abreLock('');
+    }
+    if(syncListo()&&D.sync.auto) setTimeout(function(){ compruebaNube(); vivoOn(); },400);
+  }
 });
 
 function compruebaNube(){ if(syncListo()&&D.sync.auto) bajarNube(false); }
@@ -4222,7 +4448,7 @@ if(reanuda){
 eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
 if(hayPin() && !reanuda) abreLock('');
-setTimeout(compruebaNube,1200);
+setTimeout(function(){ compruebaNube(); vivoOn(); },1200);
 if(C.recienLigada){ toast('Nube configurada con el enlace. Trayendo tus datos…'); C.recienLigada=false; }
 if(!document.getElementById('app').innerHTML) throw new Error('La pantalla se quedó vacía al dibujar.');
 window.__arranco=true;
