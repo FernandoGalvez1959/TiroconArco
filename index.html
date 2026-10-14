@@ -478,7 +478,7 @@ function muestraFalloInterno(txt){
   }catch(e){}
 }
 
-var DISTS=[10,18,30], KEYS=['X','10','9','8','7','6','5','4','3','2','1','M'];
+var DISTS=[18,30], KEYS=['X','10','9','8','7','6','5','4','3','2','1','M'];
 var MAXE=30, MAXA=12;
 var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
@@ -668,7 +668,7 @@ function arrancaCheck(){
   D.check=null; D.extras=null;
 }
 arrancaCheck();
-var U={dist:10,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:10,pSite:0,verCSV:false,fotoIdx:0};
+var U={dist:18,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
 var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 var tSubida=null;
@@ -2822,7 +2822,7 @@ function pantallaModo(){
     +'<h2>¿Qué vas a tirar?</h2>'
     +'<p>Puedes cambiar de modalidad cuando quieras con el botón de arriba a la derecha.</p>'
     +'<button class="modobtn" data-act="modo" data-v="sala" data-on="'+(D.modo==='sala'?1:0)+'">'
-    +'<b>Tiro en sala</b><span>Diana de anillos, tandas y flechas configurables, 10, 18 y 30 metros. '
+    +'<b>Tiro en sala</b><span>Diana de anillos, tandas y flechas configurables, 18 y 30 metros. '
     +'Récords, progreso y clasificación por día.</span></button>'
     +'<button class="modobtn" data-act="modo" data-v="campo" data-on="'+(D.modo==='campo'?1:0)+'">'
     +'<b>Tiro en campo</b><span>Recorrido de figuras 3D, 12 o 24 puestos, dos flechas por puesto '
