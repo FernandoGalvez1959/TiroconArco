@@ -88,6 +88,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .pad2{grid-template-columns:repeat(2,1fr);}
 .pad2 button{padding:18px 0;font-size:19px;}
 .pad2 .undo{grid-column:span 2;}
+.pad3 button[data-v="M"]{grid-column:span 2;}
 .pad button small{display:block;font-size:11px;font-weight:500;opacity:.85;margin-top:2px;}
 .ptscol{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
 .ptscol .cinp[disabled]{opacity:.55;}
@@ -493,16 +494,17 @@ function muestraFalloInterno(txt){
 
 var DISTS=[18,30], KEYS=['X','10','9','8','7','6','5','4','3','2','1','M'];
 /* Las tres dianas de sala: 18 m con diana de 40 cm, 30 m con diana de 60 cm y 18 m con diana de 30 cm de colores */
-var MODS=[{id:'18',dist:18,cm:40,col:false},{id:'30',dist:30,cm:60,col:false},{id:'18c',dist:18,cm:30,col:true}];
-var KEYSCOL=['A','R','N','M'], NOMCOL={A:'Amarillo',R:'Rojo',N:'Negro',M:'M'}, PTS_COL_DEF={A:10,R:9,N:8};
-function modDe(s){ return (s&&s.col)?'18c':String((s&&s.dist)||18); }
+var MODS=[{id:'18',dist:18,cm:40,txt:'40 cm',col:false},{id:'30',dist:30,cm:60,txt:'60 cm',col:false},
+  {id:'18c',dist:18,cm:30,txt:'30 cm',col:true},{id:'18t',dist:18,cm:20,txt:'3×20 cm',col:false,tri:true}];
+var KEYSTRI=['X','10','9','8','7','6','M'], KEYSCOL=['A','R','N','M'], NOMCOL={A:'Amarillo',R:'Rojo',N:'Negro',M:'M'}, PTS_COL_DEF={A:10,R:9,N:8};
+function modDe(s){ return (s&&s.col)?'18c':(s&&s.tri)?'18t':String((s&&s.dist)||18); }
 function infoMod(id){ var i; for(i=0;i<MODS.length;i++) if(MODS[i].id===String(id)) return MODS[i]; return MODS[0]; }
-function descMod(id){ var m=infoMod(id); return m.dist+' m · '+m.cm+' cm'; }
+function descMod(id){ var m=infoMod(id); return m.dist+' m · '+m.txt; }
 function descDist(s){ return descMod(modDe(s)); }
-function distTag(s){ return s.dist+'m'+(s.col?'-30cm':''); }
+function distTag(s){ return s.dist+'m'+(s.col?'-30cm':s.tri?'-3x20cm':''); }
 function modIdx(s){ var m=modDe(s), i; for(i=0;i<MODS.length;i++) if(MODS[i].id===m) return i; return 0; }
-function modU(){ return U.col?'18c':String(U.dist); }
-function modP(){ return U.pCol?'18c':String(U.pDist); }
+function modU(){ return U.col?'18c':U.tri?'18t':String(U.dist); }
+function modP(){ return U.pCol?'18c':U.pTri?'18t':String(U.pDist); }
 function ptsCol(){ return D.puntosCol||PTS_COL_DEF; }
 function migraColor(){
   try{
@@ -526,6 +528,13 @@ function cont3(s){ return s&&s.col?('Negros: '+negros(s)):('X + dieces: '+(xs(s)
 function contText(s){ return s&&s.col?('Amarillos '+xs(s)+' · Rojos '+dieces(s)+' · Negros '+negros(s)):('X '+xs(s)+' · 10 '+dieces(s)); }
 /* dibujo de la diana, como el logo; el tamaño es proporcional al real (60, 40 y 30 cm) */
 function dianaSVG(m){
+  if(m.tri){                                  /* tres dianas de 20 cm, una sobre otra, en una tira */
+    var r3=22*m.cm/60, o3='<rect x="14.5" y="0.5" width="19" height="47" rx="3" fill="#222C38" stroke="#3C4855" stroke-width=".6"/>';
+    [8.6,24,39.4].forEach(function(cy){
+      [[1,'#3D7CC9'],[.67,'#DF4A44'],[.34,'#F2C11B']].forEach(function(z){
+        o3+='<circle cx="24" cy="'+cy+'" r="'+(r3*z[0]).toFixed(1)+'" fill="'+z[1]+'"/>'; }); });
+    return '<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">'+o3+'</svg>';
+  }
   var R=22*m.cm/60, c=24, zonas=m.col?[[1,'#0F141A'],[.66,'#DF4A44'],[.33,'#F2C11B']]
     :[[1,'#E6E8E4'],[.8,'#0F141A'],[.62,'#3D7CC9'],[.44,'#DF4A44'],[.24,'#F2C11B']], o='';
   zonas.forEach(function(z,i){ o+='<circle cx="'+c+'" cy="'+c+'" r="'+(R*z[0]).toFixed(1)+'" fill="'+z[1]+'"'
@@ -726,7 +735,7 @@ function arrancaCheck(){
   D.check=null; D.extras=null;
 }
 arrancaCheck();
-var U={dist:18,col:false,pCol:false,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
+var U={dist:18,col:false,tri:false,pCol:false,pTri:false,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
 var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 var tSubida=null;
@@ -1247,6 +1256,7 @@ function draft(){
   var k=claveDraft();
   if(!D.drafts[k]) D.drafts[k]={id:uid(),arquero:arqActual().id,fecha:new Date().toISOString(),
     dist:U.dist,site:U.site,ends:malla(D.formato.ends,D.formato.arrows)};
+  if(U.tri&&!D.drafts[k].tri) D.drafts[k].tri=true;
   if(U.col&&!D.drafts[k].col){ D.drafts[k].col=true; D.drafts[k].pts={A:ptsCol().A,R:ptsCol().R,N:ptsCol().N}; }
   return D.drafts[k];
 }
@@ -1952,7 +1962,7 @@ function grupos(){
   var m={};
   D.sessions.forEach(function(s){
     var k=iso(s.fecha)+'|'+modDe(s)+'|'+s.site+'|'+nE(s)+'x'+nA(s);
-    if(!m[k]) m[k]={clave:k,fecha:s.fecha,dist:s.dist,col:!!s.col,site:s.site,ne:nE(s),na:nA(s),tiradas:[]};
+    if(!m[k]) m[k]={clave:k,fecha:s.fecha,dist:s.dist,col:!!s.col,tri:!!s.tri,site:s.site,ne:nE(s),na:nA(s),tiradas:[]};
     m[k].tiradas.push(s);
   });
   return Object.keys(m).map(function(k){
@@ -3740,7 +3750,7 @@ function barraTabs(lista,acto,activa){
 function segDist(act,cur){
   return '<div class="seg segmod">'+MODS.map(function(m){
     return '<button data-act="'+act+'" data-v="'+m.id+'" data-on="'+(m.id===String(cur)?1:0)+'">'+dianaSVG(m)
-      +'<b>'+m.dist+' m</b><small>'+m.cm+' cm</small></button>'; }).join('')+'</div>';
+      +'<b>'+m.dist+' m</b><small>'+m.txt+'</small></button>'; }).join('')+'</div>';
 }
 function selSitio(attr,cur){
   return '<select class="arq" style="width:100%" '+attr+'>'
@@ -3820,8 +3830,8 @@ function render(){
       h+='<button class="slot" data-act="slot" data-e="'+e+'" data-a="'+i+'" data-sel="'+(U.sel.arrow===i?1:0)+'"'
         +' style="font-size:'+slotSz+'px'+(cc?';'+sty(cc):'')+'" aria-label="Flecha '+(i+1)+'">'+(v==null?'':v)+'</button>';
     });
-    h+='</div><div class="pad'+(s.col?' pad2':'')+'">';
-    (s.col?KEYSCOL:KEYS).forEach(function(v){
+    h+='</div><div class="pad'+(s.col?' pad2':s.tri?' pad3':'')+'">';
+    (s.col?KEYSCOL:s.tri?KEYSTRI:KEYS).forEach(function(v){
       var pv=s.col?(v==='M'?0:(s.pts||ptsCol())[v]):null;
       h+='<button data-act="shoot" data-v="'+v+'" style="'+sty(ringc(v))+'">'+(s.col?NOMCOL[v]+'<small>'+pv+' pt'+(Number(pv)===1?'':'s')+'</small>':v)+'</button>'; });
     h+='<button class="undo" data-act="undo">Borrar última</button></div></div>';
@@ -4045,7 +4055,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   }
   var b=ev.target.closest('[data-act]'); if(!b) return;
   var a=b.dataset.act, v=b.dataset.v;
-  if(a==='dist'){ var md=infoMod(v); U.dist=md.dist; U.col=md.col; U.sel=firstEmpty(draft()); render(); }
+  if(a==='dist'){ var md=infoMod(v); U.dist=md.dist; U.col=md.col; U.tri=!!md.tri; U.sel=firstEmpty(draft()); render(); }
   else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
@@ -4055,7 +4065,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='arrows'){ cambiaFormato('arrows',Number(v)); }
   else if(a==='vaciar'){ var d0=draft(); d0.ends=malla(nE(d0),nA(d0)); U.sel={end:0,arrow:0}; save(); render(); toast('Tarjeta vaciada'); }
   else if(a==='tab'){ U.tab=v; render(); }
-  else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; render(); }
+  else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; U.pTri=!!mp.tri; render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
     if(s1) comparte(buildPDF(s1),nombrePDF(s1),'application/pdf'); }
