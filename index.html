@@ -94,6 +94,27 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .ptscol .cinp[disabled]{opacity:.55;}
 .ptscol label{display:block;font-size:12px;color:var(--dim);}
 .ptscol .cinp{margin-top:4px;text-align:center;font-weight:600;font-size:16px;}
+.objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
+.objfila b{color:var(--gold);}
+.objfila .dias{color:var(--dim);}
+.objfila .vencido{color:var(--red);}
+.objrow{display:grid;grid-template-columns:1fr 74px 138px;gap:7px;align-items:center;margin:6px 0;}
+.objrow .lbl{font-size:13px;color:var(--ink);}
+.objrow .cinp{padding:9px 6px;font-size:14px;min-width:0;}
+.gimst{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--ink);}
+.gimst .gimic{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;background:#151C24;color:var(--dim);}
+.gimst .gimtx{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
+.gimst b{font-size:15px;font-weight:600;}
+.gimst small{font-size:12px;color:var(--dim);line-height:1.25;}
+.gimst .gimfl{color:var(--dim);flex:none;}
+.gimst[data-ok="1"]{border-color:#3E8A5C;background:#162A21;}
+.gimst[data-ok="1"] .gimic{background:#3FB06F;color:#06180E;}
+.gimst[data-ok="0"]{border-color:#9C3B38;background:#2A1818;}
+.gimst[data-ok="0"] .gimic{background:var(--red);color:#fff;}
+.gimpanel{margin:-2px 0 10px;}
+.gimaviso{margin:10px 0 0;font-size:13px;color:var(--red);font-weight:600;}
+.pad[data-bloq="1"] button{opacity:.3;}
+.pctok{color:#6FC38C;}
 .chip{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-weight:600;}
 .dash{color:#333F4B;}
 .tot{font-weight:600;}
@@ -506,6 +527,116 @@ function modIdx(s){ var m=modDe(s), i; for(i=0;i<MODS.length;i++) if(MODS[i].id=
 function modU(){ return U.col?'18c':U.tri?'18t':String(U.dist); }
 function modP(){ return U.pCol?'18c':U.pTri?'18t':String(U.pDist); }
 function ptsCol(){ return D.puntosCol||PTS_COL_DEF; }
+/* ---- objetivo mínimo por diana ---- */
+function dos(n){ return n<10?'0'+n:''+n; }
+function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+dos(d.getMonth()+1)+'-'+dos(d.getDate()); }
+function fechaISO(f){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(f||''); return m?(m[3]+'/'+m[2]+'/'+m[1]):''; }
+function diasHasta(f){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(f||''), h=/^(\d{4})-(\d{2})-(\d{2})$/.exec(hoyISO());
+  if(!m||!h) return null;
+  return Math.round((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(+h[1],+h[2]-1,+h[3]))/86400000);
+}
+function objDe(a,mod){ var o=a&&a.obj&&a.obj[mod]; return (o&&Number(o.p)>0)?o:null; }
+function flObj(o){ return Number(o.fl)||D.formato.arrows||6; }
+function pctObj(a,s){
+  var o=objDe(a,modDe(s)); if(!o) return null;
+  return media(s)*flObj(o)/Number(o.p)*100;
+}
+function objTexto(o){
+  var h='<b>'+esc(String(o.p))+'</b> pts por tanda de '+flObj(o)+' flechas', d=diasHasta(o.f);
+  if(o.f&&d!=null) h+=' · '+fechaISO(o.f)+' <span class="'+(d<0?'vencido':'dias')+'">('
+    +(d>1?'faltan '+d+' días':d===1?'queda 1 día':d===0?'vence hoy':'vencido hace '+(-d)+' día'+(d===-1?'':'s'))+')</span>';
+  return h;
+}
+function objetivosArq(a,i){
+  var h='<p class="stat" style="margin-top:14px;margin-bottom:2px">Objetivo mínimo por diana</p>'
+    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos por tanda de '+(D.formato.arrows||6)+' flechas y fecha para conseguirlo.</p>';
+  MODS.forEach(function(md){
+    var o=(a.obj&&a.obj[md.id])||{};
+    h+='<div class="objrow"><div class="lbl">'+descMod(md.id)+'</div>'
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por tanda, '+descMod(md.id)+'" '
+      +'data-objarq="'+i+'" data-objmod="'+md.id+'" data-objcampo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+      +'<input class="cinp" type="date" aria-label="Fecha límite, '+descMod(md.id)+'" '
+      +'data-objarq="'+i+'" data-objmod="'+md.id+'" data-objcampo="f" value="'+esc(o.f||'')+'"></div>';
+  });
+  return h;
+}
+/* ---- gimnasia previa a la tirada ---- */
+var GM={abierta:null,edita:false};
+function gimItems(){ return (D.gim&&D.gim.items)||[]; }
+function gimMarcas(a){ var h=D.gim&&D.gim.hechos&&a&&D.gim.hechos[a.id]; return (h&&h.f===hoyISO()&&h.ids)?h.ids:[]; }
+function gimExige(a){ return !!a&&a.gim!==false&&gimItems().length>0; }
+function gimHechas(a){ var m=gimMarcas(a); return gimItems().filter(function(x){ return m.indexOf(x.id)>=0; }).length; }
+function gimOk(a){ return !gimExige(a)||gimHechas(a)===gimItems().length; }
+function gimToggle(a,id){
+  if(!D.gim) D.gim={items:[],hechos:{}};
+  if(!D.gim.hechos) D.gim.hechos={};
+  var hoy=hoyISO(), k;
+  for(k in D.gim.hechos) if(D.gim.hechos[k]&&D.gim.hechos[k].f!==hoy) delete D.gim.hechos[k];
+  var h=D.gim.hechos[a.id]; if(!h) h=D.gim.hechos[a.id]={f:hoy,ids:[]};
+  var j=h.ids.indexOf(id); if(j>=0) h.ids.splice(j,1); else h.ids.push(id);
+  save();
+}
+function gimReset(a){ if(D.gim&&D.gim.hechos) delete D.gim.hechos[a.id]; save(); }
+function gimFilas(a){
+  var m=gimMarcas(a), h='';
+  gimItems().forEach(function(it){
+    var on=m.indexOf(it.id)>=0;
+    h+='<div class="chk" data-act="gimchk" data-id="'+esc(it.id)+'"><span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
+      +'<div class="ctxt"'+(on?' data-on="1"':'')+'>'+esc(it.t||'(sin nombre)')+'</div></div>';
+  });
+  return h;
+}
+function gimBoton(a){
+  var n=gimItems().length;
+  if(!n) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
+    +'<small>Sin ejercicios. Añádelos en Gim/Téc/Mat</small></span></button>';
+  if(a.gim===false) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
+    +'<small>No se exige a este arquero</small></span></button>';
+  var ok=gimOk(a), hs=gimHechas(a);
+  return '<button class="gimst" data-act="gimir" data-ok="'+(ok?1:0)+'"><span class="gimic">'+(ok?'✓':'✗')+'</span>'
+    +'<span class="gimtx"><b>Gimnasia</b><small>'+(ok?'Completa: ya puedes tirar':hs+' de '+n+' · sin completarla no se puede anotar')+'</small></span>'
+    +'<span class="gimfl">'+(U.gimPanel?'▾':'▸')+'</span></button>'
+    +(U.gimPanel?'<div class="card gimpanel">'+gimFilas(a)
+      +'<div class="tecbar" style="margin-top:10px"><button class="mini" data-act="gimreset">Desmarcar todo</button>'
+      +'<button class="mini" data-act="gimtab">Editar ejercicios</button></div></div>':'');
+}
+function pantallaGim(){
+  var a=arqActual(), its=gimItems(), tot=its.length, hs=gimHechas(a), pc=tot?Math.round(hs*100/tot):0, ok=gimOk(a), edit=GM.edita;
+  var abierta=(GM.abierta==null)?(!ok||!tot):GM.abierta;
+  var h='<div class="card"><div class="chead" data-act="gimabre"><h2>Gimnasia</h2><span>'+hs+'/'+tot+' '+(abierta?'▾':'▸')+'</span></div>'
+    +'<div class="barra"><i style="width:'+pc+'%"></i></div>'
+    +'<p class="stat" style="margin-top:8px">'
+    +(!tot?'Escribe aquí tus ejercicios de calentamiento. Con ellos hechos, la tirada se puede empezar; sin ellos, no.'
+      :a.gim===false?'No se exige a este arquero.'
+      :ok?'<b style="color:#6FC38C">✓ Completa.</b> Ya se puede tirar.'
+        :'<b style="color:var(--red)">✗ Incompleta.</b> No se puede anotar ninguna tanda hasta marcarlo todo.')+'</p>';
+  if(abierta){
+    if(D.arqueros.length>1) h+='<div class="selrow" style="margin-top:10px">'+selArq()+'</div>';
+    var m=gimMarcas(a);
+    its.forEach(function(it,i){
+      if(edit){
+        h+='<div class="chk chkedit"><div class="cedit">'
+          +'<input class="cinp" maxlength="70" placeholder="Ejercicio" data-gimt="'+i+'" value="'+esc(it.t)+'"></div>'
+          +'<div class="mover">'
+          +'<button class="mini" data-act="gimsube" data-i="'+i+'"'+(i===0?' disabled':'')+' aria-label="Subir">▲</button>'
+          +'<button class="mini" data-act="gimbaja" data-i="'+i+'"'+(i===tot-1?' disabled':'')+' aria-label="Bajar">▼</button>'
+          +'<button class="mini" data-act="gimbor" data-i="'+i+'">✕</button></div></div>';
+      } else {
+        var on=m.indexOf(it.id)>=0;
+        h+='<div class="chk" data-act="gimchk" data-id="'+esc(it.id)+'"><span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
+          +'<div class="ctxt"'+(on?' data-on="1"':'')+'>'+esc(it.t||'(sin nombre)')+'</div></div>';
+      }
+    });
+    h+='<div class="tecbar" style="margin-top:12px"><button class="mini" data-act="gimedit">'+(edit?'Terminar':'Editar')+'</button>'
+      +'<button class="mini" data-act="gimadd">Añadir ejercicio</button>'
+      +(tot&&!edit?'<button class="mini" data-act="gimreset">Desmarcar todo</button>':'')+'</div>'
+      +'<div class="chk" data-act="gimexige" style="margin-top:6px;border-bottom:0"><span class="tick" data-on="'+(a.gim!==false?1:0)+'">'+(a.gim!==false?'✓':'')+'</span>'
+      +'<div class="ctxt">Exigir esta gimnasia a '+esc(nombreArq(a))+' antes de tirar'
+      +'<small>Se vuelve a pedir cada día. Sin marcar, '+esc(nombreArq(a))+' puede tirar sin ella.</small></div></div>';
+  }
+  return h+'</div>';
+}
 function migraColor(){
   try{
     if(localStorage.getItem('arqueria:migcol1')) return;
@@ -669,7 +800,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   pend:{trabajos:[],compras:[]},
-  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],
+  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],gim:{items:[],hechos:{}},
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -694,6 +825,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.ts) D.ts=p.ts;
   if(p.ligas) D.ligas=p.ligas;
   if(p.puntosCol) D.puntosCol=p.puntosCol;
+  if(p.gim) D.gim=p.gim;
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
   if(p.ocultarDist) D.ocultarDist=true;
   if(p.estim) D.estim=p.estim;
@@ -799,6 +931,7 @@ function sinDatosEn(d){
      ||L(d.tecnicas).length||L(d.material).length||L(d.estim).length) return false;
   var pe=d.pend||{};
   if(L(pe.trabajos).length||L(pe.compras).length) return false;
+  if(d.gim&&L(d.gim.items).length) return false;
   if(L(d.arqueros).some(function(a){ return a&&(a.nombre||a.foto); })) return false;
   for(k in (d.notas||{})) if(d.notas[k]) return false;
   for(k in (d.notasCampo||{})) if(d.notasCampo[k]) return false;
@@ -1536,6 +1669,7 @@ function tic(){
 }
 function arrancaCrono(){
   if(TM.on) return;
+  if(D.modo!=='campo'&&!gimOk(arqActual())){ toast('Completa la gimnasia antes de empezar'); return; }
   if(TM.left<=0) TM.left=TM.tot;
   TM.on=true; pitido(1,1200,0.25);
   clearInterval(TM.h); TM.h=setInterval(tic,1000);
@@ -1640,6 +1774,7 @@ function aplicaCopia(c){
   D.pend=d.pend?{trabajos:(d.pend.trabajos||[]),compras:(d.pend.compras||[])}:{trabajos:[],compras:[]};
   D.ligas=d.ligas||[];
   if(d.puntosCol) D.puntosCol=d.puntosCol;
+  if(d.gim) D.gim=d.gim;
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
   D.mat=(d.mat&&d.mat.length)?d.mat:[];
   D.check=d.check||null; D.extras=d.extras||null; arrancaCheck();
@@ -3690,13 +3825,13 @@ function pantallaPendientes(){
     +listaPend('compras','Compras',
       'Lo que haya que comprar: tubos, plumas, culatines…','Qué hay que comprar');
 }
-function pantallaTecMat(){ return pantallaTecnicas()+pantallaMateriales(); }
+function pantallaTecMat(){ return pantallaGim()+'<div style="height:14px"></div>'+pantallaTecnicas()+pantallaMateriales(); }
 function pantallaTecnicas(){
-  return fichas('material','Material',
-      'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
-    +'<div style="height:14px"></div>'
-    +fichas('tecnicas','Técnicas',
+  return fichas('tecnicas','Técnicas',
       'Tus apuntes: correcciones, sensaciones, entrenamientos.','Título',0)
+    +'<div style="height:14px"></div>'
+    +fichas('material','Material',
+      'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
     +'<datalist id="sugmat">'+SUGMAT.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
 function renderCampo(){
@@ -3732,7 +3867,7 @@ function renderCampo(){
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
     +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['clasif','Clasific.'],
       ['histcampo','Historial'],['ligas','Ligas'],['mapa','Mapa'],['distancia','Distancia'],
-      ['tecnicas','Téc./Mat.'],['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']],'ctab',C.tab);
+      ['tecnicas','Gim/<wbr>Téc/<wbr>Mat'],['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']],'ctab',C.tab);
   document.getElementById('app').innerHTML=h;
   if(C.tab==='mapa') pintaGeo();
 }
@@ -3793,7 +3928,7 @@ function render(){
     var s=draft(), ne=nE(s), na=nA(s), e=Math.min(U.sel.end,ne-1), row=s.ends[e];
     var n=row.filter(function(x){ return x!=null; }).length;
     var t=row.reduce(function(a,x){ return a+valS(x,s); },0);
-    var N=shots(s), T2=total(s), rec=best(A.id,modU(),U.site);
+    var N=shots(s), T2=total(s), rec=best(A.id,modU(),U.site), pc0=pctObj(A,s);
 
     h+=selSitio('data-selsite',U.site)+'<div style="height:8px"></div>'
       +segDist('dist',modU())+'<div style="height:12px"></div>';
@@ -3819,7 +3954,9 @@ function render(){
         +'<small>'+(s.comp?'Al acabar cada tanda pasa al arquero siguiente'
                           :'Se marcará en la clasificación del día')+'</small></div></div>';
     }
-    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>';
+    var obj0=objDe(A,modU());
+    if(obj0) h+='<div class="objfila"><b>Objetivo</b> '+descMod(modU())+': '+objTexto(obj0)+'</div>';
+    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>'+gimBoton(A);
 
     var slotSz=na<=6?19:na<=9?16:14;
     h+='<div class="card"><div class="chead"><h2>Tanda '+(e+1)+' de '+ne+'</h2>'
@@ -3830,10 +3967,12 @@ function render(){
       h+='<button class="slot" data-act="slot" data-e="'+e+'" data-a="'+i+'" data-sel="'+(U.sel.arrow===i?1:0)+'"'
         +' style="font-size:'+slotSz+'px'+(cc?';'+sty(cc):'')+'" aria-label="Flecha '+(i+1)+'">'+(v==null?'':v)+'</button>';
     });
-    h+='</div><div class="pad'+(s.col?' pad2':s.tri?' pad3':'')+'">';
+    var bloq=!gimOk(A);
+    h+='</div>'+(bloq?'<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>':'')
+      +'<div class="pad'+(s.col?' pad2':s.tri?' pad3':'')+'" data-bloq="'+(bloq?1:0)+'">';
     (s.col?KEYSCOL:s.tri?KEYSTRI:KEYS).forEach(function(v){
       var pv=s.col?(v==='M'?0:(s.pts||ptsCol())[v]):null;
-      h+='<button data-act="shoot" data-v="'+v+'" style="'+sty(ringc(v))+'">'+(s.col?NOMCOL[v]+'<small>'+pv+' pt'+(Number(pv)===1?'':'s')+'</small>':v)+'</button>'; });
+      h+='<button data-act="shoot" data-v="'+v+'"'+(bloq?' disabled':'')+' style="'+sty(ringc(v))+'">'+(s.col?NOMCOL[v]+'<small>'+pv+' pt'+(Number(pv)===1?'':'s')+'</small>':v)+'</button>'; });
     h+='<button class="undo" data-act="undo">Borrar última</button></div></div>';
 
     var chipW=na<=6?21:na<=9?18:15, fz=na<=6?12:na<=9?11:10;
@@ -3865,6 +4004,7 @@ function render(){
 
     h+='<div class="card"><div class="sum"><div class="big">'+T2+'<small>/ '+maxPts(s)+'</small></div>'
       +'<div class="stat">Media por flecha<b>'+dec(N?T2/N:0)+'</b></div>'
+      +(pc0!=null?'<div class="stat">% del objetivo<b class="'+(N&&pc0>=100?'pctok':'')+'">'+(N?Math.round(pc0)+' %':'–')+'</b></div>':'')
       +'<div class="stat">Flechas<b>'+N+'</b></div>'
       +(s.col?('<div class="stat">Amarillos<b>'+xs(s)+'</b></div><div class="stat">Rojos<b>'+dieces(s)+'</b></div>'
               +'<div class="stat">Negros<b>'+negros(s)+'</b></div>')
@@ -3953,11 +4093,12 @@ function render(){
       +(lista.length!==D.sessions.length?' (de '+D.sessions.length+')':'')+'</span></div>';
     if(!lista.length) h+='<p class="empty">'+(D.sessions.length?'Nada con ese filtro.':'Guarda una tirada y aparecerá aquí.')+'</p>';
     vistos.forEach(function(s){
-      var a=arqPorId(s.arquero), b=best(s.arquero,modDe(s),s.site);
+      var a=arqPorId(s.arquero), b=best(s.arquero,modDe(s),s.site), pr=pctObj(a,s);
       h+='<div class="hrow">'
         +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
-        +'<div class="l3">'+formato(s)+' · '+dec(media(s))+' por flecha · <b>'+total(s)+'</b></div>'
+        +'<div class="l3">'+formato(s)+' · '+dec(media(s))+' por flecha'
+          +(pr!=null?' · <b class="'+(pr>=100?'pctok':'')+'">'+Math.round(pr)+' %</b> del objetivo':'')+' · <b>'+total(s)+'</b></div>'
         +'<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'+dosMinis('ses:'+s.id)
         +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div></div>';
     });
@@ -3984,6 +4125,7 @@ function render(){
         +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
         +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
         +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+        +objetivosArq(a,i)
         +mejoresDe(a)
         +'</div>';
     });
@@ -3997,7 +4139,7 @@ function render(){
   }
 
   var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
-    ['historial','Historial'],['arqueros','Arqueros/<wbr>Sitios'],['tecnicas','Téc./<wbr>Material'],
+    ['historial','Historial'],['arqueros','Arqueros/<wbr>Sitios'],['tecnicas','Gim/<wbr>Téc/<wbr>Mat'],
     ['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']];
   h+='</div>'+barraTabs(pestanas,'tab',U.tab);
   document.getElementById('app').innerHTML=h;
@@ -4005,6 +4147,7 @@ function render(){
 
 /* ---- acciones ---- */
 function shoot(v){
+  if(!gimOk(arqActual())){ toast('Completa la gimnasia antes de anotar'); return; }
   var s=draft(); s.ends[U.sel.end][U.sel.arrow]=v; save();
   var e=U.sel.end,a=U.sel.arrow;
   var finTanda=(a===nA(s)-1);
@@ -4059,6 +4202,17 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
+  else if(a==='gimir'){ U.gimPanel=!U.gimPanel; render(); }
+  else if(a==='gimtab'){ U.tab='tecnicas'; C.tab='tecnicas'; GM.abierta=true; U.gimPanel=false; render(); }
+  else if(a==='gimabre'){ var gab=(GM.abierta==null)?(!gimOk(arqActual())||!gimItems().length):GM.abierta; GM.abierta=!gab; render(); }
+  else if(a==='gimchk'){ gimToggle(arqActual(),b.dataset.id); if(U.gimPanel&&gimOk(arqActual())&&gimItems().length) U.gimPanel=false; render(); }
+  else if(a==='gimedit'){ GM.edita=!GM.edita; render(); }
+  else if(a==='gimadd'){ if(!D.gim) D.gim={items:[],hechos:{}}; D.gim.items.push({id:uid(),t:''}); GM.edita=true; GM.abierta=true; save(); render(); }
+  else if(a==='gimsube'||a==='gimbaja'){ var gi=Number(b.dataset.i), gj=a==='gimsube'?gi-1:gi+1, gl=gimItems();
+    if(gl[gi]&&gl[gj]){ var gt=gl[gi]; gl[gi]=gl[gj]; gl[gj]=gt; save(); render(); } }
+  else if(a==='gimbor'){ gimItems().splice(Number(b.dataset.i),1); save(); render(); }
+  else if(a==='gimreset'){ gimReset(arqActual()); render(); }
+  else if(a==='gimexige'){ var ge=arqActual(); ge.gim=(ge.gim===false); save(); render(); }
   else if(a==='undo'){ undo(); }
   else if(a==='guardar'){ guardar(); }
   else if(a==='ends'){ cambiaFormato('ends',Number(v)); }
@@ -4397,6 +4551,14 @@ document.getElementById('app').addEventListener('input',function(ev){
   C.tecla=Date.now();
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
+  else if(t.dataset.objarq!=null){
+    var oa=D.arqueros[Number(t.dataset.objarq)], om=t.dataset.objmod, oc=t.dataset.objcampo;
+    if(oa){ if(!oa.obj) oa.obj={}; if(!oa.obj[om]) oa.obj[om]={};
+      if(oc==='p'){ var op=parseFloat(String(t.value).replace(',','.'));
+        if(isNaN(op)||op<=0) delete oa.obj[om].p; else { oa.obj[om].p=op; oa.obj[om].fl=D.formato.arrows||6; } }
+      else oa.obj[om].f=t.value;
+      save(); } }
+  else if(t.dataset.gimt!=null){ var gx=gimItems()[Number(t.dataset.gimt)]; if(gx){ gx.t=t.value; save(); } }
   else if(q){ D.arqueros[Number(t.dataset.i)][q]=t.value; save(); }
   else if(t.dataset.campo!=null){ D.campos[Number(t.dataset.campo)].nombre=t.value; save(); }
   else if(t.dataset.animal!=null){ var rr=recActual(); if(rr){ animal(rr,t.dataset.animal).nombre=t.value; save(); } }
