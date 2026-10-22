@@ -88,7 +88,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .pad2{grid-template-columns:repeat(2,1fr);}
 .pad2 button{padding:18px 0;font-size:19px;}
 .pad2 .undo{grid-column:span 2;}
-.pad3 button[data-v="M"]{grid-column:span 2;}
+.pad7 button[data-v="M"]{grid-column:span 2;}
 .pad button small{display:block;font-size:11px;font-weight:500;opacity:.85;margin-top:2px;}
 .ptscol{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
 .ptscol .cinp[disabled]{opacity:.55;}
@@ -100,6 +100,14 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .objfila .vencido{color:var(--red);}
 .objrow{display:grid;grid-template-columns:1fr 74px 138px;gap:7px;align-items:center;margin:6px 0;}
 .objrow .lbl{font-size:13px;color:var(--ink);}
+.objrow.objc4{grid-template-columns:76px 58px 48px 1fr;gap:6px;}
+.objrow.objc4 .lbl{white-space:nowrap;}
+.objc{font-size:12.5px;color:var(--dim);line-height:1.45;margin:-2px 0 10px;padding:7px 10px;border-left:3px solid var(--gold);background:var(--panel);border-radius:0 8px 8px 0;}
+.objc b{color:var(--ink);}
+.objc .pctok,.pctok{color:#6FC38C;}
+.ko{color:var(--red);}
+.objc .ko{color:var(--red);}
+.objc .vencido,.objfila .vencido{color:var(--red);}
 .objrow .cinp{padding:9px 6px;font-size:14px;min-width:0;}
 .gimst{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--ink);}
 .gimst .gimic{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;background:#151C24;color:var(--dim);}
@@ -113,7 +121,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .gimst[data-ok="0"] .gimic{background:var(--red);color:#fff;}
 .gimpanel{margin:-2px 0 10px;}
 .gimaviso{margin:10px 0 0;font-size:13px;color:var(--red);font-weight:600;}
-.pad[data-bloq="1"] button{opacity:.3;}
+.pad[data-bloq="1"] button,.pad3[data-bloq="1"] button{opacity:.3;}
 .pctok{color:#6FC38C;}
 .chip{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-weight:600;}
 .dash{color:#333F4B;}
@@ -561,6 +569,64 @@ function objetivosArq(a,i){
   });
   return h;
 }
+/* ---- objetivo en campo: puntos de un recorrido completo y, si se quiere, tope de M ---- */
+function objCDe(ar,puestos){ var o=ar&&ar.objC&&ar.objC[String(puestos)]; return (o&&Number(o.p)>0)?o:null; }
+function objCEstado(r,a){
+  var ar=a&&a.arq?arqPorId(a.arq):null, o=ar?objCDe(ar,r.puestos):null;
+  if(!o) return null;
+  var fl=flechasArq(r,a.id), tot=totalArq(r,a.id), todas=r.puestos*2;
+  var pct=fl?(tot/fl*todas/Number(o.p)*100):null;
+  var ms=cuenta(r,a.id,'M'), lim=(o.m==null||o.m==='')?null:Number(o.m);
+  var okM=(lim==null)||ms<=lim, completo=fl>=todas;
+  return {o:o,pct:pct,ms:ms,lim:lim,okM:okM,completo:completo,logrado:completo&&pct!=null&&pct>=100&&okM};
+}
+function objCTexto(o){
+  var lim=(o.m==null||o.m==='')?null:Number(o.m), d=diasHasta(o.f);
+  var h='<b>'+esc(String(o.p))+'</b> pts'+(lim===0?', sin M':lim!=null?', máx. '+lim+' M':'');
+  if(o.f&&d!=null) h+=' · '+fechaISO(o.f)+' <span class="'+(d<0?'vencido':'dias')+'">('
+    +(d>1?'faltan '+d+' días':d===1?'queda 1 día':d===0?'vence hoy':'vencido hace '+(-d)+' día'+(d===-1?'':'s'))+')</span>';
+  return h;
+}
+function objCMini(r,a){
+  var e=objCEstado(r,a); if(!e||e.pct==null) return '';
+  return ' · <b class="'+(e.pct>=100?'pctok':'')+'">'+Math.round(e.pct)+' %</b>'+(e.okM?'':' · <b class="ko">M ✗</b>');
+}
+function objCLinea(r,a){
+  var e=objCEstado(r,a); if(!e) return '';
+  var h='<div class="objc"><b>Objetivo</b> '+r.puestos+' puestos: '+objCTexto(e.o)+'<br>';
+  if(e.pct==null) h+='Aún sin flechas.';
+  else{
+    h+='<b class="'+(e.pct>=100?'pctok':'')+'">'+Math.round(e.pct)+' %</b> del objetivo · M: '+e.ms
+      +(e.lim!=null?' de '+(e.lim===0?'ninguna permitida':'máx. '+e.lim):'')+' <b class="'+(e.okM?'pctok':'ko')+'">'+(e.okM?'✓':'✗')+'</b>'
+      +(e.completo?(e.logrado?' · <b class="pctok">¡Objetivo conseguido!</b>':' · No conseguido'):'');
+  }
+  return h+'</div>';
+}
+function objCResumen(r){
+  var partes=[];
+  r.patrulla.forEach(function(a){
+    var e=objCEstado(r,a); if(!e||e.pct==null) return;
+    partes.push(esc(a.nombre)+' <b class="'+(e.pct>=100?'pctok':'')+'">'+Math.round(e.pct)+' %</b> · M '+e.ms+' <b class="'+(e.okM?'pctok':'ko')+'">'+(e.okM?'✓':'✗')+'</b>'
+      +(e.logrado?' ¡conseguido!':''));
+  });
+  return partes.length?'<div class="l3">Objetivo: '+partes.join(' · ')+'</div>':'';
+}
+function objetivosCampoArq(a,i){
+  var h='<p class="stat" style="margin-top:14px;margin-bottom:2px">Objetivo en campo</p>'
+    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido completo, máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha. Cuenta cuando este arquero va en la patrulla.</p>'
+    +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>';
+  [12,24].forEach(function(pu){
+    var o=(a.objC&&a.objC[String(pu)])||{};
+    h+='<div class="objrow objc4"><div class="lbl">'+pu+' puestos</div>'
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+      +'<input class="cinp" type="number" inputmode="numeric" min="0" step="1" placeholder="—" aria-label="Máximo de M, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="m" value="'+esc(o.m==null?'':String(o.m))+'">'
+      +'<input class="cinp" type="date" aria-label="Fecha límite, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="f" value="'+esc(o.f||'')+'"></div>';
+  });
+  return h;
+}
 /* ---- gimnasia previa a la tirada ---- */
 var GM={abierta:null,edita:false};
 function gimItems(){ return (D.gim&&D.gim.items)||[]; }
@@ -582,9 +648,47 @@ function gimFilas(a){
   var m=gimMarcas(a), h='';
   gimItems().forEach(function(it){
     var on=m.indexOf(it.id)>=0;
-    h+='<div class="chk" data-act="gimchk" data-id="'+esc(it.id)+'"><span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
+    h+='<div class="chk" data-act="gimchk" data-id="'+esc(it.id)+'" data-arq="'+esc(a.id)+'"><span class="tick" data-on="'+(on?1:0)+'">'+(on?'✓':'')+'</span>'
       +'<div class="ctxt"'+(on?' data-on="1"':'')+'>'+esc(it.t||'(sin nombre)')+'</div></div>';
   });
+  return h;
+}
+function gimMiembros(pat){
+  var o=[], vistos={};
+  (pat||[]).forEach(function(m){
+    var a=m&&m.arq?D.arqueros.filter(function(x){ return x.id===m.arq; })[0]:null;
+    if(a&&!vistos[a.id]){ vistos[a.id]=1; o.push(a); }
+  });
+  return o;
+}
+function gimFaltan(pat){ return gimMiembros(pat).filter(function(a){ return !gimOk(a); }); }
+function gimOkPat(pat){ return gimFaltan(pat).length===0; }
+function patActual(){
+  var r=recActual();
+  return (C.tab==='puesto'&&r&&!r.cerrado)?r.patrulla:(C.patrulla||[]).slice(0,C.nuevos||0);
+}
+function gimBotonPat(pat){
+  var n=gimItems().length, req=gimMiembros(pat).filter(gimExige);
+  if(!n) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
+    +'<small>Sin ejercicios. Añádelos en Gim/Téc/Mat</small></span></button>';
+  if(!req.length) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
+    +'<small>No se exige a nadie de esta patrulla</small></span></button>';
+  var falta=req.filter(function(a){ return !gimOk(a); }), ok=!falta.length;
+  var h='<button class="gimst" data-act="gimirc" data-ok="'+(ok?1:0)+'"><span class="gimic">'+(ok?'✓':'✗')+'</span>'
+    +'<span class="gimtx"><b>Gimnasia</b><small>'+(ok?'Completa en toda la patrulla: ya se puede tirar'
+      :'Falta: '+falta.map(function(a){ return esc(nombreArq(a))+' ('+gimHechas(a)+' de '+n+')'; }).join(', ')+' · sin completarla no se puede anotar')
+    +'</small></span><span class="gimfl">'+(C.gimPanel?'▾':'▸')+'</span></button>';
+  if(C.gimPanel){
+    h+='<div class="card gimpanel">';
+    req.forEach(function(a){
+      var okA=gimOk(a);
+      h+='<div class="chead" style="margin-bottom:2px"><h2 style="font-size:15px">'+esc(nombreArq(a))+'</h2>'
+        +'<span>'+gimHechas(a)+'/'+n+' '+(okA?'<b style="color:#6FC38C">✓</b>':'<b style="color:var(--red)">✗</b>')+'</span></div>'
+        +gimFilas(a)
+        +'<div class="tecbar" style="margin:6px 0 12px"><button class="mini" data-act="gimreset" data-arq="'+esc(a.id)+'">Desmarcar</button></div>';
+    });
+    h+='<div class="tecbar"><button class="mini" data-act="gimtab">Editar ejercicios</button></div></div>';
+  }
   return h;
 }
 function gimBoton(a){
@@ -1670,6 +1774,7 @@ function tic(){
 function arrancaCrono(){
   if(TM.on) return;
   if(D.modo!=='campo'&&!gimOk(arqActual())){ toast('Completa la gimnasia antes de empezar'); return; }
+  if(D.modo==='campo'){ var rg=recActual(); if(rg&&!rg.cerrado&&!gimOkPat(rg.patrulla)){ toast('Completa la gimnasia antes de empezar'); return; } }
   if(TM.left<=0) TM.left=TM.tot;
   TM.on=true; pitido(1,1200,0.25);
   clearInterval(TM.h); TM.h=setInterval(tic,1000);
@@ -3461,9 +3566,10 @@ function pantallaPuesto(r){
       +'data-color="'+r.estacas+'" placeholder="—" value="'+(dd==null?'':dd)+'"><span class="distlab">m</span></div>';
   }
 
+  if(!cerrado) h+=gimBotonPat(r.patrulla);
   r.patrulla.forEach(function(a,ai){
     var t=tiros(r,a.id,pu), suma=pts3(t[0])+pts3(t[1]);
-    h+='<div class="tiro"><div class="qn">'+esc(a.nombre)+'<small>'+esc(a.arco)+'</small></div><div class="fl">';
+    h+='<div class="tiro"><div class="qn">'+esc(a.nombre)+'<small>'+esc(a.arco)+objCMini(r,a)+'</small></div><div class="fl">';
     [0,1].forEach(function(fi){
       var v=t[fi], c=color3(v);
       h+='<button class="fslot" data-act="slot3" data-a="'+ai+'" data-f="'+fi+'"'
@@ -3475,8 +3581,10 @@ function pantallaPuesto(r){
   if(cerrado){
     h+='<button class="act act2" data-act="reabrir">Reabrir para seguir anotando</button>';
   } else {
-    h+='<div class="pad3">';
-    KEYS3D.forEach(function(v){ h+='<button data-act="tiro3" data-v="'+v+'" style="'+sty(color3(v))+'">'+v+'</button>'; });
+    var bloqP=!gimOkPat(r.patrulla);
+    if(bloqP) h+='<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>';
+    h+='<div class="pad3" data-bloq="'+(bloqP?1:0)+'">';
+    KEYS3D.forEach(function(v){ h+='<button data-act="tiro3" data-v="'+v+'"'+(bloqP?' disabled':'')+' style="'+sty(color3(v))+'">'+v+'</button>'; });
     h+='</div><button class="ghost" data-act="borra3" style="width:100%">Borrar esta flecha</button>';
   }
   h+='<div class="navp">'
@@ -3505,6 +3613,7 @@ function pantallaPuesto(r){
       +'<div class="lbl" data-act="detalle" data-id="'+a.id+'">'+esc(a.nombre)
       +'<small>'+esc(a.arco)+' · toca para ver puesto a puesto</small></div>'
       +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>'+cuenta(r,a.id,'11')+' onces</small></div></div>';
+    h+=objCLinea(r,a);
     if(C.abierto===a.id) h+=detallePorPuesto(r,a);
   });
   h+='</div>';
@@ -3574,7 +3683,8 @@ function pantallaRecorrido(r){
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
       +'<div class="ctxt">Es una competición<small>Lo marca en la clasificación y en la imagen</small></div></div>';
   }
-  h+='<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
+  h+=gimBotonPat((C.patrulla||[]).slice(0,C.nuevos||0))
+    +'<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
 
   var dc=(C.distCampo==null?(r?r.campo:0):C.distCampo);
   h+='<div class="card"><div class="chead" data-act="distabre"><h2>Distancias de las estacas</h2>'
@@ -3633,6 +3743,7 @@ function pantallaResumen(r){
       +'<b>'+esc(a.nombre)+'</b> · '+esc(a.arco)+'</div>'
       +'<div class="l3"><b>'+totalArq(r,a.id)+'</b> de '+maxRec(r)+' · '+dec(mediaArq(r,a.id))+' por flecha · '
       +cuenta(r,a.id,'11')+' onces · '+cuenta(r,a.id,'10')+' dieces</div>'
+      +objCLinea(r,a)
       +'<div class="hbts" style="grid-template-columns:1fr 1fr 1.4fr">'
       +'<button class="mini" data-act="verimg" data-k="arq:'+a.id+'">Imagen</button>'
       +'<button class="mini" data-act="pdfimg" data-k="arq:'+a.id+'">PDF</button>'
@@ -3780,6 +3891,7 @@ function pantallaHistorialCampo(){
       +(yo?esc(yo.nombre)+(cl.length>1?' y '+(cl.length-1)+' más':''):'sin arqueros')
       +' · <span class="bolita" style="background:'+estaca(x.estacas).color+'"></span>estacas '
       +estaca(x.estacas).nombre.toLowerCase()+'</div>'
+      +objCResumen(x)
       +'<div class="hbts">'+tresMinis('rec:'+x.id)
       +'<button class="mini" data-act="borrarrecid" data-id="'+x.id+'">✕</button></div>'
       +'<button class="mini" data-act="verrecdet" data-id="'+x.id+'" style="margin-top:8px">'
@@ -3788,6 +3900,7 @@ function pantallaHistorialCampo(){
       cl.forEach(function(a){
         h+='<p class="stat" style="margin:4px 0 2px"><i>'+esc(a.nombre)+'</i> · '+totalArq(x,a.id)+' pts · '
           +dec(mediaArq(x,a.id))+' por flecha · '+cuenta(x,a.id,'11')+' onces</p>'
+          +objCLinea(x,a)
           +detallePorPuesto(x,a)
           +'<div class="minis" style="justify-content:flex-start;margin:-4px 0 12px">'
           +tresMinis('arq:'+x.id+'|'+a.id)+'</div>';
@@ -3969,7 +4082,7 @@ function render(){
     });
     var bloq=!gimOk(A);
     h+='</div>'+(bloq?'<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>':'')
-      +'<div class="pad'+(s.col?' pad2':s.tri?' pad3':'')+'" data-bloq="'+(bloq?1:0)+'">';
+      +'<div class="pad'+(s.col?' pad2':s.tri?' pad7':'')+'" data-bloq="'+(bloq?1:0)+'">';
     (s.col?KEYSCOL:s.tri?KEYSTRI:KEYS).forEach(function(v){
       var pv=s.col?(v==='M'?0:(s.pts||ptsCol())[v]):null;
       h+='<button data-act="shoot" data-v="'+v+'"'+(bloq?' disabled':'')+' style="'+sty(ringc(v))+'">'+(s.col?NOMCOL[v]+'<small>'+pv+' pt'+(Number(pv)===1?'':'s')+'</small>':v)+'</button>'; });
@@ -4126,6 +4239,7 @@ function render(){
         +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
         +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
         +objetivosArq(a,i)
+        +objetivosCampoArq(a,i)
         +mejoresDe(a)
         +'</div>';
     });
@@ -4203,15 +4317,20 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
   else if(a==='gimir'){ U.gimPanel=!U.gimPanel; render(); }
+  else if(a==='gimirc'){ C.gimPanel=!C.gimPanel; render(); }
   else if(a==='gimtab'){ U.tab='tecnicas'; C.tab='tecnicas'; GM.abierta=true; U.gimPanel=false; render(); }
   else if(a==='gimabre'){ var gab=(GM.abierta==null)?(!gimOk(arqActual())||!gimItems().length):GM.abierta; GM.abierta=!gab; render(); }
-  else if(a==='gimchk'){ gimToggle(arqActual(),b.dataset.id); if(U.gimPanel&&gimOk(arqActual())&&gimItems().length) U.gimPanel=false; render(); }
+  else if(a==='gimchk'){
+    gimToggle(b.dataset.arq?arqPorId(b.dataset.arq):arqActual(),b.dataset.id);
+    if(D.modo==='campo'){ if(C.gimPanel&&gimItems().length&&gimOkPat(patActual())) C.gimPanel=false; }
+    else if(U.gimPanel&&gimOk(arqActual())&&gimItems().length) U.gimPanel=false;
+    render(); }
   else if(a==='gimedit'){ GM.edita=!GM.edita; render(); }
   else if(a==='gimadd'){ if(!D.gim) D.gim={items:[],hechos:{}}; D.gim.items.push({id:uid(),t:''}); GM.edita=true; GM.abierta=true; save(); render(); }
   else if(a==='gimsube'||a==='gimbaja'){ var gi=Number(b.dataset.i), gj=a==='gimsube'?gi-1:gi+1, gl=gimItems();
     if(gl[gi]&&gl[gj]){ var gt=gl[gi]; gl[gi]=gl[gj]; gl[gj]=gt; save(); render(); } }
   else if(a==='gimbor'){ gimItems().splice(Number(b.dataset.i),1); save(); render(); }
-  else if(a==='gimreset'){ gimReset(arqActual()); render(); }
+  else if(a==='gimreset'){ gimReset(b.dataset.arq?arqPorId(b.dataset.arq):arqActual()); render(); }
   else if(a==='gimexige'){ var ge=arqActual(); ge.gim=(ge.gim===false); save(); render(); }
   else if(a==='undo'){ undo(); }
   else if(a==='guardar'){ guardar(); }
@@ -4270,6 +4389,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='slot3'){ C.sel={a:Number(b.dataset.a),f:Number(b.dataset.f)}; render(); }
   else if(a==='tiro3'){
     var rr=recActual(); if(!rr) return;
+    if(!gimOkPat(rr.patrulla)){ toast('Completa la gimnasia antes de anotar'); return; }
     var pu=secuencia(rr)[C.idx], ar=rr.patrulla[C.sel.a];
     tiros(rr,ar.id,pu)[C.sel.f]=v;
     if(C.sel.f===0) C.sel={a:C.sel.a,f:1};
@@ -4320,6 +4440,8 @@ document.getElementById('app').addEventListener('click',function(ev){
       pat.push({id:idp,arq:ar2.id,nombre:nombreArq(ar2),arco:arco2});
     }
     if(faltan){ toast('Elige un arquero en cada puesto de la patrulla.'); render(); return; }
+    var gf=gimFaltan(pat);
+    if(gf.length){ C.gimPanel=true; toast('Falta la gimnasia de '+gf.map(function(x){ return nombreArq(x); }).join(', ')+'. Márcala y empieza.'); render(); return; }
     var rn=nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
     rn.comp=!!(C.nuevos>1&&C.nComp); save();
     render(); toast('Recorrido empezado en el puesto '+C.nInicio);
@@ -4551,6 +4673,14 @@ document.getElementById('app').addEventListener('input',function(ev){
   C.tecla=Date.now();
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
+  else if(t.dataset.objcarq!=null){
+    var ca=D.arqueros[Number(t.dataset.objcarq)], cpu=t.dataset.objcpu, cpo=t.dataset.objcpo;
+    if(ca){ if(!ca.objC) ca.objC={}; if(!ca.objC[cpu]) ca.objC[cpu]={};
+      var co=ca.objC[cpu], cv=String(t.value).trim(), cn=parseFloat(cv.replace(',','.'));
+      if(cpo==='p'){ if(isNaN(cn)||cn<=0) delete co.p; else co.p=cn; }
+      else if(cpo==='m'){ if(cv===''||isNaN(cn)||cn<0) delete co.m; else co.m=Math.floor(cn); }
+      else co.f=t.value;
+      save(); } }
   else if(t.dataset.objarq!=null){
     var oa=D.arqueros[Number(t.dataset.objarq)], om=t.dataset.objmod, oc=t.dataset.objcampo;
     if(oa){ if(!oa.obj) oa.obj={}; if(!oa.obj[om]) oa.obj[om]={};
