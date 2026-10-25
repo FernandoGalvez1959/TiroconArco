@@ -94,6 +94,11 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .ptscol .cinp[disabled]{opacity:.55;}
 .ptscol label{display:block;font-size:12px;color:var(--dim);}
 .ptscol .cinp{margin-top:4px;text-align:center;font-weight:600;font-size:16px;}
+.nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
+.nota b{display:inline;font-size:inherit;font-weight:700;color:var(--ink);}
+.nota i{color:var(--dim);}
+.avisoalm{background:#2A1818;border:1px solid #9C3B38;color:#F2C3C0;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13px;line-height:1.45;}
+.avisoalm b{color:#fff;}
 .objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
 .objfila b{color:var(--gold);}
 .objfila .dias{color:var(--dim);}
@@ -780,6 +785,76 @@ var MAXE=30, MAXA=12;
 var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
+/* ---- ¿conserva este móvil lo que la app guarda? ---- */
+var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
+var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
+function pruebaAlmacen(){
+  try{ var k='arqueria:prueba'; localStorage.setItem(k,'1'); var v=localStorage.getItem(k); localStorage.removeItem(k);
+    if(v!=='1'){ ALM.ok=false; ALM.causa='no devuelve lo guardado'; } }
+  catch(e){ ALM.ok=false; ALM.causa=String((e&&e.name)||e); }
+}
+function registraApertura(){
+  if(!ALM.ok) return;
+  try{
+    var a=JSON.parse(localStorage.getItem('arqueria:aperturas')||'null')||{primera:Date.now(),n:0,ultima:0};
+    ALM.previa=a.ultima||0; a.n=(a.n||0)+1; a.ultima=Date.now(); ALM.primera=a.primera||a.ultima; ALM.aperturas=a.n;
+    localStorage.setItem('arqueria:aperturas',JSON.stringify(a));
+  }catch(e){}
+}
+function usoAlmacen(){
+  var n=0,i,k,v;
+  try{ for(i=0;i<localStorage.length;i++){ k=localStorage.key(i); v=localStorage.getItem(k)||''; n+=k.length+v.length; } }catch(e){}
+  return n;
+}
+function dondeAbierta(){
+  var ua=navigator.userAgent||'', ins=false;
+  try{ ins=!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true; }catch(e){}
+  if(ins) return 'instalada';
+  if(/;\s*wv\)/.test(ua)||/FBAN|FBAV|Instagram|WhatsApp|Telegram|GSA\/|Line\//.test(ua)) return 'otra';
+  return 'navegador';
+}
+function pidePersist(cb){
+  try{
+    if(navigator.storage&&navigator.storage.persist){
+      navigator.storage.persist().then(function(ok){ ALM.persist=!!ok; if(cb) cb(!!ok); },function(){ ALM.persist=false; if(cb) cb(false); });
+    } else { ALM.persist=null; if(cb) cb(null); }
+  }catch(e){ ALM.persist=null; if(cb) cb(null); }
+}
+/* si el guardado falla mientras escribes, el aviso aparece al instante sin redibujar (así no se pierde el cursor) */
+function muestraAvisoAlm(){
+  var w=document.querySelector('.wrap'); if(!w||document.querySelector('.avisoalm')) return;
+  var d=document.createElement('div'); d.innerHTML=avisoAlmacen();
+  if(d.firstChild) w.insertBefore(d.firstChild,w.firstChild);
+}
+function avisoAlmacen(){
+  if(!ALM.ok) return '<div class="avisoalm">⚠ Este móvil <b>no deja guardar datos</b> ('+esc(ALM.causa||'bloqueado')+'). Lo que anotes se perderá al cerrar la app. '
+    +'Ábrela en Chrome sin modo privado o instálala (menú ⋮ → Instalar aplicación).</div>';
+  if(C.errGuardar) return '<div class="avisoalm">⚠ <b>No se ha podido guardar</b>: el espacio de este móvil está lleno. '
+    +'Descarga una copia en Copia/Claves y quita fotos pesadas.</div>';
+  return '';
+}
+function tarjetaMovil(){
+  var uso=usoAlmacen(), pc=Math.min(100,Math.round(uso*100/LIMITE_ALM)), donde=dondeAbierta();
+  var h='<div class="card"><div class="chead"><h2>Este móvil</h2><span>¿conserva los datos?</span></div>';
+  h+='<p class="nota">'+(ALM.ok?'<b style="color:#6FC38C">✓</b> Puede guardar datos.'
+      :'<b style="color:var(--red)">✗</b> <b>No deja guardar datos</b> ('+esc(ALM.causa||'bloqueado')+').')+'</p>';
+  if(ALM.aperturas){
+    h+='<p class="nota">Apertura número <b>'+ALM.aperturas+'</b> en este móvil'
+      +(ALM.primera?', la primera fue el '+fecha(new Date(ALM.primera).toISOString()):'')
+      +(ALM.previa?'; la anterior, el '+fecha(new Date(ALM.previa).toISOString()):'')+'.'
+      +(ALM.aperturas===1?' <i>Si cada vez que abres la app dice «número 1», este móvil borra los datos al cerrarla.</i>':'')+'</p>';
+  }
+  h+='<p class="nota">'+(donde==='instalada'?'<b style="color:#6FC38C">✓</b> Abierta como app instalada.'
+      :donde==='otra'?'<b style="color:var(--red)">⚠</b> Abierta <b>dentro de otra aplicación</b> (WhatsApp, Gmail, un enlace…). Esas no conservan los datos. Ábrela desde Chrome o desde el icono instalado.'
+      :'Abierta en el navegador. Si la instalas (menú ⋮ → Instalar aplicación) el móvil la trata mejor.')+'</p>';
+  h+='<p class="nota">'+(ALM.persist===true?'<b style="color:#6FC38C">✓</b> Protegida contra borrados automáticos.'
+      :ALM.persist===false?'Sin protección: si al móvil le falta espacio, el navegador puede borrar los datos.'
+      :'El navegador no permite consultar la protección contra borrados.')+'</p>';
+  if(ALM.persist!==true&&navigator.storage&&navigator.storage.persist) h+='<button class="mini" data-act="pidepersist" style="margin-bottom:10px">Pedir protección</button>';
+  h+='<div class="barra"><i style="width:'+pc+'%;'+(pc>=85?'background:var(--red)':'')+'"></i></div>'
+    +'<p class="nota" style="margin-top:6px">Espacio usado: <b>'+pc+' %</b>'+(pc>=85?' · <b style="color:var(--red)">casi lleno</b>: descarga una copia y quita fotos pesadas.':'.')+'</p>';
+  return h+'</div>';
+}
 function val(s){ return s==null?0:s==='M'?0:s==='X'?10:Number(s); }
 function dec(n){ return n.toFixed(2).replace('.',','); }
 function esc(t){ return String(t).replace(/[&<>"]/g,function(c){
@@ -952,6 +1027,7 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   try{ reparaDatos(); }catch(e){}
   try{ migraColor(); }catch(e){}
 })();
+(function(){ pruebaAlmacen(); registraApertura(); pidePersist(); })();
 
 function arrancaCheck(){
   if(D.mat&&D.mat.length) return;
@@ -979,8 +1055,8 @@ function programaSubida(ms){ clearTimeout(tSubida); tSubida=setTimeout(function(
 function save(marca){
   if(marca!==false) D.ts=Date.now();
   if(typeof C==='object'&&C) C.hlOk=false;
-  try{ localStorage.setItem(STORE,JSON.stringify(D)); }
-  catch(e){ toast('No se pudo guardar. Apunta el total por si acaso.'); }
+  try{ localStorage.setItem(STORE,JSON.stringify(D)); if(typeof C==='object'&&C) C.errGuardar=false; }
+  catch(e){ if(typeof C==='object'&&C) C.errGuardar=true; toast('No se pudo guardar. Apunta el total por si acaso.'); try{ muestraAvisoAlm(); }catch(e2){} }
   if(marca!==false && syncListo() && D.sync.auto && D.sync.ultima>0){
     programaSubida(150); refrescaNube();
   }
@@ -1983,6 +2059,7 @@ function tarjetaCopia(){
         +'los datos siguen guardados sin cifrar en el móvil. Y no se puede recuperar si se olvida.</p>'
         +'<button class="act" data-act="ponpin">Activar clave</button>')
     +'</div>';
+  h+=tarjetaMovil();
   return h;
 }
 
@@ -3959,7 +4036,7 @@ function renderCampo(){
   if(C.nPuestos==null) C.nPuestos=12;
   if(C.nInicio==null) C.nInicio=1;
   if(!C.patrulla) C.patrulla=[{arq:'',nombre:'',arco:ARCOS[0]},{arq:'',nombre:'',arco:ARCOS[0]}];
-  var h='<div class="wrap">'+cabeceraCampo();
+  var h='<div class="wrap">'+avisoAlmacen()+cabeceraCampo();
   if(C.tab==='puesto'){
     h+= r ? pantallaPuesto(r)
       : '<div class="card"><p class="empty">No hay ningún recorrido abierto.<br><br>Ve a '
@@ -4024,7 +4101,7 @@ function render(){
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
   if(D.modo==='campo'){ renderCampo(); return; }
   var A=arqActual();
-  var h='<div class="wrap"><div class="top">'
+  var h='<div class="wrap">'+avisoAlmacen()+'<div class="top">'
    +'<svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">'
    +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
@@ -4316,6 +4393,13 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
+  else if(a==='pidepersist'){
+    pidePersist(function(ok){
+      toast(ok?'Protección concedida: el móvil no borrará los datos por falta de espacio.'
+        :ok===false?'El navegador no la concede ahora. Instalar la app (menú ⋮ → Instalar aplicación) suele conseguirla.'
+        :'Este navegador no permite pedirla.');
+      render(); });
+  }
   else if(a==='gimir'){ U.gimPanel=!U.gimPanel; render(); }
   else if(a==='gimirc'){ C.gimPanel=!C.gimPanel; render(); }
   else if(a==='gimtab'){ U.tab='tecnicas'; C.tab='tecnicas'; GM.abierta=true; U.gimPanel=false; render(); }
