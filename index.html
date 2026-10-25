@@ -838,6 +838,8 @@ function tarjetaMovil(){
   var h='<div class="card"><div class="chead"><h2>Este móvil</h2><span>¿conserva los datos?</span></div>';
   h+='<p class="nota">'+(ALM.ok?'<b style="color:#6FC38C">✓</b> Puede guardar datos.'
       :'<b style="color:var(--red)">✗</b> <b>No deja guardar datos</b> ('+esc(ALM.causa||'bloqueado')+').')+'</p>';
+  h+='<p class="nota">'+(hayPin()?'<b style="color:#6FC38C">✓</b> Clave de entrada <b>activada</b> en este móvil.'
+      :'<b style="color:var(--red)">✗</b> Clave de entrada <b>sin activar</b> en este móvil (cada móvil tiene la suya): actívala arriba, en «Clave de acceso».')+'</p>';
   if(ALM.aperturas){
     h+='<p class="nota">Apertura número <b>'+ALM.aperturas+'</b> en este móvil'
       +(ALM.primera?', la primera fue el '+fecha(new Date(ALM.primera).toISOString()):'')
@@ -2052,7 +2054,11 @@ function tarjetaCopia(){
   h+='<div class="card"><div class="chead"><h2>Clave de acceso</h2>'
     +'<span>'+(hayPin()?'activada':'sin clave')+'</span></div>'
     +(hayPin()
-      ? '<p class="stat">La app pide seis números al abrirse y al volver a ella.</p>'
+      ? '<p class="nota">Pedir la clave en este móvil:</p>'
+        +'<select class="arq" data-pinmodo style="width:100%;margin-bottom:12px">'
+        +[['B','Al abrir y tras 10 min fuera'],['A','Cada vez que salga y vuelva'],['C','Solo tras 10 min sin usarla']]
+          .map(function(o){ return '<option value="'+o[0]+'"'+(modoPin()===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')
+        +'</select>'
         +'<button class="act act2" data-act="cambiapin">Cambiar la clave</button>'
         +'<button class="ghost" data-act="quitapin">Quitar el bloqueo</button>'
       : '<p class="stat">Seis números para que nadie más entre. Es un cerrojo, no una caja fuerte: '
@@ -2115,6 +2121,17 @@ function sesionViva(){
   return t>0 && (Date.now()-t)<600000;
 }
 function marcaActividad(){ SES.pon('activo',Date.now()); }
+/* Cuándo se pide la clave de entrada (es una opción de cada móvil, no viaja por la nube):
+   B (la normal): siempre al abrir la app, y al volver a ella solo tras 10 minutos fuera
+   A (estricta): al abrir y cada vez que se sale y se vuelve a entrar
+   C (antigua): solo si han pasado 10 minutos sin usarla, aunque se haya cerrado y vuelto a abrir */
+function modoPin(){ var v=''; try{ v=localStorage.getItem('arqueria:pinmodo')||''; }catch(e){} return (v==='A'||v==='C')?v:'B'; }
+function pideAlArrancar(){
+  if(modoPin()==='C') return !sesionViva();
+  var t=Number(SES.lee('activo')||0);
+  return !(t>0&&(Date.now()-t)<3000);      /* solo una recarga accidental (menos de 3 s desde el último uso) no la pide */
+}
+function pideAlVolver(ms){ return modoPin()==='A'?ms>5000:ms>600000; }
 function hayPin(){ return !!(D.pin && D.pin.length===6); }
 function pintaLock(){
   var L=document.getElementById('lock');
@@ -4825,6 +4842,7 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-syncclave')){
     cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()){ bajarNube(false); vivoOn(); } }
   else if(t.dataset&&t.dataset.ptscol){ render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-pinmodo')){ try{ localStorage.setItem('arqueria:pinmodo',t.value); }catch(e){} toast('Guardado en este móvil'); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-ligasel')){ C.liga=t.value; C.jorSel=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-jorsel')){
     if(t.value===''){ C.jorSel=null; render(); return; }
@@ -4944,9 +4962,10 @@ var salida=0;
 document.addEventListener('visibilitychange',function(){
   if(document.hidden){
     salida=Date.now(); vivoOff();
+    if(!document.getElementById('lock').dataset.on) SES.pon('activo',salida);   /* última vez que se vio la app sin bloquear */
     if(syncListo()&&D.sync.auto) empujaV3(false,false);
   } else {
-    if(hayPin() && salida && Date.now()-salida>600000 && !document.getElementById('lock').dataset.on){
+    if(hayPin() && salida && pideAlVolver(Date.now()-salida) && !document.getElementById('lock').dataset.on){
       SES.quita('activo'); abreLock('');
     }
     if(syncListo()&&D.sync.auto) setTimeout(function(){ compruebaNube(); vivoOn(); },400);
@@ -4964,7 +4983,7 @@ if(reanuda){
 }
 eligiendo = !(reanuda && SES.lee('elegido') && D.modo);
 render();
-if(hayPin() && !reanuda) abreLock('');
+if(hayPin() && pideAlArrancar()) abreLock('');
 setTimeout(function(){ compruebaNube(); vivoOn(); },1200);
 if(C.recienLigada){ toast('Nube configurada con el enlace. Trayendo tus datos…'); C.recienLigada=false; }
 if(!document.getElementById('app').innerHTML) throw new Error('La pantalla se quedó vacía al dibujar.');
