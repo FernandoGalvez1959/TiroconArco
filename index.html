@@ -97,6 +97,11 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
 .nota b{display:inline;font-size:inherit;font-weight:700;color:var(--ink);}
 .nota i{color:var(--dim);}
+.segmat{margin:22px 0 10px;}
+.segmat button{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 2px 9px;}
+.segmat small{font-size:11px;font-weight:500;color:var(--dim);line-height:1.1;}
+.segmat b{font-size:17px;font-weight:700;line-height:1.2;}
+.segmat button[data-on="1"] small{color:var(--gold);}
 .avisoalm{background:#2A1818;border:1px solid #9C3B38;color:#F2C3C0;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13px;line-height:1.45;}
 .avisoalm b{color:#fff;}
 .objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
@@ -956,6 +961,12 @@ function reparaDatos(){
   });
   D.mat=(aLista(D.mat)||[]).filter(Boolean);
   D.mat.forEach(function(b){ b.items=(aLista(b.items)||[]).filter(Boolean); });
+  ['matCampo','matDeva'].forEach(function(k){
+    if(!D[k]) return;
+    D[k]=(aLista(D[k])||[]).filter(Boolean);
+    D[k].forEach(function(b){ b.items=(aLista(b.items)||[]).filter(Boolean); });
+    if(!D[k].length) delete D[k];
+  });
   D.campos=(aLista(D.campos)||[]).filter(Boolean);
   while(D.campos.length<4) D.campos.push({nombre:'Campo '+(D.campos.length+1),animales:{}});
   D.estim=(aLista(D.estim)||[]).filter(Boolean);
@@ -1011,6 +1022,8 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.ocultarDist) D.ocultarDist=true;
   if(p.estim) D.estim=p.estim;
   if(p.mat&&p.mat.length) D.mat=p.mat;
+  if(p.matCampo&&p.matCampo.length) D.matCampo=p.matCampo;
+  if(p.matDeva&&p.matDeva.length) D.matDeva=p.matDeva;
   if(p.check) D.check=p.check;
   if(p.extras) D.extras=p.extras;
   if(p.campos&&p.campos.length===4) D.campos=p.campos;
@@ -1216,7 +1229,7 @@ function aplicaNube(rem){
    del último cambio (ts). Solo se sube lo que cambia, y los demás móviles se enteran escuchando «ts». */
 var NO_SYNC={sync:1,ts:1,modo:1,pin:1,campos:1};
 var NOMBRES_PARTES={arqueros:'arqueros',sessions:'tiradas de sala',recorridos:'recorridos',drafts:'tarjetas en curso',
-  tecnicas:'técnicas',material:'fichas de material',mat:'listado de material',pend:'pendientes',ligas:'ligas',
+  tecnicas:'técnicas',material:'fichas de material',mat:'Material Otero',matCampo:'Material Campo',matDeva:'Material Deva',pend:'pendientes',ligas:'ligas',
   notas:'reglajes',notasCampo:'notas de campo',sites:'sitios',formato:'formato',estim:'telémetro'};
 function nombreParte(k){ var m=k.match(/^campo(\d)$/); if(m) return 'campo '+(Number(m[1])+1); return NOMBRES_PARTES[k]||k; }
 function cyrb53(str){
@@ -1960,6 +1973,8 @@ function aplicaCopia(c){
   if(d.gim) D.gim=d.gim;
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
   D.mat=(d.mat&&d.mat.length)?d.mat:[];
+  if(d.matCampo&&d.matCampo.length) D.matCampo=d.matCampo; else delete D.matCampo;
+  if(d.matDeva&&d.matDeva.length) D.matDeva=d.matDeva; else delete D.matDeva;
   D.check=d.check||null; D.extras=d.extras||null; arrancaCheck();
   try{ reparaDatos(); }catch(e){}
   D.campos=(d.campos&&d.campos.length===4)?d.campos:D.campos;
@@ -3884,22 +3899,62 @@ function fichas(lista,titulo,ayuda,ph,sug){
     +(lista==='material'?'Añadir material':'Añadir técnica')+'</button>';
   return h;
 }
+/* ---- tres listas de material, iguales entre sí: Otero (la de siempre), Campo y Deva ---- */
+var MATS=[{id:'otero',n:'Material Otero',c:'Otero',k:'mat'},{id:'campo',n:'Material Campo',c:'Campo',k:'matCampo'},{id:'deva',n:'Material Deva',c:'Deva',k:'matDeva'}];
+function matSel(){ var v=''; try{ v=localStorage.getItem('arqueria:matsel')||''; }catch(e){} return (v==='campo'||v==='deva')?v:'otero'; }
+function matInfo(id){ var i; for(i=0;i<MATS.length;i++) if(MATS[i].id===id) return MATS[i]; return MATS[0]; }
+function plantillaMat(){   /* el listado de fábrica, sin ninguna marca */
+  return LISTA.map(function(b){
+    return {k:b.k,n:b.n,items:b.items.map(function(it,i){ return {id:b.k+i,t:it[0],d:it[1],ok:false}; })};
+  });
+}
+/* sin «crear», una lista que aún no se ha tocado se enseña como el listado de fábrica pero no se guarda */
+function matArr(id,crear){
+  var m=matInfo(id), a=D[m.k];
+  if(a&&a.length) return a;
+  if(!crear) return plantillaMat();
+  D[m.k]=plantillaMat(); return D[m.k];
+}
+function MAT(){ return matArr(matSel(),true); }
+function matOrigen(sel){
+  var otros=MATS.filter(function(m){ return m.id!==sel; });
+  return (C.matOrigen&&C.matOrigen!==sel&&matInfo(C.matOrigen).id===C.matOrigen)?C.matOrigen:otros[0].id;
+}
+function selectorMat(sel){
+  return '<div class="seg segmat">'+MATS.map(function(m){
+    return '<button data-act="matlista" data-v="'+m.id+'" data-on="'+(m.id===sel?1:0)+'"><small>Material</small><b>'+m.c+'</b></button>'; }).join('')+'</div>';
+}
+function clonarMat(sel){
+  var ab=!!C.matClonar, otros=MATS.filter(function(m){ return m.id!==sel; }), orig=matOrigen(sel);
+  var h='<div class="card"><div class="chead" data-act="matclonabre"><h2>Copiar de otra lista</h2><span>'+(ab?'▾':'▸')+'</span></div>';
+  if(ab){
+    h+='<p class="nota">Deja <b>'+esc(matInfo(sel).n)+'</b> igual que la lista que elijas. Lo que hubiera ahora en ella se sustituye.</p>'
+      +'<select class="arq" data-matorigen style="width:100%;margin-bottom:10px">'
+      +otros.map(function(m){ return '<option value="'+m.id+'"'+(orig===m.id?' selected':'')+'>Copiar de '+m.n+'</option>'; }).join('')
+      +'</select><div class="dosel">'
+      +'<button class="mini" data-act="matclonar" data-m="1">Copiar con marcas</button>'
+      +'<button class="mini" data-act="matclonar" data-m="0">Copiar sin marcas</button></div>';
+  }
+  return h+'</div>';
+}
 function cuentaBloque(b){
   var hechos=0,i;
   for(i=0;i<b.items.length;i++) if(b.items[i].ok) hechos++;
   return {tot:b.items.length,hechos:hechos};
 }
 function pantallaMateriales(){
+  var sel=matSel(), info=matInfo(sel), lista=matArr(sel,false);
   var gTot=0,gHechos=0;
-  D.mat.forEach(function(b){ var c=cuentaBloque(b); gTot+=c.tot; gHechos+=c.hechos; });
+  lista.forEach(function(b){ var c=cuentaBloque(b); gTot+=c.tot; gHechos+=c.hechos; });
   var pc=gTot?Math.round(gHechos*100/gTot):0;
-  var h='<div class="card"><div class="chead"><h2>Material</h2>'
+  var h=selectorMat(sel)+'<div class="card"><div class="chead"><h2>'+esc(info.n)+'</h2>'
     +'<span>'+gHechos+' de '+gTot+'</span></div>'
     +'<div class="barra"><i style="width:'+pc+'%"></i></div>'
     +'<p class="stat">Quedan <i>'+(gTot-gHechos)+'</i> cosas por conseguir. '
-    +'Toca una línea para marcarla; usa <i>Editar</i> para cambiar el texto, borrar o añadir.</p></div>';
+    +'Toca una línea para marcarla; usa <i>Editar</i> para cambiar el texto, borrar o añadir.</p></div>'
+    +clonarMat(sel);
 
-  D.mat.forEach(function(b,bi){
+  lista.forEach(function(b,bi){
     var c=cuentaBloque(b), p2=c.tot?Math.round(c.hechos*100/c.tot):0;
     var abierto=C.bloque===b.k, edit=C.editaBloque===b.k;
     h+='<div class="card"><div class="chead" data-act="bloque" data-v="'+b.k+'">'
@@ -4687,24 +4742,33 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(TM.base+TM.extra<30) TM.extra=30-TM.base; ajustaCrono(); render(); }
   else if(a==='cronoauto'){ if(TM.on) return; TM.extra=0; ajustaCrono(); render(); }
   else if(a==='bloque'){ C.bloque=(C.bloque===v?null:v); C.editaBloque=null; render(); }
+  else if(a==='matlista'){ try{ localStorage.setItem('arqueria:matsel',v); }catch(e){} C.bloque=null; C.editaBloque=null; C.matClonar=false; render(); }
+  else if(a==='matclonabre'){ C.matClonar=!C.matClonar; render(); }
+  else if(a==='matclonar'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Sustituye lo que hay'; return; }
+    var msel=matSel(), morig=matOrigen(msel), mcopia=JSON.parse(JSON.stringify(matArr(morig,false)));
+    if(b.dataset.m!=='1') mcopia.forEach(function(bl){ bl.items.forEach(function(it){ it.ok=false; }); });
+    D[matInfo(msel).k]=mcopia; C.bloque=null; C.editaBloque=null; C.matClonar=false;
+    save(); render(); toast('Copiado de '+matInfo(morig).n+' a '+matInfo(msel).n+(b.dataset.m==='1'?'':' (sin marcas)'));
+  }
   else if(a==='mateditar'){ C.editaBloque=(C.editaBloque===v?null:v); render(); }
-  else if(a==='matchk'){ var bb=D.mat[Number(b.dataset.b)], ii=Number(b.dataset.i);
+  else if(a==='matchk'){ var bb=MAT()[Number(b.dataset.b)], ii=Number(b.dataset.i);
     bb.items[ii].ok=!bb.items[ii].ok; save(); render(); }
   else if(a==='fichasube'||a==='fichabaja'){
     var la=b.dataset.l, ia=Number(b.dataset.i), ja=ia+(a==='fichasube'?-1:1), ar=D[la];
     if(ja>=0&&ja<ar.length){ var tmp=ar[ia]; ar[ia]=ar[ja]; ar[ja]=tmp; save(); render(); }
   }
   else if(a==='matsube'||a==='matbaja'){
-    var bl=D.mat[Number(b.dataset.b)], ib=Number(b.dataset.i), jb=ib+(a==='matsube'?-1:1);
+    var bl=MAT()[Number(b.dataset.b)], ib=Number(b.dataset.i), jb=ib+(a==='matsube'?-1:1);
     if(jb>=0&&jb<bl.items.length){ var t2=bl.items[ib]; bl.items[ib]=bl.items[jb]; bl.items[jb]=t2;
       save(); render(); }
   }
-  else if(a==='matadd'){ var bb2=D.mat[Number(b.dataset.b)];
+  else if(a==='matadd'){ var bb2=MAT()[Number(b.dataset.b)];
     bb2.items.push({id:bb2.k+'n'+Date.now(),t:'',d:'',ok:false});
     C.editaBloque=bb2.k; save(); render(); }
   else if(a==='matbor'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
-    D.mat[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
+    MAT()[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
   else if(a==='adjdoc'){ C.docDestino={i:Number(b.dataset.i)};
     var dfi=document.getElementById('docinput'); dfi.value=''; dfi.click(); }
   else if(a==='bordoc'){ var Lq=ligaActual(); if(Lq&&Lq.jornadas[Number(b.dataset.i)]){
@@ -4811,8 +4875,8 @@ document.getElementById('app').addEventListener('input',function(ev){
     if(Lx&&Lx.jornadas[Number(t.dataset.i)]) Lx.jornadas[Number(t.dataset.i)][t.dataset.jor]=t.value;
     save(); if(t.dataset.jor==='mi'||t.dataset.jor==='pg') render(); }
   else if(t.dataset.pend!=null){ D.pend[t.dataset.pend][Number(t.dataset.i)].t=t.value; save(); }
-  else if(t.dataset.mt!=null){ D.mat[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
-  else if(t.dataset.md!=null){ D.mat[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
+  else if(t.dataset.mt!=null){ MAT()[Number(t.dataset.mt)].items[Number(t.dataset.i)].t=t.value; save(); }
+  else if(t.dataset.md!=null){ MAT()[Number(t.dataset.md)].items[Number(t.dataset.i)].d=t.value; save(); }
   else if(t.dataset&&t.dataset.ptscol){
     var cc=t.dataset.ptscol, nn=parseFloat(String(t.value).replace(',','.')); if(isNaN(nn)||nn<0) nn=0;
     if(!D.puntosCol) D.puntosCol={A:PTS_COL_DEF.A,R:PTS_COL_DEF.R,N:PTS_COL_DEF.N};
@@ -4843,6 +4907,7 @@ document.getElementById('app').addEventListener('change',function(ev){
     cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()){ bajarNube(false); vivoOn(); } }
   else if(t.dataset&&t.dataset.ptscol){ render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-pinmodo')){ try{ localStorage.setItem('arqueria:pinmodo',t.value); }catch(e){} toast('Guardado en este móvil'); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-matorigen')){ C.matOrigen=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-ligasel')){ C.liga=t.value; C.jorSel=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-jorsel')){
     if(t.value===''){ C.jorSel=null; render(); return; }
