@@ -97,6 +97,18 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
 .nota b{display:inline;font-size:inherit;font-weight:700;color:var(--ink);}
 .nota i{color:var(--dim);}
+.hrow.mej{cursor:pointer;}
+.vozfila{margin:10px 0 0;}
+.vozbtn{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 12px;border-radius:12px;background:#151C24;border:1px solid var(--line);color:var(--ink);}
+.vozbtn .vozic{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#202B37;}
+.vozbtn .voztx{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0;}
+.vozbtn b{font-size:15px;font-weight:600;}
+.vozbtn small{font-size:12px;color:var(--dim);line-height:1.25;}
+.vozbtn[data-on="1"]{border-color:#9C3B38;background:#2A1818;}
+.vozbtn[data-on="1"] .vozic{background:var(--red);animation:vozpulso 1.2s infinite;}
+@keyframes vozpulso{0%{box-shadow:0 0 0 0 rgba(223,74,68,.55);}70%{box-shadow:0 0 0 9px rgba(223,74,68,0);}100%{box-shadow:0 0 0 0 rgba(223,74,68,0);}}
+.vozinfo{margin:7px 2px 0;font-size:13px;color:var(--dim);line-height:1.45;}
+.vozav{color:var(--gold);}
 .segmat{margin:22px 0 10px;}
 .segmat button{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 2px 9px;}
 .segmat small{font-size:11px;font-weight:500;color:var(--dim);line-height:1.1;}
@@ -791,6 +803,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
+var APP_VER=50;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -851,6 +864,7 @@ function tarjetaMovil(){
       +(ALM.previa?'; la anterior, el '+fecha(new Date(ALM.previa).toISOString()):'')+'.'
       +(ALM.aperturas===1?' <i>Si cada vez que abres la app dice «número 1», este móvil borra los datos al cerrarla.</i>':'')+'</p>';
   }
+  h+='<p class="nota">Versión de la app: <b>'+APP_VER+'</b> · <span style="word-break:break-all">'+esc((location.host||'archivo local')+(location.pathname||'').replace(/index\.html$/,''))+'</span></p>';
   h+='<p class="nota">'+(donde==='instalada'?'<b style="color:#6FC38C">✓</b> Abierta como app instalada.'
       :donde==='otra'?'<b style="color:var(--red)">⚠</b> Abierta <b>dentro de otra aplicación</b> (WhatsApp, Gmail, un enlace…). Esas no conservan los datos. Ábrela desde Chrome o desde el icono instalado.'
       :'Abierta en el navegador. Si la instalas (menú ⋮ → Instalar aplicación) el móvil la trata mejor.')+'</p>';
@@ -894,6 +908,33 @@ function xs(s){ var l=(s&&s.col)?'A':'X'; return flat(s).filter(function(x){ ret
 function dieces(s){ var l=(s&&s.col)?'R':'10'; return flat(s).filter(function(x){ return x===l; }).length; }
 function media(s){ var n=shots(s); return n?total(s)/n:0; }
 function complete(s){ return shots(s)===nE(s)*nA(s); }
+/* la mejor tirada completa de cada diana y de cada sitio (por media; con el arquero elegido o con todos) */
+function pantallaMejores(){
+  var arqs=D.arqueros, sel=(U.hArq==null)?arqActual().id:U.hArq, h='', hay=false;
+  if(arqs.length>1){
+    h+='<div class="dosel" style="grid-template-columns:1fr"><select class="arq" data-hmarq>'
+      +'<option value=""'+(sel===''?' selected':'')+'>Todos los arqueros</option>'
+      +arqs.map(function(a){ return '<option value="'+esc(a.id)+'"'+(sel===a.id?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
+      +'</select></div>';
+  }
+  MODS.forEach(function(md){
+    var filas='';
+    D.sites.forEach(function(sn,si){
+      var c=D.sessions.filter(function(x){ return modDe(x)===md.id&&x.site===si&&complete(x)&&(sel===''||x.arquero===sel); })
+        .sort(function(a,b){ return (media(b)-media(a))||(total(b)-total(a)); })[0];
+      if(!c) return;
+      hay=true;
+      filas+='<div class="hrow mej" data-act="hver" data-mod="'+md.id+'" data-site="'+si+'">'
+        +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+total(c)+'</span></div>'
+        +'<div class="l2">'+formato(c)+' · '+dec(media(c))+' por flecha · '+fecha(c.fecha)
+        +(sel===''?' · '+esc(nombreArq(arqPorId(c.arquero))):'')+'</div></div>';
+    });
+    if(filas) h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>mejor tirada</span></div>'+filas+'</div>';
+  });
+  if(!hay) h+='<div class="card"><p class="empty">Aún no hay tiradas completas'+(sel!==''&&arqs.length>1?' de este arquero':'')
+    +'. Cuando guardes una, aquí saldrá la mejor de cada diana y de cada sitio.</p></div>';
+  return h;
+}
 function firstEmpty(s){ var e,a;
   for(e=0;e<nE(s);e++) for(a=0;a<nA(s);a++) if(s.ends[e][a]==null) return {end:e,arrow:a};
   return {end:nE(s)-1,arrow:nA(s)-1}; }
@@ -938,7 +979,8 @@ function reparaDatos(){
   D.arqueros=aLista(D.arqueros)||[];
   D.sites=aLista(D.sites)||['Sitio 1','Sitio 2','Sitio 3','Sitio 4'];
   D.sessions=(aLista(D.sessions)||[]).filter(function(x){ return x&&x.id; });
-  D.sessions.forEach(function(x){ reparaTirada(x,fo.ends,fo.arrows); });
+  /* una tirada guardada conserva el formato con el que se tiró: no se rellena hasta igualar el formato de ahora */
+  D.sessions.forEach(function(x){ reparaTirada(x,0,fo.arrows); });
   var k;
   for(k in (D.drafts||{})){
     if(!D.drafts[k]){ delete D.drafts[k]; continue; }
@@ -2176,6 +2218,7 @@ function pintaLock(){
   L.style.display='block';
 }
 function abreLock(modo){
+  vozStop();
   PIN.buf=''; PIN.modo=modo||''; PIN.primero=''; PIN.aviso='';
   document.getElementById('lock').dataset.on='1'; pintaLock();
 }
@@ -4167,6 +4210,7 @@ function selArq(){
 }
 
 function render(){
+  if(VOZ.activa&&!(D.modo!=='campo'&&U.tab==='tirada')) vozStop();
   if(['tirada','clasif','progreso','historial','arqueros','tecnicas','pendientes','copia'].indexOf(U.tab)<0) U.tab='tirada';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
@@ -4230,7 +4274,7 @@ function render(){
         +' style="font-size:'+slotSz+'px'+(cc?';'+sty(cc):'')+'" aria-label="Flecha '+(i+1)+'">'+(v==null?'':v)+'</button>';
     });
     var bloq=!gimOk(A);
-    h+='</div>'+(bloq?'<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>':'')
+    h+='</div>'+(bloq?'<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>':'')+vozFila()
       +'<div class="pad'+(s.col?' pad2':s.tri?' pad7':'')+'" data-bloq="'+(bloq?1:0)+'">';
     (s.col?KEYSCOL:s.tri?KEYSTRI:KEYS).forEach(function(v){
       var pv=s.col?(v==='M'?0:(s.pts||ptsCol())[v]):null;
@@ -4335,6 +4379,13 @@ function render(){
   }
 
   if(U.tab==='historial'){
+    var vista=U.hVista||'mejores';
+    h+='<div class="seg" style="margin-bottom:10px">'
+      +'<button data-act="hvista" data-v="mejores" data-on="'+(vista==='mejores'?1:0)+'">Mejores</button>'
+      +'<button data-act="hvista" data-v="todas" data-on="'+(vista==='todas'?1:0)+'">Todas las tiradas</button></div>';
+  }
+  if(U.tab==='historial'&&(U.hVista||'mejores')==='mejores'){ h+=pantallaMejores(); }
+  else if(U.tab==='historial'){
     var lista=D.sessions.filter(function(x){
       return (U.hSite==='' || U.hSite==null || Number(U.hSite)===x.site)
           && (U.hDist==='' || U.hDist==null || String(U.hDist)===modDe(x));
@@ -4427,6 +4478,78 @@ function shoot(v){
   if(a<nA(s)-1) a++; else if(e<nE(s)-1){ e++; a=0; }
   U.sel={end:e,arrow:a}; render();
 }
+/* ---- anotar flechas con la voz (reconocimiento de voz del navegador; en Chrome usa internet) ---- */
+var VOZ={rec:null,activa:false,oido:'',aviso:'',tm:null};
+var PAL_VOZ={cero:'M',uno:'1',una:'1',dos:'2',tres:'3',cuatro:'4',cinco:'5',seis:'6',siete:'7',ocho:'8',nueve:'9',diez:'10',
+  equis:'X',ics:'X',x:'X',eme:'M',m:'M',emes:'M',fallo:'M',fallos:'M',mal:'M',fuera:'M',nada:'M',
+  amarillo:'A',amarilla:'A',rojo:'R',roja:'R',negro:'N',negra:'N'};
+var PAL_BORRA={borrar:1,borra:1,atras:1,deshacer:1,deshaz:1,corrige:1,corregir:1,quita:1,quitar:1};
+function claveValida(v){ var K=U.col?KEYSCOL:U.tri?KEYSTRI:KEYS; return K.indexOf(v)>=0; }
+function vozSeparaCifras(t){ var o=[], i=0;
+  while(i<t.length){ if(t.substr(i,2)==='10'){ o.push('10'); i+=2; } else { o.push(t.charAt(i)==='0'?'M':t.charAt(i)); i++; } }
+  return o; }
+/* convierte lo dicho en una lista de acciones: {t:'v',v:'10'} anotar, {t:'u'} borrar, {t:'x',p:'cinco'} no vale aquí */
+function vozInterpreta(texto){
+  var t=String(texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ');
+  var acc=[];
+  t.split(/\s+/).forEach(function(p){
+    if(!p) return;
+    if(PAL_BORRA[p]){ acc.push({t:'u'}); return; }
+    var vs=/^\d+$/.test(p)?vozSeparaCifras(p):(PAL_VOZ[p]!==undefined?[PAL_VOZ[p]]:[]);
+    vs.forEach(function(v){ acc.push(claveValida(v)?{t:'v',v:v}:{t:'x',p:p}); });
+  });
+  return acc;
+}
+function vozAplica(texto){
+  if(!(D.modo!=='campo'&&U.tab==='tirada')) return;
+  var acc=vozInterpreta(texto), hechos=[], malos=[];
+  if(!acc.length){ VOZ.oido='«'+String(texto).trim()+'»'; VOZ.aviso='No he entendido ninguna flecha.'; render(); return; }
+  if(!gimOk(arqActual())){ toast('Completa la gimnasia antes de anotar'); return; }
+  acc.forEach(function(a){
+    if(a.t==='u'){ undo(); hechos.push('borrar'); return; }
+    if(a.t==='x'){ malos.push(a.p); return; }
+    if(complete(draft())){ if(hechos.indexOf('¡completa!')<0) hechos.push('¡completa!'); return; }
+    shoot(a.v); hechos.push(a.v);
+  });
+  VOZ.oido='«'+String(texto).trim()+'»'+(hechos.length?' → '+hechos.join(' · '):'');
+  VOZ.aviso=malos.length?'No vale en esta diana: '+malos.join(', ')+'.':(hechos.indexOf('¡completa!')>=0?'Tirada completa: guárdala.':'');
+  render();
+}
+function vozStop(){
+  VOZ.activa=false; clearTimeout(VOZ.tm);
+  try{ if(VOZ.rec) VOZ.rec.stop(); }catch(e){}
+  VOZ.rec=null;
+}
+function vozInicia(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ VOZ.aviso='Este navegador no tiene reconocimiento de voz. Prueba con Chrome.'; render(); return; }
+  var r=new SR();
+  r.lang='es-ES'; r.continuous=true; r.interimResults=false; r.maxAlternatives=1;
+  r.onresult=function(ev){
+    var i, t='';
+    for(i=ev.resultIndex;i<ev.results.length;i++) t+=' '+ev.results[i][0].transcript;
+    vozAplica(t);
+  };
+  r.onerror=function(ev){
+    var e=ev&&ev.error;
+    if(e==='not-allowed'||e==='service-not-allowed'){ vozStop(); VOZ.aviso='No hay permiso para el micrófono. Actívalo en los ajustes del navegador.'; render(); }
+    else if(e==='network'){ vozStop(); VOZ.aviso='Sin conexión: la voz necesita internet.'; render(); }
+  };
+  r.onend=function(){        /* el navegador corta tras un silencio: se vuelve a abrir mientras siga activada */
+    if(!VOZ.activa||VOZ.rec!==r) return;
+    VOZ.tm=setTimeout(function(){ if(VOZ.activa&&VOZ.rec===r){ try{ r.start(); }catch(e){} } },350);
+  };
+  VOZ.rec=r; VOZ.activa=true; VOZ.oido=''; VOZ.aviso='';
+  try{ r.start(); }catch(e){ vozStop(); VOZ.aviso='No se ha podido activar el micrófono.'; }
+  render();
+}
+function vozFila(){
+  var on=VOZ.activa;
+  return '<div class="vozfila" data-on="'+(on?1:0)+'"><button class="vozbtn" data-act="voz" data-on="'+(on?1:0)+'" aria-label="'+(on?'Parar la voz':'Anotar con la voz')+'">'
+    +'<span class="vozic">🎤</span><span class="voztx"><b>'+(on?'Escuchando…':'Anotar con la voz')+'</b>'
+    +'<small>'+(on?'Di las flechas, por ejemplo «diez nueve equis». Toca para parar.':'Di: diez, nueve, equis, eme… y «borrar» para corregir.')+'</small></span></button>'
+    +((VOZ.oido||VOZ.aviso)?'<p class="vozinfo">'+(VOZ.oido?'He oído '+esc(VOZ.oido)+'<br>':'')+(VOZ.aviso?'<span class="vozav">'+esc(VOZ.aviso)+'</span>':'')+'</p>':'')+'</div>';
+}
 function undo(){
   var s=draft(), e=U.sel.end, a=U.sel.arrow;
   if(s.ends[e][a]==null){ if(a>0) a--; else if(e>0){ e--; a=nA(s)-1; } }
@@ -4489,11 +4612,14 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='gimreset'){ gimReset(b.dataset.arq?arqPorId(b.dataset.arq):arqActual()); render(); }
   else if(a==='gimexige'){ var ge=arqActual(); ge.gim=(ge.gim===false); save(); render(); }
   else if(a==='undo'){ undo(); }
+  else if(a==='voz'){ if(VOZ.activa){ vozStop(); VOZ.aviso=''; render(); } else vozInicia(); }
   else if(a==='guardar'){ guardar(); }
   else if(a==='ends'){ cambiaFormato('ends',Number(v)); }
   else if(a==='arrows'){ cambiaFormato('arrows',Number(v)); }
   else if(a==='vaciar'){ var d0=draft(); d0.ends=malla(nE(d0),nA(d0)); U.sel={end:0,arrow:0}; save(); render(); toast('Tarjeta vaciada'); }
-  else if(a==='tab'){ U.tab=v; render(); }
+  else if(a==='tab'){ if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; } U.tab=v; render(); }
+  else if(a==='hvista'){ U.hVista=v; if(v==='todas'){ U.hSite=''; U.hDist=''; U.hTope=15; } render(); }
+  else if(a==='hver'){ U.hVista='todas'; U.hSite=String(b.dataset.site); U.hDist=String(b.dataset.mod); U.hTope=15; render(); }
   else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; U.pTri=!!mp.tri; render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
@@ -4907,6 +5033,7 @@ document.getElementById('app').addEventListener('change',function(ev){
     cambiaSync('clave',t.value.trim()); save(false); render(); if(syncListo()){ bajarNube(false); vivoOn(); } }
   else if(t.dataset&&t.dataset.ptscol){ render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-pinmodo')){ try{ localStorage.setItem('arqueria:pinmodo',t.value); }catch(e){} toast('Guardado en este móvil'); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-hmarq')){ U.hArq=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-matorigen')){ C.matOrigen=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-ligasel')){ C.liga=t.value; C.jorSel=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-jorsel')){
@@ -5026,7 +5153,7 @@ document.getElementById('lock').addEventListener('click',function(ev){
 var salida=0;
 document.addEventListener('visibilitychange',function(){
   if(document.hidden){
-    salida=Date.now(); vivoOff();
+    salida=Date.now(); vivoOff(); vozStop();
     if(!document.getElementById('lock').dataset.on) SES.pon('activo',salida);   /* última vez que se vio la app sin bloquear */
     if(syncListo()&&D.sync.auto) empujaV3(false,false);
   } else {
