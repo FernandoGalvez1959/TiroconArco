@@ -98,6 +98,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .nota b{display:inline;font-size:inherit;font-weight:700;color:var(--ink);}
 .nota i{color:var(--dim);}
 .hrow.mej{cursor:pointer;}
+.inc{color:var(--gold);font-weight:600;}
 .vozfila{margin:10px 0 0;}
 .vozbtn{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 12px;border-radius:12px;background:#151C24;border:1px solid var(--line);color:var(--ink);}
 .vozbtn .vozic{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#202B37;}
@@ -803,7 +804,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=50;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=51;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -908,6 +909,18 @@ function xs(s){ var l=(s&&s.col)?'A':'X'; return flat(s).filter(function(x){ ret
 function dieces(s){ var l=(s&&s.col)?'R':'10'; return flat(s).filter(function(x){ return x===l; }).length; }
 function media(s){ var n=shots(s); return n?total(s)/n:0; }
 function complete(s){ return shots(s)===nE(s)*nA(s); }
+/* tiradas guardadas con tandas vacías al final (p. ej. cortas rellenadas por un fallo antiguo): se pueden dar por completas */
+function tandasLlenas(s){
+  var k=0,i;
+  for(i=0;i<s.ends.length;i++){ if(s.ends[i].every(function(x){ return x!=null; })) k++; else break; }
+  return k;
+}
+function vaciasAlFinal(s){
+  var k=tandasLlenas(s),i,j;
+  for(i=k;i<s.ends.length;i++) for(j=0;j<s.ends[i].length;j++) if(s.ends[i][j]!=null) return false;
+  return true;
+}
+function reparable(s){ var k=tandasLlenas(s); return !complete(s)&&k>=1&&k<nE(s)&&vaciasAlFinal(s); }
 /* la mejor tirada completa de cada diana y de cada sitio (por media; con el arquero elegido o con todos) */
 function pantallaMejores(){
   var arqs=D.arqueros, sel=(U.hArq==null)?arqActual().id:U.hArq, h='', hay=false;
@@ -929,7 +942,26 @@ function pantallaMejores(){
         +'<div class="l2">'+formato(c)+' · '+dec(media(c))+' por flecha · '+fecha(c.fecha)
         +(sel===''?' · '+esc(nombreArq(arqPorId(c.arquero))):'')+'</div></div>';
     });
-    if(filas) h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>mejor tirada</span></div>'+filas+'</div>';
+    var propias=D.sessions.filter(function(x){ return modDe(x)===md.id&&(sel===''||x.arquero===sel); });
+    if(filas){
+      var inc=propias.filter(function(x){ return !complete(x); }).length;
+      h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>mejor tirada</span></div>'+filas
+        +(inc?'<p class="nota" style="margin:10px 0 6px">Además hay '+inc+(inc===1?' tirada incompleta':' tiradas incompletas')+' que no cuenta'+(inc===1?'':'n')+'.</p>'
+          +'<button class="mini" data-act="hrev" data-mod="'+md.id+'">Revisarla'+(inc===1?'':'s')+'</button>':'')+'</div>';
+      return;
+    }
+    var otras=sel===''?[]:D.sessions.filter(function(x){ return modDe(x)===md.id&&x.arquero!==sel; });
+    if(propias.length){
+      var rep=propias.filter(reparable).length, n=propias.length;
+      h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>sin tirada completa</span></div>'
+        +'<p class="nota">Hay '+n+(n===1?' tirada guardada':' tiradas guardadas')+', pero '+(n===1?'no está completa':'ninguna está completa')
+        +', y por eso no sale ninguna como mejor.'
+        +(rep?' '+rep+(rep===1?' tiene':' tienen')+' tandas vacías al final (puede venir de un fallo antiguo) y se puede'+(rep===1?'':'n')+' dar por completa'+(rep===1?'':'s')+' al revisarla'+(rep===1?'':'s')+'.':'')
+        +'</p><button class="mini" data-act="hrev" data-mod="'+md.id+'">Revisar '+(n===1?'la tirada':'las tiradas')+'</button></div>';
+    } else if(otras.length){
+      h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>otros arqueros</span></div>'
+        +'<p class="nota">'+esc(nombreArq(arqPorId(sel)))+' no tiene tiradas en esta diana, pero otros arqueros sí. Elige «Todos los arqueros» arriba para verlas.</p></div>';
+    }
   });
   if(!hay) h+='<div class="card"><p class="empty">Aún no hay tiradas completas'+(sel!==''&&arqs.length>1?' de este arquero':'')
     +'. Cuando guardes una, aquí saldrá la mejor de cada diana y de cada sitio.</p></div>';
@@ -4388,10 +4420,12 @@ function render(){
   else if(U.tab==='historial'){
     var lista=D.sessions.filter(function(x){
       return (U.hSite==='' || U.hSite==null || Number(U.hSite)===x.site)
+          && (!U.hSoloInc || !complete(x))
           && (U.hDist==='' || U.hDist==null || String(U.hDist)===modDe(x));
     }).sort(function(x,y){
       return (x.site-y.site) || (modIdx(x)-modIdx(y)) || (new Date(y.fecha)-new Date(x.fecha));
     });
+    if(U.hSoloInc) h+='<p class="nota" style="margin:0 0 10px">Solo las <b>tiradas incompletas</b>. <button class="mini" data-act="hinc0">Ver todas</button></p>';
     h+='<div class="dosel"><select class="arq" data-hsite>'
       +'<option value=""'+(U.hSite?'':' selected')+'>Todos los sitios</option>'
       +D.sites.map(function(sn,i){ return '<option value="'+i+'"'+(String(U.hSite)===String(i)?' selected':'')+'>'
@@ -4410,10 +4444,12 @@ function render(){
       h+='<div class="hrow">'
         +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
-        +'<div class="l3">'+formato(s)+' · '+dec(media(s))+' por flecha'
+        +'<div class="l3">'+formato(s)+(complete(s)?'':' <span class="inc">incompleta: '+shots(s)+' de '+(nE(s)*nA(s))+' flechas</span>')+' · '+dec(media(s))+' por flecha'
           +(pr!=null?' · <b class="'+(pr>=100?'pctok':'')+'">'+Math.round(pr)+' %</b> del objetivo':'')+' · <b>'+total(s)+'</b></div>'
         +'<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'+dosMinis('ses:'+s.id)
-        +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div></div>';
+        +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div>'
+        +(reparable(s)?'<button class="mini" style="margin-top:8px;width:100%" data-act="hcompleta" data-id="'+s.id+'">Darla por completa ('+tandasLlenas(s)+' tandas)</button>':'')
+        +'</div>';
     });
     if(vistos.length<lista.length)
       h+='<button class="act act2" data-act="hmas">Ver '+Math.min(15,lista.length-vistos.length)+' más</button>';
@@ -4617,9 +4653,16 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='ends'){ cambiaFormato('ends',Number(v)); }
   else if(a==='arrows'){ cambiaFormato('arrows',Number(v)); }
   else if(a==='vaciar'){ var d0=draft(); d0.ends=malla(nE(d0),nA(d0)); U.sel={end:0,arrow:0}; save(); render(); toast('Tarjeta vaciada'); }
-  else if(a==='tab'){ if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; } U.tab=v; render(); }
-  else if(a==='hvista'){ U.hVista=v; if(v==='todas'){ U.hSite=''; U.hDist=''; U.hTope=15; } render(); }
-  else if(a==='hver'){ U.hVista='todas'; U.hSite=String(b.dataset.site); U.hDist=String(b.dataset.mod); U.hTope=15; render(); }
+  else if(a==='tab'){ if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; render(); }
+  else if(a==='hvista'){ U.hVista=v; U.hSoloInc=false; if(v==='todas'){ U.hSite=''; U.hDist=''; U.hTope=15; } render(); }
+  else if(a==='hrev'){ U.hVista='todas'; U.hDist=String(b.dataset.mod); U.hSite=''; U.hSoloInc=true; U.hTope=15; render(); }
+  else if(a==='hinc0'){ U.hSoloInc=false; render(); }
+  else if(a==='hcompleta'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Quita las tandas vacías del final'; return; }
+    var sc=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
+    if(sc&&reparable(sc)){ sc.ends=sc.ends.slice(0,tandasLlenas(sc)); save(); render(); toast('Tirada completa: '+nE(sc)+' tandas'); }
+  }
+  else if(a==='hver'){ U.hSoloInc=false; U.hVista='todas'; U.hSite=String(b.dataset.site); U.hDist=String(b.dataset.mod); U.hTope=15; render(); }
   else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; U.pTri=!!mp.tri; render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
