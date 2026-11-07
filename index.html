@@ -94,6 +94,9 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .ptscol .cinp[disabled]{opacity:.55;}
 .ptscol label{display:block;font-size:12px;color:var(--dim);}
 .ptscol .cinp{margin-top:4px;text-align:center;font-weight:600;font-size:16px;}
+.un{font-size:12px;color:var(--dim);flex:none;}
+.field .seg.segpal{flex:1;}
+.segpal button{padding:9px 2px;font-size:13px;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
 .nota b{display:inline;font-size:inherit;font-weight:700;color:var(--ink);}
 .nota i{color:var(--dim);}
@@ -558,6 +561,31 @@ function modIdx(s){ var m=modDe(s), i; for(i=0;i<MODS.length;i++) if(MODS[i].id=
 function modU(){ return U.col?'18c':U.tri?'18t':String(U.dist); }
 function modP(){ return U.pCol?'18c':U.pTri?'18t':String(U.pDist); }
 function ptsCol(){ return D.puntosCol||PTS_COL_DEF; }
+/* ---- arco y flechas de cada arquero: reserva, palas, cuerda y flecha (con conversión cm ⇄ pulgadas) ---- */
+var LARGO_PALAS={corta:41,media:43,larga:45};      /* largo habitual del arco = reserva + esto (pulgadas) */
+var NOM_PALAS={corta:'cortas',media:'medias',larga:'largas'};
+var PAR_EQ={cuerdaCm:['cuerdaIn',1/2.54],cuerdaIn:['cuerdaCm',2.54],flechaIn:['flechaCm',2.54],flechaCm:['flechaIn',1/2.54]};
+function equipoArq(a,i){
+  var e=a.eq||{}, V=function(k){ return e[k]==null?'':String(e[k]); };
+  var campo=function(k,ph,paso){ return '<input type="number" inputmode="decimal" min="0" step="'+(paso||'any')+'" placeholder="'+ph+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
+  var h='<p class="stat" style="margin-top:14px;margin-bottom:8px">Arco y flechas</p>'
+    +'<div class="field"><label>Reserva</label>'+campo('reserva','25','0.5').replace('<input','<input aria-label="Reserva en pulgadas"')+'<span class="un">pulg.</span></div>'
+    +'<div class="field"><label>Palas</label><div class="seg segpal">'
+    +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
+      return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')
+    +'</div></div>'
+    +'<div class="field"><label>Largo arco</label>'+campo('largo','68','0.5').replace('<input','<input aria-label="Largo del arco en pulgadas"')+'<span class="un">pulg.</span></div>';
+  if(e.reserva>0&&e.palas&&LARGO_PALAS[e.palas]){
+    var sug=Number(e.reserva)+LARGO_PALAS[e.palas];
+    h+='<p class="nota" style="margin:-3px 0 10px;font-size:12.5px">Con reserva de '+esc(String(e.reserva))+'″ y palas '+NOM_PALAS[e.palas]+', el arco suele medir <b>'+sug+'″</b>.'
+      +(Number(e.largo)!==sug?' <button class="mini" data-act="eqlargo" data-i="'+i+'" data-v="'+sug+'">Poner '+sug+'″</button>':'')+'</p>';
+  }
+  h+='<div class="field"><label>Cuerda</label>'+campo('cuerdaCm','cm').replace('<input','<input aria-label="Medida de la cuerda en centímetros"')+'<span class="un">cm</span>'
+    +campo('cuerdaIn','pulg.').replace('<input','<input aria-label="Medida de la cuerda en pulgadas"')+'<span class="un">pulg.</span></div>'
+    +'<div class="field"><label>Flecha</label>'+campo('flechaIn','pulg.').replace('<input','<input aria-label="Medida de la flecha en pulgadas"')+'<span class="un">pulg.</span>'
+    +campo('flechaCm','cm').replace('<input','<input aria-label="Medida de la flecha en centímetros"')+'<span class="un">cm</span></div>';
+  return h;
+}
 /* ---- objetivo mínimo por diana ---- */
 function dos(n){ return n<10?'0'+n:''+n; }
 function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+dos(d.getMonth()+1)+'-'+dos(d.getDate()); }
@@ -804,7 +832,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=51;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=52;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4474,6 +4502,7 @@ function render(){
         +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
         +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
         +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+        +equipoArq(a,i)
         +objetivosArq(a,i)
         +objetivosCampoArq(a,i)
         +mejoresDe(a)
@@ -4624,6 +4653,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
+  else if(a==='eqpalas'){ var pa=D.arqueros[Number(b.dataset.i)]; if(pa){ if(!pa.eq) pa.eq={}; if(pa.eq.palas===v) delete pa.eq.palas; else pa.eq.palas=v; save(); render(); } }
+  else if(a==='eqlargo'){ var pl=D.arqueros[Number(b.dataset.i)]; if(pl){ if(!pl.eq) pl.eq={}; pl.eq.largo=Number(v); save(); render(); } }
   else if(a==='pidepersist'){
     pidePersist(function(ok){
       toast(ok?'Protección concedida: el móvil no borrará los datos por falta de espacio.'
@@ -5007,6 +5038,19 @@ document.getElementById('app').addEventListener('input',function(ev){
   C.tecla=Date.now();
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
+  else if(t.dataset.eqarq!=null){
+    var qa=D.arqueros[Number(t.dataset.eqarq)], qc=t.dataset.eqcampo, qv=String(t.value).trim().replace(',','.'), qn=parseFloat(qv);
+    if(qa){
+      if(!qa.eq) qa.eq={};
+      var qpar=PAR_EQ[qc], qotro=null;
+      if(qv===''||isNaN(qn)||qn<=0){ delete qa.eq[qc]; if(qpar){ delete qa.eq[qpar[0]]; qotro=''; } }
+      else{ qa.eq[qc]=qn; if(qpar){ qotro=Math.round(qn*qpar[1]*10)/10; qa.eq[qpar[0]]=qotro; } }
+      if(qpar){   /* la otra casilla se pone al día sin redibujar (así no se pierde el cursor) */
+        try{ var qh=document.querySelector('[data-eqarq="'+t.dataset.eqarq+'"][data-eqcampo="'+qpar[0]+'"]'); if(qh) qh.value=qotro; }catch(e3){}
+      }
+      save();
+    }
+  }
   else if(t.dataset.objcarq!=null){
     var ca=D.arqueros[Number(t.dataset.objcarq)], cpu=t.dataset.objcpu, cpo=t.dataset.objcpo;
     if(ca){ if(!ca.objC) ca.objC={}; if(!ca.objC[cpu]) ca.objC[cpu]={};
