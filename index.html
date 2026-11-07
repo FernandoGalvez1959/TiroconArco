@@ -100,23 +100,45 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .consejo .mini{margin-left:4px;padding:3px 9px;}
 /* ---- pantalla de inicio, título de cada pantalla y apartados con fondo ---- */
 .wrap.sala,.wrap.campo{padding-bottom:40px;}
-.ibtn.ancho{grid-column:1/-1;min-height:62px;flex-direction:row;align-items:center;gap:14px;padding:10px 12px;}
-.ibtn.ancho .tx{display:flex;flex-direction:column;gap:2px;}
-.ibtn.ancho .ic{font-size:24px;}
 .wrap[data-t=histcampo],.wrap[data-t=ligas]{--ac:#3D7CC9;--acbg:rgba(61,124,201,.22);}
 .wrap[data-t=mapa],.wrap[data-t=distancia]{--ac:#6FC38C;--acbg:rgba(111,195,140,.17);}
-.inicio{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.ibtn{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;text-align:left;
-  min-height:90px;padding:12px 12px;border-radius:14px;background:var(--panel);color:var(--ink);
+.inicio{display:grid;grid-template-columns:1fr;gap:8px;}
+.ibtn{display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;width:100%;
+  min-height:54px;padding:6px 12px;border-radius:12px;background:var(--panel);color:var(--ink);
   box-shadow:inset 0 0 0 1px var(--line);border-left:7px solid var(--ac,#3D7CC9);}
-.ibtn .ic{font-size:27px;line-height:1;}
-.ibtn b{font-size:19px;font-weight:800;line-height:1.15;}
+.ibtn .ic{font-size:25px;line-height:1;flex:none;width:32px;text-align:center;}
+.ibtn .tx{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.ibtn b{font-size:18.5px;font-weight:800;line-height:1.15;}
 .ibtn small{font-size:12.5px;color:var(--dim);line-height:1.3;}
-.ibtn.grande{grid-column:1/-1;min-height:88px;flex-direction:row;align-items:center;gap:15px;background:#2B2511;}
-.ibtn.grande b{font-size:25px;}
-.ibtn.grande .tx{display:flex;flex-direction:column;gap:3px;}
+.ibtn.grande{min-height:66px;background:#2B2511;}
+.ibtn.grande .ic{font-size:30px;width:36px;}
+.ibtn.grande b{font-size:24px;}
 .ibtn.mal small{color:#F08A85;font-weight:700;}
 .ibtn.bien small{color:#6FC38C;font-weight:700;}
+/* menú largo (Campo, 14 botones): todavía más compacto para que entre en pantalla */
+.inicio.apretado{gap:5px;}
+.inicio.apretado .ibtn{min-height:45px;padding:4px 12px;gap:11px;}
+.inicio.apretado .ibtn .ic{font-size:21px;width:28px;}
+.inicio.apretado .ibtn b{font-size:16.5px;}
+.inicio.apretado .ibtn small{font-size:11.5px;line-height:1.2;}
+.inicio.apretado .ibtn.grande{min-height:58px;}
+.inicio.apretado .ibtn.grande .ic{font-size:26px;width:32px;}
+.inicio.apretado .ibtn.grande b{font-size:21px;}
+/* pantallas bajas: todavía más compacto para que el menú entre sin desplazar */
+@media (max-height:800px){
+  .inicio{gap:6px;}
+  .ibtn{min-height:46px;padding:4px 12px;}
+  .ibtn.grande{min-height:56px;}
+  .ibtn b{font-size:17px;}
+  .ibtn.grande b{font-size:21px;}
+  .inicio.apretado{gap:4px;}
+  .inicio.apretado .ibtn{min-height:38px;padding:3px 12px;}
+  .inicio.apretado .ibtn.grande{min-height:48px;}
+  .inicio.apretado .ibtn b{font-size:15.5px;}
+  .inicio.apretado .ibtn small{font-size:11px;line-height:1.15;}
+  .inicio.apretado .ibtn .ic{font-size:19px;width:26px;}
+  .inicio.apretado .ibtn.grande b{font-size:19px;}
+}
 .navtop{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);}
 .navtop .volver{background:#242E39;color:var(--ink);font-size:14px;font-weight:700;padding:10px 13px;border-radius:9px;
   box-shadow:inset 0 0 0 1px var(--line);flex:none;}
@@ -913,7 +935,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=59;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=60;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4380,13 +4402,11 @@ function pantallaInicio(){
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
   return menuInicio(M,'tab');
 }
-/* el primer botón es el grande; si queda uno suelto en la última fila, ocupa todo el ancho */
+/* un botón por línea, de ancho completo; el primero es el grande */
 function menuInicio(M,acto){
-  var impar=((M.length-1)%2===1);
-  return '<div class="inicio">'+M.map(function(m,i){
-    var gr=(i===0), an=(impar&&i===M.length-1);
-    return '<button class="ibtn'+(gr?' grande':'')+(an?' ancho':'')+(m[5]?' '+m[5]:'')+'" style="--ac:'+m[4]+'" data-act="'+acto+'" data-v="'+m[0]+'">'
-      +'<span class="ic">'+m[1]+'</span>'+((gr||an)?'<span class="tx">':'')+'<b>'+m[2]+'</b><small>'+m[3]+'</small>'+((gr||an)?'</span>':'')+'</button>';
+  return '<div class="inicio'+(M.length>12?' apretado':'')+'">'+M.map(function(m,i){
+    return '<button class="ibtn'+(i===0?' grande':'')+(m[5]?' '+m[5]:'')+'" style="--ac:'+m[4]+'" data-act="'+acto+'" data-v="'+m[0]+'">'
+      +'<span class="ic">'+m[1]+'</span><span class="tx"><b>'+m[2]+'</b><small>'+m[3]+'</small></span></button>';
   }).join('')+'</div>';
 }
 /* ---- menú de inicio de Campo ---- */
