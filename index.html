@@ -602,7 +602,7 @@ function equipoArq(a,i){
     +(c.ap?' Tu apertura estimada es de <b>'+fmtN(c.ap)+'″</b> (envergadura ÷ 2,5).':'')+'</p>';
   /* 2. riser o cuerpo */
   h+='<div class="field"><label>Riser o cuerpo</label>'+campo('reserva','25','0.5','Riser o cuerpo en pulgadas')+'<span class="un">pulg.</span></div>'
-    +'<p class="consejo">'+(c.ap?'Con tu apertura lo normal es <b>'+c.riser+'″</b> (23″ si es menor de 26″, 27″ a partir de 30″).'+(Number(e.reserva)!==c.riser?poner('reserva',c.riser,'Poner '+c.riser+'″'):'')
+    +'<p class="consejo">Es el tamaño del cuerpo, de <b>punta a punta en línea recta</b>, sin seguir la curva; suele venir grabado en el propio riser. '+(c.ap?'Con tu apertura lo normal es <b>'+c.riser+'″</b> (23″ si es menor de 26″, 27″ a partir de 30″).'+(Number(e.reserva)!==c.riser?poner('reserva',c.riser,'Poner '+c.riser+'″'):'')
       :'El más habitual es 25″: 23″ para apertura corta y 27″ para apertura larga.')+'</p>';
   /* 3. palas */
   h+='<div class="field"><label>Palas</label><div class="seg segpal">'
@@ -873,7 +873,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=54;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=55;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
