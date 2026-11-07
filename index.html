@@ -935,7 +935,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=60;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=61;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4389,23 +4389,23 @@ function pantallaInicio(){
   var ns=D.sessions.length;
   var gsub=!tot?'sin ejercicios':!gimExige(a)?'no se exige a '+esc(nom):okg?'✓ completa':'✗ '+hs+' de '+tot+' hechos';
   var M=[
-    ['tirada','🎯','Tirada','anota las flechas o solo el total','#F2C11B',''],
+    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(tot&&gimExige(a))?(okg?'bien':'mal'):''],
+    ['tirada','🎯','Tirada','anota las flechas o solo el total','#F2C11B','',true],
     ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
-    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['progreso','📈','Progreso','cómo vas mejorando','#3D7CC9',''],
     ['historial','🕘','Historial',ns+(ns===1?' tirada guardada':' tiradas guardadas'),'#3D7CC9',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
-    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(tot&&gimExige(a))?(okg?'bien':'mal'):''],
     ['tecnicas','📝','Técnicas','tus apuntes','#E8833A',''],
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
   return menuInicio(M,'tab');
 }
-/* un botón por línea, de ancho completo; el primero es el grande */
+/* un botón por línea, de ancho completo; el que lleva el séptimo dato (true) es el grande */
 function menuInicio(M,acto){
   return '<div class="inicio'+(M.length>12?' apretado':'')+'">'+M.map(function(m,i){
-    return '<button class="ibtn'+(i===0?' grande':'')+(m[5]?' '+m[5]:'')+'" style="--ac:'+m[4]+'" data-act="'+acto+'" data-v="'+m[0]+'">'
+    return '<button class="ibtn'+(m[6]?' grande':'')+(m[5]?' '+m[5]:'')+'" style="--ac:'+m[4]+'" data-act="'+acto+'" data-v="'+m[0]+'">'
       +'<span class="ic">'+m[1]+'</span><span class="tx"><b>'+m[2]+'</b><small>'+m[3]+'</small></span></button>';
   }).join('')+'</div>';
 }
@@ -4423,16 +4423,16 @@ function pantallaInicioCampo(){
     :!falta.length?'✓ completa en la patrulla':'✗ falta: '+falta.map(function(a){ return esc(nombreArq(a)); }).join(', ');
   var pend=((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length;
   var M=[
-    ['recorrido','🥾','Recorrido',abierto?'en marcha · puesto '+(C.idx+1)+' de '+r.puestos:'empezar un recorrido nuevo','#F2C11B',''],
+    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(n&&req.length)?(falta.length?'mal':'bien'):''],
+    ['recorrido','🥾','Recorrido',abierto?'en marcha · puesto '+(C.idx+1)+' de '+r.puestos:'empezar un recorrido nuevo','#F2C11B','',true],
     ['puesto','🎯','Puesto',abierto?'anota los tiros del puesto '+(C.idx+1):'abre antes un recorrido','#F2C11B',''],
     ['clasif','🏆','Clasificación',nrec?'resumen y quién va ganando':'aún sin recorridos','#3D7CC9',''],
-    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['histcampo','🕘','Historial',nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
     ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
     ['sitios','📍','Sitios','nombres de los sitios de sala','#6FC38C',''],
-    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(n&&req.length)?(falta.length?'mal':'bien'):''],
     ['tecnicas','📝','Técnicas','tus apuntes','#E8833A',''],
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
