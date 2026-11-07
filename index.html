@@ -621,7 +621,8 @@ function equipoArq(a,i){
   /* 5. flechas */
   h+='<div class="field"><label>Flechas</label>'+campo('flechaIn','28','0.5','Flecha en pulgadas')+'<span class="un">pulg.</span>'
     +campo('flechaCm','71.1','0.5','Flecha en centímetros')+'<span class="un">cm</span></div>'
-    +'<p class="consejo">'+(c.ap?'Con tu apertura de <b>'+fmtN(c.ap)+'″</b>: entre <b>'+fmtN(c.ap+1)+'″</b> y <b>'+fmtN(c.ap+2)+'″</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
+    +'<p class="consejo">Se mide desde el <b>fondo de la muesca</b> (donde apoya la cuerda) hasta el <b>final del tubo</b>, sin contar la punta. '
+    +(c.ap?'Con tu apertura de <b>'+fmtN(c.ap)+'″</b>: entre <b>'+fmtN(c.ap+1)+'″</b> y <b>'+fmtN(c.ap+2)+'″</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
       +(Number(e.flechaIn)!==c.fl?poner('flechaIn',c.fl,'Poner '+fmtN(c.fl)+'″'):'')
       :'Suele ser la apertura más 1 a 2″.')+'</p>';
   return h;
@@ -872,7 +873,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=53;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=54;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
