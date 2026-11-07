@@ -400,7 +400,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .resj .l2 b,.resj .l1 b{font-weight:600;}
 .rdim{color:var(--dim);font-weight:400;}
 .rok{color:#6FA85B;font-weight:600;font-size:12px;}
-.jgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px;}
+.jgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px;align-items:end;}
 .jcampo span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:3px;line-height:1.25;}
 .jcampo .cinp{text-align:center;font-weight:600;}
 .hrow{padding:11px 0;border-bottom:1px solid var(--line);}
@@ -935,7 +935,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=62;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=64;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -3679,7 +3679,9 @@ var CAMPOSJ=[
  ['pu','Puestos'],['fl','Flechas por puesto'],['co','Componentes'],['pa','En la patrulla'],
  ['lp','Mi lugar en patrulla'],['gt','Puntos del ganador'],
  ['pg','Puntos del 1º de patrulla'],['mi','Mis puntos'],
- ['x11','Onces'],['x10','Dieces'],['m0','Ceros'],['cg','Mi puesto en la tirada'],['gl','Mi puesto en la general']
+ ['x11','Onces'],['x10','Dieces'],['m0','Ceros'],['cg','Mi puesto en la tirada'],
+ ['ptg','Participantes totales'],['gl','Mi puesto en la general'],
+ ['pari','Participantes con arco instintivo (ARI)'],['lari','Mi puesto en ARI']
 ];
 /* Las ligas de Sala y las de Campo son listas distintas, con la misma pantalla. La lista y la liga abierta dependen del modo. */
 function ligasKey(){ return D.modo==='campo'?'ligas':'ligasSala'; }
@@ -3690,7 +3692,9 @@ var CAMPOSJ_SALA=[
  ['pu','Tandas'],['fl','Flechas por tanda'],['co','Componentes'],['pa','En la patrulla'],
  ['lp','Mi lugar en patrulla'],['gt','Puntos del ganador'],
  ['pg','Puntos del 1º de patrulla'],['mi','Mis puntos'],
- ['x11','X'],['x10','Dieces'],['m0','Fallos'],['cg','Mi puesto en la tirada'],['gl','Mi puesto en la general']
+ ['x11','X'],['x10','Dieces'],['m0','Fallos'],['cg','Mi puesto en la tirada'],
+ ['ptg','Participantes totales'],['gl','Mi puesto en la general'],
+ ['pari','Participantes con arco instintivo (ARI)'],['lari','Mi puesto en ARI']
 ];
 function camposJ(){ return D.modo==='campo'?CAMPOSJ:CAMPOSJ_SALA; }
 function selLigaSitio(attr,cur){ return D.modo==='campo'?selCampo(attr,cur):selSitio(attr,cur); }
@@ -3797,7 +3801,8 @@ function pantallaLigas(){
     h+='<div class="card"><div class="chead"><h2>Resumen por tirada</h2>'
       +'<span>'+jr.length+'</span></div>';
     jr.forEach(function(j,i){
-      var mi=Number(j.mi)||0, mx=maxJor(j), co=Number(j.co)||0, cg=Number(j.cg)||0, gl=Number(j.gl)||0;
+      var mi=Number(j.mi)||0, mx=maxJor(j), co=Number(j.co)||0, cg=Number(j.cg)||0, gl=Number(j.gl)||0,
+          ptg=Number(j.ptg)||0, pari=Number(j.pari)||0, lari=Number(j.lari)||0;
       var pc=(mi&&mx)?Math.round(mi*1000/mx)/10:0;
       h+='<div class="resj" data-act="irjor" data-i="'+i+'">'
         +'<div class="l1"><b>Tirada '+(i+1)+':</b> '
@@ -3806,8 +3811,9 @@ function pantallaLigas(){
         +'<div class="l2">'+(function(){
             var q=[];
             if(cg) q.push('Puesto <b>'+cg+'</b>'+(co?' de '+co:'')+' en la tirada');
-            if(gl) q.push('General: <b>'+gl+'º</b>');
-            return q.length?q.join(' · '):'<span class="rdim">sin puestos todavía</span>';
+            if(gl) q.push('General: <b>'+gl+'º</b>'+(ptg?' de '+ptg:'')); else if(ptg) q.push(ptg+' participantes en total');
+            if(lari) q.push('ARI: <b>'+lari+'º</b>'+(pari?' de '+pari:'')); else if(pari) q.push('ARI: '+pari+' participantes');
+            return q.length?q.map(function(x){ return '<span style="white-space:nowrap">'+x+'</span>'; }).join(' · '):'<span class="rdim">sin puestos todavía</span>';
           })()+(j.cerrada?' <span class="rok">✓</span>':'')+'</div></div>';
     });
     h+='</div>';
@@ -3838,7 +3844,8 @@ function pantallaLigas(){
       +(Number(j.gt)?' · a '+(Number(j.gt)-Number(j.mi))+' del ganador de la tirada':'')
       +(Number(j.lp)&&Number(j.pa)?' · '+j.lp+'º de '+j.pa+' en la patrulla':'')
       +(Number(j.cg)?' · '+j.cg+'º'+(Number(j.co)?' de '+j.co:'')+' en la tirada':'')
-      +(Number(j.gl)?' · '+j.gl+'º en la general':'')+'</p>';
+      +(Number(j.gl)?' · '+j.gl+'º'+(Number(j.ptg)?' de '+j.ptg:'')+' en la general':'')
+      +(Number(j.lari)?' · '+j.lari+'º'+(Number(j.pari)?' de '+j.pari:'')+' en ARI':'')+'</p>';
 
     /* ---- documento o imagen del club ---- */
     var doc=j.doc;
@@ -4055,14 +4062,6 @@ function pantallaRecorrido(r){
       +'luego la ves. El intento se apunta en Entrenar el ojo.</small></div></div>';
   }
   h+='</div>';
-
-  var cn=(C.campoEdita==null?0:C.campoEdita);
-  h+='<div class="card"><div class="chead"><h2>Nombre de los campos</h2></div>'
-    +'<div class="dosel"><select class="arq" data-campoedita>'
-    +D.campos.map(function(c,i){ return '<option value="'+i+'"'+(cn===i?' selected':'')+'>Campo '+(i+1)+'</option>'; }).join('')
-    +'</select>'
-    +'<input list="campospre" maxlength="40" class="cinp" data-campo="'+cn+'" value="'+esc(D.campos[cn].nombre)+'">'
-    +'</div></div>';
 
   return h;
 }
@@ -4460,7 +4459,7 @@ function pantallaInicioCampo(){
     ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
     ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
-    ['sitios','📍','Sitios','nombres de los sitios de sala','#6FC38C',''],
+    ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['tecnicas','📝','Técnicas','tus apuntes','#E8833A',''],
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
@@ -4545,6 +4544,15 @@ function pantallaArqueros(){
 }
 function pantallaSitios(){
   var h='';
+  if(D.modo==='campo'){
+    h+='<div class="card"><div class="chead"><h2>Sitios de campo</h2><span>'+D.campos.length+'</span></div>'
+      +'<p class="stat" style="margin-bottom:11px">Así aparecen en el recorrido, el mapa, la distancia y las ligas. Elige uno de la lista o escribe el tuyo.</p>';
+    D.campos.forEach(function(c,i){
+      h+='<div class="field"><label for="cn'+i+'">Campo '+(i+1)+'</label>'
+        +'<input id="cn'+i+'" list="campospre" maxlength="40" data-campo="'+i+'" value="'+esc(c.nombre)+'"></div>';
+    });
+    return h+'</div>';
+  }
     h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2><span>'+D.sites.length+'</span></div>'
       +'<p class="stat" style="margin-bottom:11px">Así aparecen en la tirada, el historial y las clasificaciones.</p>';
     D.sites.forEach(function(sn,i){
@@ -5271,7 +5279,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='joradd'){ var Lj=ligaActual(); if(Lj){ if(!Lj.jornadas) Lj.jornadas=[];
     var ult=Lj.jornadas[Lj.jornadas.length-1]||{};
     Lj.jornadas.push({f:iso(Date.now()),pu:ult.pu||'',fl:ult.fl||'',co:'',pa:ult.pa||'',
-      lp:'',gt:'',pg:'',mi:'',x11:'',x10:'',m0:'',cg:'',gl:'',cerrada:false});
+      lp:'',gt:'',pg:'',mi:'',x11:'',x10:'',m0:'',cg:'',ptg:'',gl:'',pari:'',lari:'',cerrada:false});
     LST().jorSel=Lj.jornadas.length-1;
     save(); render(); } }
   else if(a==='jorbor'){
@@ -5382,7 +5390,6 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-tf')){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
-  else if(t.hasAttribute&&t.hasAttribute('data-campoedita')){ C.campoEdita=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-recsel')){ C.recSel=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hsite')){ U.hSite=t.value; U.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; U.hTope=15; render(); }
