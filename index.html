@@ -98,6 +98,46 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .consejo{margin:-3px 0 12px;font-size:12.5px;color:var(--dim);line-height:1.5;}
 .consejo b{color:var(--ink);}
 .consejo .mini{margin-left:4px;padding:3px 9px;}
+/* ---- pantalla de inicio, título de cada pantalla y apartados con fondo ---- */
+.wrap.sala,.wrap.campo{padding-bottom:40px;}
+.ibtn.ancho{grid-column:1/-1;min-height:62px;flex-direction:row;align-items:center;gap:14px;padding:10px 12px;}
+.ibtn.ancho .tx{display:flex;flex-direction:column;gap:2px;}
+.ibtn.ancho .ic{font-size:24px;}
+.wrap[data-t=histcampo],.wrap[data-t=ligas]{--ac:#3D7CC9;--acbg:rgba(61,124,201,.22);}
+.wrap[data-t=mapa],.wrap[data-t=distancia]{--ac:#6FC38C;--acbg:rgba(111,195,140,.17);}
+.inicio{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ibtn{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;text-align:left;
+  min-height:90px;padding:12px 12px;border-radius:14px;background:var(--panel);color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--line);border-left:7px solid var(--ac,#3D7CC9);}
+.ibtn .ic{font-size:27px;line-height:1;}
+.ibtn b{font-size:19px;font-weight:800;line-height:1.15;}
+.ibtn small{font-size:12.5px;color:var(--dim);line-height:1.3;}
+.ibtn.grande{grid-column:1/-1;min-height:88px;flex-direction:row;align-items:center;gap:15px;background:#2B2511;}
+.ibtn.grande b{font-size:25px;}
+.ibtn.grande .tx{display:flex;flex-direction:column;gap:3px;}
+.ibtn.mal small{color:#F08A85;font-weight:700;}
+.ibtn.bien small{color:#6FC38C;font-weight:700;}
+.navtop{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);}
+.navtop .volver{background:#242E39;color:var(--ink);font-size:14px;font-weight:700;padding:10px 13px;border-radius:9px;
+  box-shadow:inset 0 0 0 1px var(--line);flex:none;}
+.navtop .ttl{font-size:22px;font-weight:800;}
+.apt{display:block;margin:20px 0 10px;padding:11px 13px;border-radius:11px;font-size:20px;font-weight:800;color:#fff;
+  background:rgba(61,124,201,.24);border-left:7px solid #3D7CC9;}
+.apt.dr{background:rgba(242,193,27,.18);border-left-color:#F2C11B;}
+.apt.vd{background:rgba(111,195,140,.18);border-left-color:#6FC38C;}
+.subapt{margin:16px 0 3px;font-size:16px;font-weight:800;color:var(--ink);}
+.inc2{color:var(--dim);font-weight:600;}
+.wrap{--ac:#F2C11B;--acbg:rgba(242,193,27,.15);}
+.wrap[data-t=clasif],.wrap[data-t=progreso],.wrap[data-t=historial]{--ac:#3D7CC9;--acbg:rgba(61,124,201,.22);}
+.wrap[data-t=arqueros],.wrap[data-t=sitios]{--ac:#6FC38C;--acbg:rgba(111,195,140,.17);}
+.wrap[data-t=gimnasia],.wrap[data-t=tecnicas],.wrap[data-t=material]{--ac:#E8833A;--acbg:rgba(232,131,58,.18);}
+.wrap[data-t=pendientes],.wrap[data-t=copia]{--ac:#A98BE0;--acbg:rgba(169,139,224,.20);}
+.wrap[data-t=copia] .card:nth-of-type(4n+2)>.chead:first-child{--ac:#3D7CC9;--acbg:rgba(61,124,201,.22);}
+.wrap[data-t=copia] .card:nth-of-type(4n+3)>.chead:first-child{--ac:#6FC38C;--acbg:rgba(111,195,140,.17);}
+.wrap[data-t=copia] .card:nth-of-type(4n)>.chead:first-child{--ac:#E8833A;--acbg:rgba(232,131,58,.18);}
+.card>.chead:first-child{margin:-13px -13px 12px;padding:12px 13px;border-radius:14px 14px 0 0;background:var(--acbg);border-left:7px solid var(--ac);}
+.card>.chead:first-child h2{font-size:19px;font-weight:800;}
+.card>.chead:first-child:last-child{margin-bottom:-13px;border-radius:14px;}   /* tarjeta plegada: solo el título, que ocupa toda la tarjeta */
 .field .seg.segpal{flex:1;}
 .segpal button{padding:9px 2px;font-size:13px;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
@@ -593,7 +633,7 @@ function equipoArq(a,i){
   var e=a.eq||{}, V=function(k){ return e[k]==null?'':String(e[k]); }, c=consejosEq(a);
   var campo=function(k,ph,paso,aria){ return '<input type="number" inputmode="decimal" min="0" step="'+(paso||'any')+'" placeholder="'+ph+'" aria-label="'+aria+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
   var poner=function(k,v,txt){ return ' <button class="mini" data-act="eqponer" data-i="'+i+'" data-k="'+k+'" data-v="'+v+'">'+txt+'</button>'; };
-  var h='<p class="stat" style="margin-top:14px;margin-bottom:4px">Arco y flechas</p>'
+  var h='<div class="apt">🏹 Arco y flechas</div>'
     +'<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. Pulgadas primero, siempre.</p>';
   /* 1. envergadura */
   h+='<div class="field"><label>Envergadura</label>'+campo('envIn','70','0.5','Envergadura en pulgadas')+'<span class="un">pulg.</span>'
@@ -608,7 +648,7 @@ function equipoArq(a,i){
   h+='<div class="field"><label>Palas</label><div class="seg segpal">'
     +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
       return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')+'</div></div>'
-    +'<p class="consejo">'+(c.ap?'Para un arco de <b>'+c.arco+'″</b> con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″: palas <b>'+NOM_PALAS[c.palas]+'</b>.'+(e.palas!==c.palas?poner('palas',c.palas,'Elegir '+NOM_PALAS[c.palas]):'')
+    +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '+(c.ap?'Para un arco de <b>'+c.arco+'″</b> con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″: palas <b>'+NOM_PALAS[c.palas]+'</b>.'+(e.palas!==c.palas?poner('palas',c.palas,'Elegir '+NOM_PALAS[c.palas]):'')
       :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
   h+='<div class="field"><label>Pulgadas</label>'+campo('largo','68','0.5','Pulgadas del arco con estas palas')+'<span class="un">pulg.</span></div>'
     +'<p class="consejo">'+(c.largo?'Con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″ y palas '+NOM_PALAS[e.palas||c.palas]+' el arco mide <b>'+c.largo+'″</b>.'+(Number(e.largo)!==c.largo?poner('largo',c.largo,'Poner '+c.largo+'″'):'')
@@ -649,7 +689,7 @@ function objTexto(o){
   return h;
 }
 function objetivosArq(a,i){
-  var h='<p class="stat" style="margin-top:14px;margin-bottom:2px">Objetivo mínimo por diana</p>'
+  var h='<p class="subapt">Objetivo mínimo por diana</p>'
     +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos por tanda de '+(D.formato.arrows||6)+' flechas y fecha para conseguirlo.</p>';
   MODS.forEach(function(md){
     var o=(a.obj&&a.obj[md.id])||{};
@@ -704,7 +744,7 @@ function objCResumen(r){
   return partes.length?'<div class="l3">Objetivo: '+partes.join(' · ')+'</div>':'';
 }
 function objetivosCampoArq(a,i){
-  var h='<p class="stat" style="margin-top:14px;margin-bottom:2px">Objetivo en campo</p>'
+  var h='<p class="subapt">Objetivo en campo</p>'
     +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido completo, máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha. Cuenta cuando este arquero va en la patrulla.</p>'
     +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>';
   [12,24].forEach(function(pu){
@@ -762,7 +802,7 @@ function patActual(){
 function gimBotonPat(pat){
   var n=gimItems().length, req=gimMiembros(pat).filter(gimExige);
   if(!n) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
-    +'<small>Sin ejercicios. Añádelos en Gim/Téc/Mat</small></span></button>';
+    +'<small>Sin ejercicios. Añádelos en Gimnasia</small></span></button>';
   if(!req.length) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
     +'<small>No se exige a nadie de esta patrulla</small></span></button>';
   var falta=req.filter(function(a){ return !gimOk(a); }), ok=!falta.length;
@@ -786,7 +826,7 @@ function gimBotonPat(pat){
 function gimBoton(a){
   var n=gimItems().length;
   if(!n) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
-    +'<small>Sin ejercicios. Añádelos en Gim/Téc/Mat</small></span></button>';
+    +'<small>Sin ejercicios. Añádelos en Gimnasia</small></span></button>';
   if(a.gim===false) return '<button class="gimst" data-act="gimtab" data-ok="n"><span class="gimic">–</span><span class="gimtx"><b>Gimnasia</b>'
     +'<small>No se exige a este arquero</small></span></button>';
   var ok=gimOk(a), hs=gimHechas(a);
@@ -873,7 +913,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=55;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=59;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -965,15 +1005,17 @@ function ringc(s){
 function sty(c){ return 'background:'+c.bg+';color:'+c.fg+';box-shadow:inset 0 0 0 1px '+c.bd; }
 
 /* ---- una tirada conoce su propio formato ---- */
-function nE(s){ return (s&&s.ends&&s.ends.length)||0; }
-function nA(s){ return (s&&s.ends&&s.ends[0]&&s.ends[0].length)||0; }
+/* una tirada «solo con el total» guarda su puntuación (tot) y su formato (ne × na), sin flechas sueltas */
+function esTotal(s){ return !!s&&s.tot!=null&&s.tot!==''; }
+function nE(s){ if(esTotal(s)&&s.ne>0) return Number(s.ne); return (s&&s.ends&&s.ends.length)||0; }
+function nA(s){ if(esTotal(s)&&s.na>0) return Number(s.na); return (s&&s.ends&&s.ends[0]&&s.ends[0].length)||0; }
 function maxPts(s){ if(s&&s.col){ var p=s.pts||ptsCol(); return nE(s)*nA(s)*Math.max(Number(p.A)||0,Number(p.R)||0,Number(p.N)||0); } return nE(s)*nA(s)*10; }
 function formato(s){ return nE(s)+'×'+nA(s); }
 function malla(ne,na){ var a=[],e,r,i; for(e=0;e<ne;e++){ r=[]; for(i=0;i<na;i++) r.push(null); a.push(r); } return a; }
 function flat(s){ if(!s||!s.ends||!s.ends.length) return [];
   return s.ends.reduce(function(a,r){ return a.concat(r||[]); },[]); }
-function shots(s){ return flat(s).filter(function(x){ return x!=null; }).length; }
-function total(s){ return flat(s).reduce(function(a,x){ return a+valS(x,s); },0); }
+function shots(s){ if(esTotal(s)) return nE(s)*nA(s); return flat(s).filter(function(x){ return x!=null; }).length; }
+function total(s){ if(esTotal(s)) return Number(s.tot)||0; return flat(s).reduce(function(a,x){ return a+valS(x,s); },0); }
 function xs(s){ var l=(s&&s.col)?'A':'X'; return flat(s).filter(function(x){ return x===l; }).length; }
 function dieces(s){ var l=(s&&s.col)?'R':'10'; return flat(s).filter(function(x){ return x===l; }).length; }
 function media(s){ var n=shots(s); return n?total(s)/n:0; }
@@ -1205,8 +1247,8 @@ function arrancaCheck(){
   D.check=null; D.extras=null;
 }
 arrancaCheck();
-var U={dist:18,col:false,tri:false,pCol:false,pTri:false,site:0,arq:0,sel:{end:0,arrow:0},tab:'tirada',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
-var C={tab:'puesto',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
+var U={dist:18,col:false,tri:false,pCol:false,pTri:false,site:0,arq:0,sel:{end:0,arrow:0},tab:'inicio',pDist:18,pSite:0,verCSV:false,fotoIdx:0};
+var C={tab:'inicio',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 var tSubida=null;
 function programaSubida(ms){ clearTimeout(tSubida); tSubida=setTimeout(function(){ empujaV3(false,false); },ms); }
@@ -4136,7 +4178,7 @@ function pantallaMateriales(){
   return h;
 }
 function mejoresDe(a){
-  var h='<p class="stat" style="margin-top:12px;margin-bottom:4px">Mejores marcas</p>';
+  var h='<div class="apt vd">🏅 Mejores marcas</div>';
   var hay=false;
   MODS.forEach(function(md){ var d=md.id;
     var mejor=null, sitio2=null, i;
@@ -4232,17 +4274,17 @@ function pantallaPendientes(){
       'Lo que haya que comprar: tubos, plumas, culatines…','Qué hay que comprar');
 }
 function pantallaTecMat(){ return pantallaGim()+'<div style="height:14px"></div>'+pantallaTecnicas()+pantallaMateriales(); }
-function pantallaTecnicas(){
-  return fichas('tecnicas','Técnicas',
-      'Tus apuntes: correcciones, sensaciones, entrenamientos.','Título',0)
-    +'<div style="height:14px"></div>'
-    +fichas('material','Material',
-      'Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
+function fichasTec(){
+  return fichas('tecnicas','Técnicas','Tus apuntes: correcciones, sensaciones, entrenamientos.','Título',0);
+}
+function fichasMat(){
+  return fichas('material','Fichas de material','Tu equipo: arco, flechas, cuerda, reglajes. Se guarda solo según escribes.','Arco, flechas, visor...',1)
     +'<datalist id="sugmat">'+SUGMAT.map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>';
 }
+function pantallaTecnicas(){ return fichasTec()+'<div style="height:14px"></div>'+fichasMat(); }
 function renderCampo(){
-  if(['recorrido','puesto','mapa','clasif','histcampo','ligas','distancia','tecnicas','pendientes','copia'].indexOf(C.tab)<0)
-    C.tab='recorrido';
+  if(['inicio','recorrido','puesto','mapa','clasif','histcampo','ligas','distancia','arqueros','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
+    C.tab='inicio';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
   if(!MD.vista){ cierraCamara(); C.camOn=false; }
@@ -4252,7 +4294,8 @@ function renderCampo(){
   if(C.nPuestos==null) C.nPuestos=12;
   if(C.nInicio==null) C.nInicio=1;
   if(!C.patrulla) C.patrulla=[{arq:'',nombre:'',arco:ARCOS[0]},{arq:'',nombre:'',arco:ARCOS[0]}];
-  var h='<div class="wrap">'+avisoAlmacen()+cabeceraCampo();
+  var h='<div class="wrap campo" data-t="'+C.tab+'">'+avisoAlmacen()+cabeceraCampo();
+  h+=(C.tab==='inicio')?pantallaInicioCampo():navTopC(C.tab);
   if(C.tab==='puesto'){
     h+= r ? pantallaPuesto(r)
       : '<div class="card"><p class="empty">No hay ningún recorrido abierto.<br><br>Ve a '
@@ -4260,7 +4303,11 @@ function renderCampo(){
   }
   else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
-  else if(C.tab==='tecnicas'){ h+=pantallaTecMat(); }
+  else if(C.tab==='arqueros'){ h+=pantallaArqueros(); }
+  else if(C.tab==='sitios'){ h+=pantallaSitios(); }
+  else if(C.tab==='gimnasia'){ h+=pantallaGim(); }
+  else if(C.tab==='tecnicas'){ h+=fichasTec(); }
+  else if(C.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
   else if(C.tab==='pendientes'){ h+=pantallaPendientes(); }
   else if(C.tab==='histcampo'){ h+=pantallaHistorialCampo(); }
   else if(C.tab==='copia'){ h+=tarjetaCopia(); }
@@ -4271,9 +4318,7 @@ function renderCampo(){
     +'<datalist id="arqnombres">'+D.arqueros.map(function(a){ return '<option value="'+esc(nombreArq(a))+'">'; }).join('')+'</datalist>'
     +'<datalist id="animales">'+['Jabalí','Ciervo','Corzo','Zorro','Lobo','Oso','Conejo','Pavo','Puma','Cabra',
       'Castor','Buitre','Serpiente','Rana','Mapache','Lince'].map(function(x){ return '<option value="'+x+'">'; }).join('')+'</datalist>'
-    +barraTabs([['recorrido','Recorrido'],['puesto','Puesto'],['clasif','Clasific.'],
-      ['histcampo','Historial'],['ligas','Ligas'],['mapa','Mapa'],['distancia','Distancia'],
-      ['tecnicas','Gim/<wbr>Téc/<wbr>Mat'],['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']],'ctab',C.tab);
+    ;      /* en campo tampoco hay barra de pestañas abajo: se navega desde el menú de inicio */
   document.getElementById('app').innerHTML=h;
   if(C.tab==='mapa') pintaGeo();
 }
@@ -4310,15 +4355,167 @@ function selArq(){
     return '<option value="'+i+'"'+(i===U.arq?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')+'</select>';
 }
 
+/* ---- pantalla de inicio: un botón por apartado ---- */
+var TITULOS={tirada:'Tirada',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso',historial:'Historial',sitios:'Sitios',
+  gimnasia:'Gimnasia',tecnicas:'Técnicas',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
+function navTop(t){
+  return '<div class="navtop"><button class="volver" data-act="tab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOS[t]||'')+'</span></div>';
+}
+function pantallaInicio(){
+  var a=arqActual(), tot=gimItems().length, hs=gimHechas(a), okg=gimOk(a), nom=nombreArq(a);
+  var pend=((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length;
+  var ns=D.sessions.length;
+  var gsub=!tot?'sin ejercicios':!gimExige(a)?'no se exige a '+esc(nom):okg?'✓ completa':'✗ '+hs+' de '+tot+' hechos';
+  var M=[
+    ['tirada','🎯','Tirada','anota las flechas o solo el total','#F2C11B',''],
+    ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
+    ['progreso','📈','Progreso','cómo vas mejorando','#3D7CC9',''],
+    ['historial','🕘','Historial',ns+(ns===1?' tirada guardada':' tiradas guardadas'),'#3D7CC9',''],
+    ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
+    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(tot&&gimExige(a))?(okg?'bien':'mal'):''],
+    ['tecnicas','📝','Técnicas','tus apuntes','#E8833A',''],
+    ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
+    ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
+    ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
+  return menuInicio(M,'tab');
+}
+/* el primer botón es el grande; si queda uno suelto en la última fila, ocupa todo el ancho */
+function menuInicio(M,acto){
+  var impar=((M.length-1)%2===1);
+  return '<div class="inicio">'+M.map(function(m,i){
+    var gr=(i===0), an=(impar&&i===M.length-1);
+    return '<button class="ibtn'+(gr?' grande':'')+(an?' ancho':'')+(m[5]?' '+m[5]:'')+'" style="--ac:'+m[4]+'" data-act="'+acto+'" data-v="'+m[0]+'">'
+      +'<span class="ic">'+m[1]+'</span>'+((gr||an)?'<span class="tx">':'')+'<b>'+m[2]+'</b><small>'+m[3]+'</small>'+((gr||an)?'</span>':'')+'</button>';
+  }).join('')+'</div>';
+}
+/* ---- menú de inicio de Campo ---- */
+var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',histcampo:'Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
+  gimnasia:'Gimnasia',tecnicas:'Técnicas',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
+function navTopC(t){
+  return '<div class="navtop"><button class="volver" data-act="ctab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span></div>';
+}
+function pantallaInicioCampo(){
+  var r=recActual(), abierto=!!(r&&!r.cerrado), nrec=D.recorridos.length, nlig=(D.ligas||[]).length;
+  var pat=abierto?r.patrulla:(C.patrulla||[]).slice(0,C.nuevos||0), n=gimItems().length, miem=gimMiembros(pat);
+  var req=miem.filter(gimExige), falta=req.filter(function(a){ return !gimOk(a); });
+  var gsub=!n?'sin ejercicios':!miem.length?'según la patrulla que elijas':!req.length?'no se exige a esta patrulla'
+    :!falta.length?'✓ completa en la patrulla':'✗ falta: '+falta.map(function(a){ return esc(nombreArq(a)); }).join(', ');
+  var pend=((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length;
+  var M=[
+    ['recorrido','🥾','Recorrido',abierto?'en marcha · puesto '+(C.idx+1)+' de '+r.puestos:'empezar un recorrido nuevo','#F2C11B',''],
+    ['puesto','🎯','Puesto',abierto?'anota los tiros del puesto '+(C.idx+1):'abre antes un recorrido','#F2C11B',''],
+    ['clasif','🏆','Clasificación',nrec?'resumen y quién va ganando':'aún sin recorridos','#3D7CC9',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
+    ['histcampo','🕘','Historial',nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
+    ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
+    ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
+    ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
+    ['sitios','📍','Sitios','nombres de los sitios de sala','#6FC38C',''],
+    ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(n&&req.length)?(falta.length?'mal':'bien'):''],
+    ['tecnicas','📝','Técnicas','tus apuntes','#E8833A',''],
+    ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
+    ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
+    ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
+  return menuInicio(M,'ctab');
+}
+
+/* ---- anotar una tirada solo con su total (sin las flechas una a una) ---- */
+function isoDia(f){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(f||''); return m?new Date(+m[1],+m[2]-1,+m[3],12,0,0).toISOString():new Date().toISOString(); }
+function pseudoTotal(mod,ne,na){ var p={tot:0,ne:ne,na:na,ends:[]}; if(mod==='18c'){ p.col=true; p.pts=ptsCol(); } return p; }
+function abreTotal(donde){
+  var a=arqActual(), mod, site;
+  if(donde==='historial'){ mod=(U.hDist!==''&&U.hDist!=null)?String(U.hDist):'18'; site=(U.hSite===''||U.hSite==null)?0:Number(U.hSite); }
+  else{ mod=modU(); site=U.site; }
+  U.tf={donde:donde,arq:a.id,mod:mod,site:site,fecha:hoyISO(),ne:D.formato.ends,na:D.formato.arrows,tot:'',msg:''};
+}
+function formTotal(){
+  var f=U.tf; if(!f) return '';
+  var ne=Math.round(Number(f.ne))||0, na=Math.round(Number(f.na))||0, mx=maxPts(pseudoTotal(f.mod,ne,na));
+  return '<div class="card" data-form="total"><div class="chead"><h2>Anotar solo el total</h2><span><button class="mini" data-act="totalcierra">Cerrar</button></span></div>'
+    +'<p class="stat" style="margin-bottom:11px">Para una tirada de la que solo sabes los puntos, sin anotar cada flecha.</p>'
+    +'<div class="field"><label>Arquero</label><select class="arq" data-tf="arq">'+D.arqueros.map(function(x){
+        return '<option value="'+x.id+'"'+(x.id===f.arq?' selected':'')+'>'+esc(nombreArq(x))+'</option>'; }).join('')+'</select></div>'
+    +'<div class="field"><label>Diana</label><select class="arq" data-tf="mod">'+MODS.map(function(md){
+        return '<option value="'+md.id+'"'+(md.id===String(f.mod)?' selected':'')+'>'+descMod(md.id)+'</option>'; }).join('')+'</select></div>'
+    +'<div class="field"><label>Sitio</label><select class="arq" data-tf="site">'+D.sites.map(function(sn,i){
+        return '<option value="'+i+'"'+(Number(f.site)===i?' selected':'')+'>'+esc(sn)+'</option>'; }).join('')+'</select></div>'
+    +'<div class="field"><label>Fecha</label><input type="date" data-tf="fecha" value="'+esc(f.fecha||'')+'"></div>'
+    +'<div class="field"><label>Tandas</label><input type="number" inputmode="numeric" min="1" max="30" data-tf="ne" value="'+esc(String(f.ne))+'">'
+      +'<span class="un">×</span><input type="number" inputmode="numeric" min="1" max="12" data-tf="na" value="'+esc(String(f.na))+'"><span class="un">flechas</span></div>'
+    +'<div class="field"><label>Total</label><input type="number" inputmode="decimal" min="0" step="any" placeholder="puntos" data-tf="tot" value="'+esc(String(f.tot))+'">'
+      +'<span class="un">de '+mx+'</span></div>'
+    +(f.msg?'<p class="stat" style="color:#F08A85;font-weight:700;margin:2px 0 8px">'+esc(f.msg)+'</p>':'')
+    +'<button class="act" data-act="totalguarda">Guardar tirada con este total</button></div>';
+}
+function guardaTotal(){
+  var f=U.tf; if(!f) return;
+  var ne=Math.round(Number(String(f.ne).replace(',','.'))), na=Math.round(Number(String(f.na).replace(',','.'))), tot=parseFloat(String(f.tot).replace(',','.'));
+  var err='', mx=0;
+  if(!D.arqueros.some(function(x){ return x.id===f.arq; })) err='Elige el arquero.';
+  else if(!(ne>=1&&ne<=30)||!(na>=1&&na<=12)) err='Pon entre 1 y 30 tandas y entre 1 y 12 flechas por tanda.';
+  else if(!/^\d{4}-\d{2}-\d{2}$/.test(f.fecha||'')) err='Pon la fecha.';
+  else if(isNaN(tot)||tot<=0) err='Escribe el total de puntos.';
+  else{ mx=maxPts(pseudoTotal(f.mod,ne,na)); if(tot>mx) err='Con '+ne+'×'+na+' flechas en esta diana el máximo es '+mx+'. Revisa el total.'; }
+  if(err){ f.msg=err; render(); return; }
+  var md=infoMod(f.mod), ses={id:uid(),arquero:f.arq,fecha:isoDia(f.fecha),dist:Number(md.dist),site:Number(f.site),
+    ends:malla(ne,na),tot:Math.round(tot*100)/100,ne:ne,na:na};
+  if(f.mod==='18c'){ ses.col=true; ses.pts={A:ptsCol().A,R:ptsCol().R,N:ptsCol().N}; }
+  if(f.mod==='18t') ses.tri=true;
+  var rec=best(f.arq,f.mod,ses.site), mejor=!rec||media(ses)>media(rec);
+  var k=0; while(k<D.sessions.length&&String(D.sessions[k].fecha)>ses.fecha) k++;   /* en su sitio por fecha: de más reciente a más antigua */
+  D.sessions.splice(k,0,ses);
+  U.tf=null; save(); render();
+  toast((mejor?'¡Mejor marca! ':'Tirada guardada: ')+ses.tot+' puntos');
+}
+
+/* ---- pantallas que comparten Sala y Campo ---- */
+function pantallaArqueros(){
+  var h='';
+    D.arqueros.forEach(function(a,i){
+      h+='<div class="card"><div class="chead"><h2>'+esc(nombreArq(a))+'</h2>'
+        +(D.arqueros.length>1?'<span><button class="mini" data-act="borrararq" data-i="'+i+'">Borrar</button></span>':'')
+        +'</div>'
+        +'<div class="fotorow">'
+        +(a.foto?'<img class="foto" src="'+fotoURL(a)+'" alt="Foto">':'<div class="fotoph">Sin<br>foto</div>')
+        +'<div class="fotobtns">'
+        +'<button class="mini" data-act="fotoadd" data-i="'+i+'">'+(a.foto?'Cambiar foto':'Añadir foto')+'</button>'
+        +(a.foto?'<button class="ghost" data-act="fotodel" data-i="'+i+'" style="padding:0 2px">Quitar</button>':'')
+        +'</div></div>'
+        +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
+        +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
+        +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+        +equipoArq(a,i)
+        +'<div class="apt dr">🎯 Objetivos</div>'
+        +objetivosArq(a,i)
+        +objetivosCampoArq(a,i)
+        +mejoresDe(a)
+        +'</div>';
+    });
+    h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
+  return h;
+}
+function pantallaSitios(){
+  var h='';
+    h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2><span>'+D.sites.length+'</span></div>'
+      +'<p class="stat" style="margin-bottom:11px">Así aparecen en la tirada, el historial y las clasificaciones.</p>';
+    D.sites.forEach(function(sn,i){
+      h+='<div class="field"><label for="s'+i+'">Sitio '+(i+1)+'</label>'
+        +'<input id="s'+i+'" data-site="'+i+'" maxlength="40" value="'+esc(sn)+'"></div>';
+    });
+    h+='</div>';
+  return h;
+}
+
 function render(){
   if(VOZ.activa&&!(D.modo!=='campo'&&U.tab==='tirada')) vozStop();
-  if(['tirada','clasif','progreso','historial','arqueros','tecnicas','pendientes','copia'].indexOf(U.tab)<0) U.tab='tirada';
+  if(['inicio','tirada','clasif','progreso','historial','arqueros','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
   if(D.modo==='campo'){ renderCampo(); return; }
   var A=arqActual();
-  var h='<div class="wrap">'+avisoAlmacen()+'<div class="top">'
+  var h='<div class="wrap sala" data-t="'+U.tab+'">'+avisoAlmacen()+'<div class="top">'
    +'<svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">'
    +'<circle cx="50" cy="50" r="50" fill="#E6E8E4"/><circle cx="50" cy="50" r="40" fill="#0F141A"/>'
    +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
@@ -4330,6 +4527,7 @@ function render(){
    +'<div class="quien">'+(A.foto?'<img class="avatar2" src="'+fotoURL(A)+'" alt="">':'')
    +'<span>'+(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span></div>'
    +'</div>';
+  h+=(U.tab==='inicio')?pantallaInicio():navTop(U.tab);
 
   if(U.tab==='tirada'){
     var s=draft(), ne=nE(s), na=nA(s), e=Math.min(U.sel.end,ne-1), row=s.ends[e];
@@ -4337,6 +4535,7 @@ function render(){
     var t=row.reduce(function(a,x){ return a+valS(x,s); },0);
     var N=shots(s), T2=total(s), rec=best(A.id,modU(),U.site), pc0=pctObj(A,s);
 
+    if(U.tf&&U.tf.donde==='tirada') h+=formTotal();
     h+=selSitio('data-selsite',U.site)+'<div style="height:8px"></div>'
       +segDist('dist',modU())+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
@@ -4345,6 +4544,7 @@ function render(){
       +'<div class="step"><span class="lb">Flechas<br>por tanda</span>'
       +'<button data-act="arrows" data-v="-1">−</button><b>'+na+'</b><button data-act="arrows" data-v="1">+</button></div>'
       +'</div>';
+    if(!(U.tf&&U.tf.donde==='tirada')) h+='<button class="act act2" style="margin:0 0 12px" data-act="totalabre" data-v="tirada">Anotar solo el total (sin las flechas)</button>';
 
     if(s.col){
       var pcol=s.pts||ptsCol();
@@ -4404,10 +4604,7 @@ function render(){
     var tarjetaObs='<div class="card">'
       +'<div class="chead"><h2>Reglajes a '+descMod(modU())+'</h2><span>fijo para esta distancia</span></div>'
       +'<textarea class="obs selec" placeholder="Altura de visor, libras, notas que se repiten a '+descMod(modU())+'..." '
-      +'data-nota="'+modU()+'">'+esc(D.notas[modU()]||'')+'</textarea>'
-      +'<div class="chead" style="margin:14px 0 8px"><h2>Observaciones</h2><span>de esta tirada</span></div>'
-      +'<textarea class="obs selec" placeholder="Viento, luz, sensaciones, lo que pasó hoy..." '
-      +'data-obs>'+esc(s.obs||'')+'</textarea></div>';
+      +'data-nota="'+modU()+'">'+esc(D.notas[modU()]||'')+'</textarea></div>';
 
     h+='<div class="card"><div class="sum"><div class="big">'+T2+'<small>/ '+maxPts(s)+'</small></div>'
       +'<div class="stat">Media por flecha<b>'+dec(N?T2/N:0)+'</b></div>'
@@ -4484,6 +4681,8 @@ function render(){
     h+='<div class="seg" style="margin-bottom:10px">'
       +'<button data-act="hvista" data-v="mejores" data-on="'+(vista==='mejores'?1:0)+'">Mejores</button>'
       +'<button data-act="hvista" data-v="todas" data-on="'+(vista==='todas'?1:0)+'">Todas las tiradas</button></div>';
+    h+=(U.tf&&U.tf.donde==='historial')?formTotal()
+      :'<button class="act act2" style="margin:0 0 10px" data-act="totalabre" data-v="historial">+ Añadir una tirada solo con el total</button>';
   }
   if(U.tab==='historial'&&(U.hVista||'mejores')==='mejores'){ h+=pantallaMejores(); }
   else if(U.tab==='historial'){
@@ -4513,7 +4712,7 @@ function render(){
       h+='<div class="hrow">'
         +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
-        +'<div class="l3">'+formato(s)+(complete(s)?'':' <span class="inc">incompleta: '+shots(s)+' de '+(nE(s)*nA(s))+' flechas</span>')+' · '+dec(media(s))+' por flecha'
+        +'<div class="l3">'+formato(s)+(esTotal(s)?' <span class="inc2">solo el total</span>':'')+(complete(s)?'':' <span class="inc">incompleta: '+shots(s)+' de '+(nE(s)*nA(s))+' flechas</span>')+' · '+dec(media(s))+' por flecha'
           +(pr!=null?' · <b class="'+(pr>=100?'pctok':'')+'">'+Math.round(pr)+' %</b> del objetivo':'')+' · <b>'+total(s)+'</b></div>'
         +'<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'+dosMinis('ses:'+s.id)
         +'<button class="mini" data-act="borrar" data-id="'+s.id+'">✕</button></div>'
@@ -4525,43 +4724,16 @@ function render(){
     h+='</div>';
   }
 
-  if(U.tab==='tecnicas'){ h+=pantallaTecMat(); }
+  if(U.tab==='gimnasia'){ h+=pantallaGim(); }
+  if(U.tab==='tecnicas'){ h+=fichasTec(); }
+  if(U.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
   if(U.tab==='pendientes'){ h+=pantallaPendientes(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
-  if(U.tab==='arqueros'){
-    D.arqueros.forEach(function(a,i){
-      h+='<div class="card"><div class="chead"><h2>'+esc(nombreArq(a))+'</h2>'
-        +(D.arqueros.length>1?'<span><button class="mini" data-act="borrararq" data-i="'+i+'">Borrar</button></span>':'')
-        +'</div>'
-        +'<div class="fotorow">'
-        +(a.foto?'<img class="foto" src="'+fotoURL(a)+'" alt="Foto">':'<div class="fotoph">Sin<br>foto</div>')
-        +'<div class="fotobtns">'
-        +'<button class="mini" data-act="fotoadd" data-i="'+i+'">'+(a.foto?'Cambiar foto':'Añadir foto')+'</button>'
-        +(a.foto?'<button class="ghost" data-act="fotodel" data-i="'+i+'" style="padding:0 2px">Quitar</button>':'')
-        +'</div></div>'
-        +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
-        +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
-        +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
-        +equipoArq(a,i)
-        +objetivosArq(a,i)
-        +objetivosCampoArq(a,i)
-        +mejoresDe(a)
-        +'</div>';
-    });
-    h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
-    h+='<div class="card"><div class="chead"><h2>Nombres de los sitios</h2></div>';
-    D.sites.forEach(function(sn,i){
-      h+='<div class="field"><label for="s'+i+'">Sitio '+(i+1)+'</label>'
-        +'<input id="s'+i+'" data-site="'+i+'" maxlength="40" value="'+esc(sn)+'"></div>';
-    });
-    h+='</div>';
-  }
+  if(U.tab==='arqueros'){ h+=pantallaArqueros(); }
+  if(U.tab==='sitios'){ h+=pantallaSitios(); }
 
-  var pestanas=[['tirada','Tirada'],['clasif','Clasificación'],['progreso','Progreso'],
-    ['historial','Historial'],['arqueros','Arqueros/<wbr>Sitios'],['tecnicas','Gim/<wbr>Téc/<wbr>Mat'],
-    ['pendientes','Pendientes'],['copia','Copia/<wbr>Claves']];
-  h+='</div>'+barraTabs(pestanas,'tab',U.tab);
+  h+='</div>';       /* en sala ya no hay barra de pestañas abajo: se navega desde la pantalla de inicio */
   document.getElementById('app').innerHTML=h;
 }
 
@@ -4711,7 +4883,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   }
   else if(a==='gimir'){ U.gimPanel=!U.gimPanel; render(); }
   else if(a==='gimirc'){ C.gimPanel=!C.gimPanel; render(); }
-  else if(a==='gimtab'){ U.tab='tecnicas'; C.tab='tecnicas'; GM.abierta=true; U.gimPanel=false; render(); }
+  else if(a==='gimtab'){ U.tab='gimnasia'; C.tab='gimnasia'; GM.abierta=true; U.gimPanel=false; render(); }
   else if(a==='gimabre'){ var gab=(GM.abierta==null)?(!gimOk(arqActual())||!gimItems().length):GM.abierta; GM.abierta=!gab; render(); }
   else if(a==='gimchk'){
     gimToggle(b.dataset.arq?arqPorId(b.dataset.arq):arqActual(),b.dataset.id);
@@ -4731,7 +4903,10 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='ends'){ cambiaFormato('ends',Number(v)); }
   else if(a==='arrows'){ cambiaFormato('arrows',Number(v)); }
   else if(a==='vaciar'){ var d0=draft(); d0.ends=malla(nE(d0),nA(d0)); U.sel={end:0,arrow:0}; save(); render(); toast('Tarjeta vaciada'); }
-  else if(a==='tab'){ if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; render(); }
+  else if(a==='totalabre'){ abreTotal(v); render(); }
+  else if(a==='totalcierra'){ U.tf=null; render(); }
+  else if(a==='totalguarda'){ guardaTotal(); }
+  else if(a==='tab'){ U.tf=null; if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; render(); }
   else if(a==='hvista'){ U.hVista=v; U.hSoloInc=false; if(v==='todas'){ U.hSite=''; U.hDist=''; U.hTope=15; } render(); }
   else if(a==='hrev'){ U.hVista='todas'; U.hDist=String(b.dataset.mod); U.hSite=''; U.hSoloInc=true; U.hTope=15; render(); }
   else if(a==='hinc0'){ U.hSoloInc=false; render(); }
@@ -4779,14 +4954,14 @@ document.getElementById('app').addEventListener('click',function(ev){
     D.arqueros.splice(i,1);
     U.arq=0; save(); render();
   }
-  else if(a==='fotoadd'){ U.fotoIdx=Number(b.dataset.i);
+  else if(a==='fotoadd'){ U.fotoIdx=Number(b.dataset.i); C.fotoDestino=null;
     var fi=document.getElementById('fotoinput'); fi.value=''; fi.click(); }
   else if(a==='fotodel'){ D.arqueros[Number(b.dataset.i)].foto=null; save(); render(); }
   else if(a==='ponpin'){ abreLock('nuevo'); }
   else if(a==='cambiapin'){ abreLock('nuevo'); }
   else if(a==='quitapin'){ abreLock('quitar'); }
   else if(a==='cambiamodo'){ eligiendo=true; render(); }
-  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='recorrido'; eligiendo=false;
+  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
   else if(a==='slot3'){ C.sel={a:Number(b.dataset.a),f:Number(b.dataset.f)}; render(); }
@@ -5085,6 +5260,7 @@ document.getElementById('app').addEventListener('input',function(ev){
   C.tecla=Date.now();
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
+  else if(t.dataset.tf!=null){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } }
   else if(t.dataset.eqarq!=null){
     var qa=D.arqueros[Number(t.dataset.eqarq)], qc=t.dataset.eqcampo, qv=String(t.value).trim().replace(',','.'), qn=parseFloat(qv);
     if(qa){
@@ -5154,6 +5330,7 @@ document.getElementById('app').addEventListener('change',function(ev){
   if(t.hasAttribute&&t.hasAttribute('data-selarq')){
     U.arq=Number(t.value); U.sel=firstEmpty(draft()); render();
   }
+  else if(t.hasAttribute&&t.hasAttribute('data-tf')){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-campoedita')){ C.campoEdita=Number(t.value); render(); }
