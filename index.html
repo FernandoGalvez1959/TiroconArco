@@ -95,6 +95,9 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .ptscol label{display:block;font-size:12px;color:var(--dim);}
 .ptscol .cinp{margin-top:4px;text-align:center;font-weight:600;font-size:16px;}
 .un{font-size:12px;color:var(--dim);flex:none;}
+.consejo{margin:-3px 0 12px;font-size:12.5px;color:var(--dim);line-height:1.5;}
+.consejo b{color:var(--ink);}
+.consejo .mini{margin-left:4px;padding:3px 9px;}
 .field .seg.segpal{flex:1;}
 .segpal button{padding:9px 2px;font-size:13px;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
@@ -564,26 +567,63 @@ function ptsCol(){ return D.puntosCol||PTS_COL_DEF; }
 /* ---- arco y flechas de cada arquero: reserva, palas, cuerda y flecha (con conversión cm ⇄ pulgadas) ---- */
 var LARGO_PALAS={corta:41,media:43,larga:45};      /* largo habitual del arco = reserva + esto (pulgadas) */
 var NOM_PALAS={corta:'cortas',media:'medias',larga:'largas'};
-var PAR_EQ={cuerdaCm:['cuerdaIn',1/2.54],cuerdaIn:['cuerdaCm',2.54],flechaIn:['flechaCm',2.54],flechaCm:['flechaIn',1/2.54]};
-function equipoArq(a,i){
-  var e=a.eq||{}, V=function(k){ return e[k]==null?'':String(e[k]); };
-  var campo=function(k,ph,paso){ return '<input type="number" inputmode="decimal" min="0" step="'+(paso||'any')+'" placeholder="'+ph+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
-  var h='<p class="stat" style="margin-top:14px;margin-bottom:8px">Arco y flechas</p>'
-    +'<div class="field"><label>Reserva</label>'+campo('reserva','25','0.5').replace('<input','<input aria-label="Reserva en pulgadas"')+'<span class="un">pulg.</span></div>'
-    +'<div class="field"><label>Palas</label><div class="seg segpal">'
-    +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
-      return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')
-    +'</div></div>'
-    +'<div class="field"><label>Largo arco</label>'+campo('largo','68','0.5').replace('<input','<input aria-label="Largo del arco en pulgadas"')+'<span class="un">pulg.</span></div>';
-  if(e.reserva>0&&e.palas&&LARGO_PALAS[e.palas]){
-    var sug=Number(e.reserva)+LARGO_PALAS[e.palas];
-    h+='<p class="nota" style="margin:-3px 0 10px;font-size:12.5px">Con reserva de '+esc(String(e.reserva))+'″ y palas '+NOM_PALAS[e.palas]+', el arco suele medir <b>'+sug+'″</b>.'
-      +(Number(e.largo)!==sug?' <button class="mini" data-act="eqlargo" data-i="'+i+'" data-v="'+sug+'">Poner '+sug+'″</button>':'')+'</p>';
+var PAR_EQ={cuerdaCm:['cuerdaIn',1/2.54],cuerdaIn:['cuerdaCm',2.54],flechaIn:['flechaCm',2.54],flechaCm:['flechaIn',1/2.54],
+  envCm:['envIn',1/2.54],envIn:['envCm',2.54]};
+function fmtN(n){ return String(Math.round(n*10)/10).replace('.',','); }
+/* Consejos orientativos (reglas habituales de arco olímpico). Cadena: envergadura → apertura → arco → riser → palas → cuerda y flecha */
+function consejosEq(a){
+  var e=a.eq||{}, c={};
+  if(e.envIn>0){
+    c.ap=Math.round(Number(e.envIn)/2.5*10)/10;                                   /* apertura = envergadura ÷ 2,5 */
+    c.arco=c.ap<26?66:c.ap<28.5?68:c.ap<30?70:72;                                 /* largo de arco que suele corresponder */
+    c.riser=c.ap<26?23:c.ap>=30?27:25;
+    var d=c.arco-c.riser, mejor='media', dist=99, k;
+    for(k in LARGO_PALAS){ if(Math.abs(LARGO_PALAS[k]-d)<dist){ dist=Math.abs(LARGO_PALAS[k]-d); mejor=k; } }
+    c.palas=mejor;
+    c.fl=Math.round((c.ap+1.5)*2)/2;                                              /* flecha = apertura + 1 a 2″ */
   }
-  h+='<div class="field"><label>Cuerda</label>'+campo('cuerdaCm','cm').replace('<input','<input aria-label="Medida de la cuerda en centímetros"')+'<span class="un">cm</span>'
-    +campo('cuerdaIn','pulg.').replace('<input','<input aria-label="Medida de la cuerda en pulgadas"')+'<span class="un">pulg.</span></div>'
-    +'<div class="field"><label>Flecha</label>'+campo('flechaIn','pulg.').replace('<input','<input aria-label="Medida de la flecha en pulgadas"')+'<span class="un">pulg.</span>'
-    +campo('flechaCm','cm').replace('<input','<input aria-label="Medida de la flecha en centímetros"')+'<span class="un">cm</span></div>';
+  var r=e.reserva>0?Number(e.reserva):c.riser, p=e.palas||c.palas;
+  c.largo=(r&&p)?r+LARGO_PALAS[p]:null;
+  var L=e.largo>0?Number(e.largo):c.largo;
+  c.cuerda=L?L-4:null;                                                            /* cuerda ≈ arco − 4″ */
+  c.L=L;
+  return c;
+}
+function equipoArq(a,i){
+  var e=a.eq||{}, V=function(k){ return e[k]==null?'':String(e[k]); }, c=consejosEq(a);
+  var campo=function(k,ph,paso,aria){ return '<input type="number" inputmode="decimal" min="0" step="'+(paso||'any')+'" placeholder="'+ph+'" aria-label="'+aria+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
+  var poner=function(k,v,txt){ return ' <button class="mini" data-act="eqponer" data-i="'+i+'" data-k="'+k+'" data-v="'+v+'">'+txt+'</button>'; };
+  var h='<p class="stat" style="margin-top:14px;margin-bottom:4px">Arco y flechas</p>'
+    +'<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. Pulgadas primero, siempre.</p>';
+  /* 1. envergadura */
+  h+='<div class="field"><label>Envergadura</label>'+campo('envIn','70','0.5','Envergadura en pulgadas')+'<span class="un">pulg.</span>'
+    +campo('envCm','178','1','Envergadura en centímetros')+'<span class="un">cm</span></div>'
+    +'<p class="consejo">Mídela con los brazos en cruz, de la punta de un dedo medio a la del otro.'
+    +(c.ap?' Tu apertura estimada es de <b>'+fmtN(c.ap)+'″</b> (envergadura ÷ 2,5).':'')+'</p>';
+  /* 2. riser o cuerpo */
+  h+='<div class="field"><label>Riser o cuerpo</label>'+campo('reserva','25','0.5','Riser o cuerpo en pulgadas')+'<span class="un">pulg.</span></div>'
+    +'<p class="consejo">'+(c.ap?'Con tu apertura lo normal es <b>'+c.riser+'″</b> (23″ si es menor de 26″, 27″ a partir de 30″).'+(Number(e.reserva)!==c.riser?poner('reserva',c.riser,'Poner '+c.riser+'″'):'')
+      :'El más habitual es 25″: 23″ para apertura corta y 27″ para apertura larga.')+'</p>';
+  /* 3. palas */
+  h+='<div class="field"><label>Palas</label><div class="seg segpal">'
+    +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
+      return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')+'</div></div>'
+    +'<p class="consejo">'+(c.ap?'Para un arco de <b>'+c.arco+'″</b> con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″: palas <b>'+NOM_PALAS[c.palas]+'</b>.'+(e.palas!==c.palas?poner('palas',c.palas,'Elegir '+NOM_PALAS[c.palas]):'')
+      :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
+  h+='<div class="field"><label>Pulgadas</label>'+campo('largo','68','0.5','Pulgadas del arco con estas palas')+'<span class="un">pulg.</span></div>'
+    +'<p class="consejo">'+(c.largo?'Con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″ y palas '+NOM_PALAS[e.palas||c.palas]+' el arco mide <b>'+c.largo+'″</b>.'+(Number(e.largo)!==c.largo?poner('largo',c.largo,'Poner '+c.largo+'″'):'')
+      :'Es el largo total del arco: riser más 41″ (cortas), 43″ (medias) o 45″ (largas).')+'</p>';
+  /* 4. cuerda */
+  h+='<div class="field"><label>Cuerda</label>'+campo('cuerdaIn','64','0.5','Cuerda en pulgadas')+'<span class="un">pulg.</span>'
+    +campo('cuerdaCm','162.6','0.5','Cuerda en centímetros')+'<span class="un">cm</span></div>'
+    +'<p class="consejo">'+(c.cuerda?'Para un arco de <b>'+c.L+'″</b>, cuerda de unas <b>'+c.cuerda+'″</b> (arco menos 4″).'+(Number(e.cuerdaIn)!==c.cuerda?poner('cuerdaIn',c.cuerda,'Poner '+c.cuerda+'″'):'')
+      :'Suele medir unas 4″ menos que el arco: 64″ para uno de 68″.')+'</p>';
+  /* 5. flechas */
+  h+='<div class="field"><label>Flechas</label>'+campo('flechaIn','28','0.5','Flecha en pulgadas')+'<span class="un">pulg.</span>'
+    +campo('flechaCm','71.1','0.5','Flecha en centímetros')+'<span class="un">cm</span></div>'
+    +'<p class="consejo">'+(c.ap?'Con tu apertura de <b>'+fmtN(c.ap)+'″</b>: entre <b>'+fmtN(c.ap+1)+'″</b> y <b>'+fmtN(c.ap+2)+'″</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
+      +(Number(e.flechaIn)!==c.fl?poner('flechaIn',c.fl,'Poner '+fmtN(c.fl)+'″'):'')
+      :'Suele ser la apertura más 1 a 2″.')+'</p>';
   return h;
 }
 /* ---- objetivo mínimo por diana ---- */
@@ -832,7 +872,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=52;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=53;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4654,6 +4694,12 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
   else if(a==='eqpalas'){ var pa=D.arqueros[Number(b.dataset.i)]; if(pa){ if(!pa.eq) pa.eq={}; if(pa.eq.palas===v) delete pa.eq.palas; else pa.eq.palas=v; save(); render(); } }
+  else if(a==='eqponer'){
+    var pe=D.arqueros[Number(b.dataset.i)], pk=b.dataset.k;
+    if(pe){ if(!pe.eq) pe.eq={};
+      if(pk==='palas') pe.eq.palas=v;
+      else{ var pn=Number(v), ppar=PAR_EQ[pk]; pe.eq[pk]=pn; if(ppar) pe.eq[ppar[0]]=Math.round(pn*ppar[1]*10)/10; }
+      save(); render(); } }
   else if(a==='eqlargo'){ var pl=D.arqueros[Number(b.dataset.i)]; if(pl){ if(!pl.eq) pl.eq={}; pl.eq.largo=Number(v); save(); render(); } }
   else if(a==='pidepersist'){
     pidePersist(function(ok){
