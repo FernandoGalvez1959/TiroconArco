@@ -97,6 +97,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .un{font-size:12px;color:var(--dim);flex:none;}
 .consejo{margin:-3px 0 12px;font-size:12.5px;color:var(--dim);line-height:1.5;}
 .consejo b{color:var(--ink);}
+.consejo .calc{color:#6FC38C;font-weight:700;white-space:nowrap;}
 .consejo .mini{margin-left:4px;padding:3px 9px;}
 /* ---- pantalla de inicio, título de cada pantalla y apartados con fondo ---- */
 .wrap.sala,.wrap.campo{padding-bottom:40px;}
@@ -654,11 +655,18 @@ function modU(){ return U.col?'18c':U.tri?'18t':String(U.dist); }
 function modP(){ return U.pCol?'18c':U.pTri?'18t':String(U.pDist); }
 function ptsCol(){ return D.puntosCol||PTS_COL_DEF; }
 /* ---- arco y flechas de cada arquero: reserva, palas, cuerda y flecha (con conversión cm ⇄ pulgadas) ---- */
-var LARGO_PALAS={corta:41,media:43,larga:45};      /* largo habitual del arco = reserva + esto (pulgadas) */
+var LARGO_PALAS={corta:41,media:43,larga:45};      /* lo que las palas suman al riser para dar el largo del arco (= talla − 25″) */
+var PALAS_NOM={corta:66,media:68,larga:70};         /* talla de las palas: el largo del arco que forman con un riser de 25″ */
 var NOM_PALAS={corta:'cortas',media:'medias',larga:'largas'};
 var PAR_EQ={cuerdaCm:['cuerdaIn',1/2.54],cuerdaIn:['cuerdaCm',2.54],flechaIn:['flechaCm',2.54],flechaCm:['flechaIn',1/2.54],
-  envCm:['envIn',1/2.54],envIn:['envCm',2.54]};
+  envCm:['envIn',1/2.54],envIn:['envCm',2.54],
+  reservaCm:['reserva',1/2.54],reserva:['reservaCm',2.54],palasCm:['palasIn',1/2.54],palasIn:['palasCm',2.54],
+  largoCm:['largo',1/2.54],largo:['largoCm',2.54]};
+var AUTO_DE={reserva:'reserva',reservaCm:'reserva',palasIn:'palas',palasCm:'palas',largo:'largo',largoCm:'largo'};   /* a qué cálculo pertenece cada casilla */
 function fmtN(n){ return String(Math.round(n*10)/10).replace('.',','); }
+function cmDe(n){ return Math.round(Number(n)*2.54*10)/10; }
+function pc(n){ n=Number(n); return fmtN(n)+'″ ('+fmtN(cmDe(n))+' cm)'; }       /* «25″ (63,5 cm)» */
+function palasPorIn(x){ var m=null,d=99,k; for(k in PALAS_NOM){ if(Math.abs(PALAS_NOM[k]-x)<d-1e-9){ d=Math.abs(PALAS_NOM[k]-x); m=k; } } return d<=1.5?m:null; }
 /* Consejos orientativos (reglas habituales de arco olímpico). Cadena: envergadura → apertura → arco → riser → palas → cuerda y flecha */
 function consejosEq(a){
   var e=a.eq||{}, c={};
@@ -672,50 +680,104 @@ function consejosEq(a){
     c.fl=Math.round((c.ap+1.5)*2)/2;                                              /* flecha = apertura + 1 a 2″ */
   }
   var r=e.reserva>0?Number(e.reserva):c.riser, p=e.palas||c.palas;
-  c.largo=(r&&p)?r+LARGO_PALAS[p]:null;
+  var pn=e.palasIn>0?Number(e.palasIn):(p?PALAS_NOM[p]:null);
+  c.largo=(r&&pn)?r+pn-25:null;
   var L=e.largo>0?Number(e.largo):c.largo;
   c.cuerda=L?L-4:null;                                                            /* cuerda ≈ arco − 4″ */
-  c.L=L;
+  c.L=L; c.r=r; c.p=p; c.pn=pn;
   return c;
 }
+/* La app calcula riser, palas y medida del arco a partir de la envergadura y los rellena (en pulgadas y en cm).
+   Lo que escribes tú manda: ese dato deja de ser automático y los demás se ajustan a él. Vaciar una casilla o pedir
+   «usar el calculado» la devuelve al cálculo automático. Devuelve true si cambió algo. */
+function recalcEq(a,salvo){
+  var e=a.eq; if(!e) return false;
+  var cambio=false;
+  function pon(k,v){ if(e[k]!==v){ e[k]=v; cambio=true; } }
+  function par(k,kc,v){ pon(k,v); pon(kc,cmDe(v)); }
+  function marca(g){ if(!e.auto) e.auto={}; if(!e.auto[g]){ e.auto[g]=1; cambio=true; } }
+  var au=e.auto||{};
+  /* los cm que faltan en datos de versiones anteriores */
+  [['reserva','reservaCm'],['palasIn','palasCm'],['largo','largoCm'],['cuerdaIn','cuerdaCm'],['flechaIn','flechaCm'],['envIn','envCm']].forEach(function(q){
+    if(e[q[0]]>0&&!(e[q[1]]>0)){ e[q[1]]=cmDe(e[q[0]]); cambio=true; } });
+  if(e.palas&&!(e.palasIn>0)&&PALAS_NOM[e.palas]) par('palasIn','palasCm',PALAS_NOM[e.palas]);
+  if(e.envIn>0){
+    var c=consejosEq(a);
+    if(salvo!=='reserva'&&(au.reserva||!(e.reserva>0))){ par('reserva','reservaCm',c.riser); marca('reserva'); }
+    if(salvo!=='palas'&&(au.palas||(!e.palas&&!(e.palasIn>0)))){ pon('palas',c.palas); par('palasIn','palasCm',PALAS_NOM[c.palas]); marca('palas'); }
+  }
+  au=e.auto||{};
+  var r=e.reserva>0?Number(e.reserva):0, pn=e.palasIn>0?Number(e.palasIn):0;
+  if(r&&pn&&salvo!=='largo'&&(au.largo||!(e.largo>0))){ par('largo','largoCm',r+pn-25); marca('largo'); }
+  return cambio;
+}
+/* pone al día las casillas visibles sin redibujar la pantalla (así no se pierde el cursor al escribir) */
+function eqSyncDom(i,e,saltar){
+  try{ ['envIn','envCm','reserva','reservaCm','palasIn','palasCm','largo','largoCm','cuerdaIn','cuerdaCm','flechaIn','flechaCm'].forEach(function(k){
+    var el=document.querySelector('[data-eqarq="'+i+'"][data-eqcampo="'+k+'"]');
+    if(el&&el!==saltar&&document.activeElement!==el) el.value=e[k]==null?'':e[k]; }); }catch(x){}
+}
+/* refresca los textos de consejo y el botón de las palas mientras escribes, SIN tocar las casillas (así no se pierde el cursor) */
+function eqRefrescaTextos(i){
+  try{
+    var a=D.arqueros[Number(i)]; if(!a) return;
+    var el=document.querySelector('[data-eqarq="'+i+'"]'); if(!el||!el.closest) return;
+    var card=el.closest('.card'); if(!card) return;
+    var tmp=document.createElement('div'); tmp.innerHTML=equipoArq(a,Number(i));
+    var pv=card.querySelectorAll('p.consejo'), pn=tmp.querySelectorAll('p.consejo'), k;
+    for(k=0;k<pv.length&&k<pn.length;k++) pv[k].innerHTML=pn[k].innerHTML;
+    var bv=card.querySelectorAll('[data-act="eqpalas"]'), bn=tmp.querySelectorAll('[data-act="eqpalas"]');
+    for(k=0;k<bv.length&&k<bn.length;k++) bv[k].setAttribute('data-on',bn[k].getAttribute('data-on'));
+  }catch(x){}
+}
 function equipoArq(a,i){
-  var e=a.eq||{}, V=function(k){ return e[k]==null?'':String(e[k]); }, c=consejosEq(a);
-  var campo=function(k,ph,paso,aria){ return '<input type="number" inputmode="decimal" min="0" step="'+(paso||'any')+'" placeholder="'+ph+'" aria-label="'+aria+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
+  var e=a.eq||{}, au=e.auto||{}, V=function(k){ return e[k]==null?'':String(e[k]); }, c=consejosEq(a);
+  var campo=function(k,ph,aria){ return '<input type="number" inputmode="decimal" min="0" step="any" placeholder="'+ph+'" aria-label="'+aria+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
+  var par=function(etq,k,kc,ph,phc,aria){ return '<div class="field"><label>'+etq+'</label>'+campo(k,ph,aria+' en pulgadas')+'<span class="un">pulg.</span>'
+    +campo(kc,phc,aria+' en centímetros')+'<span class="un">cm</span></div>'; };
   var poner=function(k,v,txt){ return ' <button class="mini" data-act="eqponer" data-i="'+i+'" data-k="'+k+'" data-v="'+v+'">'+txt+'</button>'; };
+  var calc=function(g){ return au[g]?' <span class="calc">✓ calculado</span>':''; };
   var h='<div class="apt">🏹 Arco y flechas</div>'
-    +'<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. Pulgadas primero, siempre.</p>';
+    +'<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. '
+    +'Pulgadas primero, siempre. <b>Riser, palas y medida del arco se calculan solos</b> con tu envergadura; si escribes uno tú, manda el tuyo.</p>';
   /* 1. envergadura */
-  h+='<div class="field"><label>Envergadura</label>'+campo('envIn','70','0.5','Envergadura en pulgadas')+'<span class="un">pulg.</span>'
-    +campo('envCm','178','1','Envergadura en centímetros')+'<span class="un">cm</span></div>'
+  h+=par('Envergadura','envIn','envCm','70','178','Envergadura')
     +'<p class="consejo">Mídela con los brazos en cruz, de la punta de un dedo medio a la del otro.'
-    +(c.ap?' Tu apertura estimada es de <b>'+fmtN(c.ap)+'″</b> (envergadura ÷ 2,5).':'')+'</p>';
+    +(c.ap?' Tu apertura estimada es de <b>'+pc(c.ap)+'</b> (envergadura ÷ 2,5).':'')+'</p>';
   /* 2. riser o cuerpo */
-  h+='<div class="field"><label>Riser o cuerpo</label>'+campo('reserva','25','0.5','Riser o cuerpo en pulgadas')+'<span class="un">pulg.</span></div>'
-    +'<p class="consejo">Es el tamaño del cuerpo, de <b>punta a punta en línea recta</b>, sin seguir la curva; suele venir grabado en el propio riser. '+(c.ap?'Con tu apertura lo normal es <b>'+c.riser+'″</b> (23″ si es menor de 26″, 27″ a partir de 30″).'+(Number(e.reserva)!==c.riser?poner('reserva',c.riser,'Poner '+c.riser+'″'):'')
-      :'El más habitual es 25″: 23″ para apertura corta y 27″ para apertura larga.')+'</p>';
-  /* 3. palas */
+  h+=par('Riser o cuerpo','reserva','reservaCm','25','63.5','Riser o cuerpo')
+    +'<p class="consejo">Es el tamaño del cuerpo, de <b>punta a punta en línea recta</b>, sin seguir la curva; suele venir grabado en el propio riser. '
+    +(c.ap?'Con tu apertura de '+pc(c.ap)+' se calcula <b>'+pc(c.riser)+'</b> ('+pc(23)+' si la apertura es menor de 26″; '+pc(27)+' a partir de 30″).'
+      +(au.reserva?calc('reserva'):(Number(e.reserva)!==c.riser?poner('reserva',c.riser,'Usar el calculado ('+pc(c.riser)+')'):''))
+      :'El más habitual es '+pc(25)+': '+pc(23)+' para apertura corta y '+pc(27)+' para apertura larga.')+'</p>';
+  /* 3. palas: tipo y talla */
   h+='<div class="field"><label>Palas</label><div class="seg segpal">'
     +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
       return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')+'</div></div>'
-    +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '+(c.ap?'Para un arco de <b>'+c.arco+'″</b> con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″: palas <b>'+NOM_PALAS[c.palas]+'</b>.'+(e.palas!==c.palas?poner('palas',c.palas,'Elegir '+NOM_PALAS[c.palas]):'')
+    +par('Talla','palasIn','palasCm','68','172.7','Talla de las palas')
+    +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '
+    +'Se nombran por el arco que forman con un riser de '+pc(25)+': cortas '+pc(66)+', medias '+pc(68)+', largas '+pc(70)+'. '
+    +(c.ap?'Para tu apertura se calculan palas <b>'+NOM_PALAS[c.palas]+' de '+pc(PALAS_NOM[c.palas])+'</b>.'
+      +(au.palas?calc('palas'):(e.palas!==c.palas||Number(e.palasIn)!==PALAS_NOM[c.palas]?poner('palas',c.palas,'Usar las calculadas ('+NOM_PALAS[c.palas]+')'):''))
       :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
-  h+='<div class="field"><label>Pulgadas</label>'+campo('largo','68','0.5','Pulgadas del arco con estas palas')+'<span class="un">pulg.</span></div>'
-    +'<p class="consejo">'+(c.largo?'Con riser de '+(Number(e.reserva)>0?e.reserva:c.riser)+'″ y palas '+NOM_PALAS[e.palas||c.palas]+' el arco mide <b>'+c.largo+'″</b>.'+(Number(e.largo)!==c.largo?poner('largo',c.largo,'Poner '+c.largo+'″'):'')
-      :'Es el largo total del arco: riser más 41″ (cortas), 43″ (medias) o 45″ (largas).')+'</p>';
-  /* 4. cuerda */
-  h+='<div class="field"><label>Cuerda</label>'+campo('cuerdaIn','64','0.5','Cuerda en pulgadas')+'<span class="un">pulg.</span>'
-    +campo('cuerdaCm','162.6','0.5','Cuerda en centímetros')+'<span class="un">cm</span></div>'
-    +'<p class="consejo">'+(c.cuerda?'Para un arco de <b>'+c.L+'″</b>, cuerda de unas <b>'+c.cuerda+'″</b> (arco menos 4″).'+(Number(e.cuerdaIn)!==c.cuerda?poner('cuerdaIn',c.cuerda,'Poner '+c.cuerda+'″'):'')
-      :'Suele medir unas 4″ menos que el arco: 64″ para uno de 68″.')+'</p>';
-  /* 5. flechas */
-  h+='<div class="field"><label>Flechas</label>'+campo('flechaIn','28','0.5','Flecha en pulgadas')+'<span class="un">pulg.</span>'
-    +campo('flechaCm','71.1','0.5','Flecha en centímetros')+'<span class="un">cm</span></div>'
+  /* 4. medida del arco */
+  h+=par('Medida del arco','largo','largoCm','68','172.7','Medida del arco')
+    +'<p class="consejo">'+(c.largo?'Con riser de <b>'+pc(c.r)+'</b> y palas '+(c.p?NOM_PALAS[c.p]+' ':'')+'de <b>'+pc(c.pn)+'</b>, el arco mide <b>'+pc(c.largo)+'</b> (riser + talla de las palas − 25″).'
+      +(au.largo?calc('largo'):(Number(e.largo)!==c.largo?poner('largo',c.largo,'Usar el calculado ('+pc(c.largo)+')'):''))
+      :'Es el largo total del arco: el riser más la talla de las palas menos 25″.')+'</p>';
+  /* 5. cuerda */
+  h+=par('Cuerda','cuerdaIn','cuerdaCm','64','162.6','Cuerda')
+    +'<p class="consejo">'+(c.cuerda?'Para un arco de <b>'+pc(c.L)+'</b>, cuerda de unas <b>'+pc(c.cuerda)+'</b> (arco menos 4″).'+(Number(e.cuerdaIn)!==c.cuerda?poner('cuerdaIn',c.cuerda,'Poner '+pc(c.cuerda)):'')
+      :'Suele medir unas 4″ menos que el arco: '+pc(64)+' para uno de '+pc(68)+'.')+'</p>';
+  /* 6. flechas */
+  h+=par('Flechas','flechaIn','flechaCm','28','71.1','Flecha')
     +'<p class="consejo">Se mide desde el <b>fondo de la muesca</b> (donde apoya la cuerda) hasta el <b>final del tubo</b>, sin contar la punta. '
-    +(c.ap?'Con tu apertura de <b>'+fmtN(c.ap)+'″</b>: entre <b>'+fmtN(c.ap+1)+'″</b> y <b>'+fmtN(c.ap+2)+'″</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
-      +(Number(e.flechaIn)!==c.fl?poner('flechaIn',c.fl,'Poner '+fmtN(c.fl)+'″'):'')
+    +(c.ap?'Con tu apertura de <b>'+pc(c.ap)+'</b>: entre <b>'+pc(c.ap+1)+'</b> y <b>'+pc(c.ap+2)+'</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
+      +(Number(e.flechaIn)!==c.fl?poner('flechaIn',c.fl,'Poner '+pc(c.fl)):'')
       :'Suele ser la apertura más 1 a 2″.')+'</p>';
   return h;
 }
+
 /* ---- objetivo mínimo por diana ---- */
 function dos(n){ return n<10?'0'+n:''+n; }
 function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+dos(d.getMonth()+1)+'-'+dos(d.getDate()); }
@@ -962,7 +1024,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=72;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=73;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4765,7 +4827,9 @@ function guardaTotal(){
 
 /* ---- pantallas que comparten Sala y Campo ---- */
 function pantallaArqueros(){
-  var h='';
+  var h='', cambioEq=false;
+  D.arqueros.forEach(function(a){ if(a.eq&&recalcEq(a)) cambioEq=true; });
+  if(cambioEq) setTimeout(function(){ save(); },0);
     D.arqueros.forEach(function(a,i){
       h+='<div class="card"><div class="chead"><h2>'+esc(nombreArq(a))+'</h2>'
         +(D.arqueros.length>1?'<span><button class="mini" data-act="borrararq" data-i="'+i+'">Borrar</button></span>':'')
@@ -5170,12 +5234,22 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='site'){ U.site=Number(v); U.sel=firstEmpty(draft()); render(); }
   else if(a==='slot'){ U.sel={end:Number(b.dataset.e),arrow:Number(b.dataset.a)}; render(); }
   else if(a==='shoot'){ shoot(v); }
-  else if(a==='eqpalas'){ var pa=D.arqueros[Number(b.dataset.i)]; if(pa){ if(!pa.eq) pa.eq={}; if(pa.eq.palas===v) delete pa.eq.palas; else pa.eq.palas=v; save(); render(); } }
+  else if(a==='eqpalas'){ var pa=D.arqueros[Number(b.dataset.i)]; if(pa){ if(!pa.eq) pa.eq={}; var PE=pa.eq;
+    if(PE.palas===v&&!(PE.auto&&PE.auto.palas)){ delete PE.palas; delete PE.palasIn; delete PE.palasCm; }     /* tocar las que tenías a mano: vuelve al cálculo */
+    else if(PE.palas!==v){ PE.palas=v; PE.palasIn=PALAS_NOM[v]; PE.palasCm=cmDe(PALAS_NOM[v]); if(PE.auto) delete PE.auto.palas; }
+    else if(PE.auto) delete PE.auto.palas;                                                                   /* las calculadas, elegidas a mano: se quedan fijas */
+    recalcEq(pa); save(); render(); } }
   else if(a==='eqponer'){
     var pe=D.arqueros[Number(b.dataset.i)], pk=b.dataset.k;
-    if(pe){ if(!pe.eq) pe.eq={};
-      if(pk==='palas') pe.eq.palas=v;
-      else{ var pn=Number(v), ppar=PAR_EQ[pk]; pe.eq[pk]=pn; if(ppar) pe.eq[ppar[0]]=Math.round(pn*ppar[1]*10)/10; }
+    if(pe){ if(!pe.eq) pe.eq={}; var PQ=pe.eq;
+      if(pk==='reserva'||pk==='palas'||pk==='largo'){        /* «usar el calculado»: se borra lo escrito a mano y vuelve a ser automático */
+        if(pk==='reserva'){ delete PQ.reserva; delete PQ.reservaCm; }
+        if(pk==='palas'){ delete PQ.palas; delete PQ.palasIn; delete PQ.palasCm; }
+        if(pk==='largo'){ delete PQ.largo; delete PQ.largoCm; }
+        if(PQ.auto) delete PQ.auto[pk];
+        recalcEq(pe);
+      }
+      else{ var pn=Number(v), ppar=PAR_EQ[pk]; PQ[pk]=pn; if(ppar) PQ[ppar[0]]=Math.round(pn*ppar[1]*10)/10; recalcEq(pe); }
       save(); render(); } }
   else if(a==='eqlargo'){ var pl=D.arqueros[Number(b.dataset.i)]; if(pl){ if(!pl.eq) pl.eq={}; pl.eq.largo=Number(v); save(); render(); } }
   else if(a==='pidepersist'){
@@ -5592,12 +5666,14 @@ document.getElementById('app').addEventListener('input',function(ev){
     var qa=D.arqueros[Number(t.dataset.eqarq)], qc=t.dataset.eqcampo, qv=String(t.value).trim().replace(',','.'), qn=parseFloat(qv);
     if(qa){
       if(!qa.eq) qa.eq={};
-      var qpar=PAR_EQ[qc], qotro=null;
-      if(qv===''||isNaN(qn)||qn<=0){ delete qa.eq[qc]; if(qpar){ delete qa.eq[qpar[0]]; qotro=''; } }
+      var qpar=PAR_EQ[qc], qotro=null, qvacio=(qv===''||isNaN(qn)||qn<=0), qg=AUTO_DE[qc];
+      if(qvacio){ delete qa.eq[qc]; if(qpar){ delete qa.eq[qpar[0]]; qotro=''; } }
       else{ qa.eq[qc]=qn; if(qpar){ qotro=Math.round(qn*qpar[1]*10)/10; qa.eq[qpar[0]]=qotro; } }
-      if(qpar){   /* la otra casilla se pone al día sin redibujar (así no se pierde el cursor) */
-        try{ var qh=document.querySelector('[data-eqarq="'+t.dataset.eqarq+'"][data-eqcampo="'+qpar[0]+'"]'); if(qh) qh.value=qotro; }catch(e3){}
-      }
+      if(qg){ if(qa.eq.auto) delete qa.eq.auto[qg];                      /* lo escribes tú: ya no es automático */
+        if(qg==='palas'){ var qcat=qvacio?null:palasPorIn(Number(qa.eq.palasIn)); if(qcat) qa.eq.palas=qcat; else delete qa.eq.palas; } }
+      recalcEq(qa,qvacio?qg:null);                                      /* lo que depende se ajusta (una casilla vacía no se rellena mientras escribes) */
+      eqSyncDom(t.dataset.eqarq,qa.eq,t);
+      clearTimeout(C.tEqTxt); (function(ix){ C.tEqTxt=setTimeout(function(){ eqRefrescaTextos(ix); },180); })(t.dataset.eqarq);
       save();
     }
   }
@@ -5657,6 +5733,12 @@ document.getElementById('app').addEventListener('change',function(ev){
   var t=ev.target;
   if(t.hasAttribute&&t.hasAttribute('data-selarq')){
     U.arq=Number(t.value); U.sel=firstEmpty(draft()); render();
+  }
+  else if(t.hasAttribute&&t.hasAttribute('data-eqarq')){
+    var ca=D.arqueros[Number(t.dataset.eqarq)];
+    if(ca&&ca.eq){ recalcEq(ca); eqSyncDom(t.dataset.eqarq,ca.eq,null); eqRefrescaTextos(t.dataset.eqarq); save(); }
+    /* los textos de consejo se refrescan cuando el cursor sale de la sección; si pasas a otra casilla, NO se redibuja (destruiría la casilla nueva) */
+    setTimeout(function(){ var ae=document.activeElement; if(!(ae&&ae.hasAttribute&&ae.hasAttribute('data-eqarq'))) render(); },160);
   }
   else if(t.hasAttribute&&t.hasAttribute('data-tf')){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
