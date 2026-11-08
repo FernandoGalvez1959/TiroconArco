@@ -404,6 +404,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .clrow:first-of-type{border-top:none;}
 .clh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .clh b{font-size:16px;font-weight:800;}
+.clfin{margin-top:14px;padding-top:4px;border-top:1px solid var(--line);}
 .rdim{color:var(--dim);font-weight:400;}
 .rok{color:#6FA85B;font-weight:600;font-size:12px;}
 .jgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px;align-items:end;}
@@ -941,7 +942,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=66;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=67;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1189,7 +1190,9 @@ function reparaDatos(){
   ['ligas','ligasSala'].forEach(function(k){
     D[k]=(aLista(D[k])||[]).filter(Boolean);
     D[k].forEach(function(L){ L.jornadas=(aLista(L.jornadas)||[]).filter(Boolean);
-      if(L.clasif!==undefined) L.clasif=(aLista(L.clasif)||[]).filter(Boolean);
+      if(L.clasif!==undefined){ L.clasif=(aLista(L.clasif)||[]).filter(Boolean);
+        var tenia=!!(L.claDoc&&L.claDoc.data);       /* antes cada fila llevaba su documento: ahora hay uno solo; se conserva el de la última fila */
+        L.clasif.forEach(function(r){ if(r&&r.doc){ if(!tenia&&r.doc.data) L.claDoc=r.doc; delete r.doc; } }); }
       L.jornadas.forEach(function(j){ if(j.cerrada===undefined) j.cerrada=!!(Number(j.mi)>0);
       if((j.ptg===undefined||j.ptg===null||j.ptg==='')&&j.co!==undefined&&j.co!==null&&j.co!==''){ j.ptg=j.co; j.co=''; } }); });
   });
@@ -1457,17 +1460,17 @@ function cyrb53(str){
 var HC={};
 function hashParte(k,t){ var c=HC[k]; if(c&&c.t===t) return c.h; var h=cyrb53(t); HC[k]={t:t,h:h}; return h; }
 function clavesLigas(){ return ['ligas','ligasSala']; }
-/* objetos de una liga que pueden llevar documento: sus tiradas y las filas de su clasificación general */
+/* lo que de una liga puede llevar documento: cada tirada (doc) y la clasificación general entera (claDoc) */
 function objetosConDoc(L){
   var r=[];
-  (L.jornadas||[]).forEach(function(j,i){ if(j) r.push({k:'j'+i,o:j}); });
-  (L.clasif||[]).forEach(function(c,i){ if(c) r.push({k:'c'+i,o:c}); });
+  (L.jornadas||[]).forEach(function(j,i){ if(j) r.push({k:'j'+i,o:j,c:'doc'}); });
+  r.push({k:'d',o:L,c:'claDoc'});            /* el documento único de la clasificación general */
   return r;
 }
 function docsDeLigas(){
   var docs={};
   clavesLigas().forEach(function(k){ (D[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){
-    if(e.o.doc&&e.o.doc.data) docs[k+'|'+L.id+'|'+e.k]=e.o.doc; }); }); });
+    if(e.o[e.c]&&e.o[e.c].data) docs[k+'|'+L.id+'|'+e.k]=e.o[e.c]; }); }); });
   return docs;
 }
 /* El documento es de cada móvil y no viaja. Al traer datos de la nube cada móvil CONSERVA el suyo, venga o no
@@ -1475,13 +1478,13 @@ function docsDeLigas(){
 function reponDocsLigas(docs){
   clavesLigas().forEach(function(k){ (D[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){
     var l=docs[k+'|'+L.id+'|'+e.k];
-    if(l){ if(!e.o.doc||e.o.doc.soloAqui) e.o.doc=l; }
-    else if(e.o.doc&&e.o.doc.soloAqui) delete e.o.doc;
+    if(l){ if(!e.o[e.c]||e.o[e.c].soloAqui) e.o[e.c]=l; }
+    else if(e.o[e.c]&&e.o[e.c].soloAqui) delete e.o[e.c];
   }); }); });
 }
 function marcaDocsLigas(L){   /* lo que viaja: solo el aviso de que hay un documento, sin su contenido */
   objetosConDoc(L).forEach(function(e){
-    if(e.o.doc) e.o.doc={tipo:e.o.doc.tipo,nombre:e.o.doc.nombre,soloAqui:true}; });
+    var d=e.o[e.c]; if(d) e.o[e.c]={tipo:d.tipo,nombre:d.nombre,soloAqui:true}; });
 }
 function ligasSinDocs(k){
   var l=JSON.parse(JSON.stringify(D[k||'ligas']||[]));
@@ -2156,7 +2159,7 @@ function sinFotos(d){
   d.arqueros.forEach(function(a){ a.foto=null; });
   (d.tecnicas||[]).forEach(function(t){ t.fotos=[]; });
   (d.material||[]).forEach(function(t){ t.fotos=[]; });
-  ['ligas','ligasSala'].forEach(function(k){ (d[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){ delete e.o.doc; }); }); });
+  ['ligas','ligasSala'].forEach(function(k){ (d[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){ delete e.o[e.c]; }); }); });
   (d.campos||[]).forEach(function(c){
     Object.keys(c.animales||{}).forEach(function(k){ c.animales[k].foto=null; }); });
   return d;
@@ -3698,11 +3701,12 @@ var CAMPOSJ=[
  ['pari','Participantes con arco instintivo (ARI)'],['lari','Mi puesto en ARI'],['mari','Máxima puntuación con ARI']
 ];
 /* Las ligas de Sala y las de Campo son listas distintas, con la misma pantalla. La lista y la liga abierta dependen del modo. */
-/* el objeto (tirada o fila de la clasificación) al que apunta un botón de documento */
-function objDoc(b){
+/* a qué documento apunta un botón: el de la clasificación general de la liga (c) o el de una tirada */
+function docRef(b){
   var L=ligaActual(); if(!L) return null;
-  var i=Number(b.dataset.i);
-  return b.dataset.c==='1'?(L.clasif&&L.clasif[i]):(L.jornadas&&L.jornadas[i]);
+  if(b.dataset.c==='1') return {o:L,p:'claDoc'};
+  var j=L.jornadas&&L.jornadas[Number(b.dataset.i)];
+  return j?{o:j,p:'doc'}:null;
 }
 function ligasKey(){ return D.modo==='campo'?'ligas':'ligasSala'; }
 function LIGS(){ var k=ligasKey(); if(!D[k]) D[k]=[]; return D[k]; }
@@ -3894,9 +3898,9 @@ function pantallaLigas(){
   return h+tarjetaClasif(L);
 }
 /* ---- bloque de documento (foto o PDF) reutilizable: i = posición; c = '1' si es de la clasificación general ---- */
-function docBloque(doc,i,c,textoAdjuntar){
+function docBloque(doc,i,c,textoAdjuntar,titulo){
   var at=' data-i="'+i+'"'+(c?' data-c="1"':'');
-  var h='<div class="chead" style="margin:12px 0 8px"><h2 style="font-size:15px">Documento</h2>'
+  var h='<div class="chead" style="margin:12px 0 8px"><h2 style="font-size:15px">'+(titulo||'Documento')+'</h2>'
     +'<span>'+(doc?(doc.tipo==='pdf'?'PDF':'imagen'):'ninguno')+'</span></div>';
   if(doc){
     if(doc.tipo==='img') h+='<img class="docimg" src="data:image/jpeg;base64,'+doc.data+'" alt="Documento" data-act="vierdoc"'+at+'>';
@@ -3913,17 +3917,18 @@ function tarjetaClasif(L){
   var cl=L.clasif||[];
   var h='<div class="card"><div class="chead"><h2>Clasificación General</h2><span>'+cl.length+(cl.length===1?' tirada':' tiradas')+'</span></div>'
     +'<p class="stat" style="margin-bottom:6px">Tu puesto en la clasificación general y en ARI después de cada tirada. '
-    +'Añade las que quieras y, a cada una, puedes subirle su documento.</p>';
+    +'Añade las que quieras. Al final puedes subir el documento de la clasificación.</p>';
   if(!cl.length) h+='<p class="empty" style="margin:10px 0">Todavía no hay ninguna. Pulsa «Añadir tirada».</p>';
   cl.forEach(function(r,i){
     var campo=function(k,et){ return '<div class="jcampo"><span>'+et+'</span><input class="cinp" type="number" inputmode="numeric" min="0" '
       +'data-cla="'+k+'" data-ci="'+i+'" value="'+(r[k]==null?'':esc(r[k]))+'"></div>'; };
     h+='<div class="clrow"><div class="clh"><b>Tras la '+(i+1)+'ª tirada</b>'
       +'<button class="mini" data-act="clabor" data-ci="'+i+'">✕</button></div>'
-      +'<div class="jgrid">'+campo('gen','General')+campo('ari','ARI')+'</div>'
-      +docBloque(r.doc,i,true,'Adjuntar la clasificación (foto o PDF)')+'</div>';
+      +'<div class="jgrid">'+campo('gen','General')+campo('ari','ARI')+'</div></div>';
   });
-  return h+'<button class="act act2" data-act="claadd">Añadir tirada</button></div>';
+  h+='<button class="act act2" data-act="claadd">Añadir tirada</button>'
+    +'<div class="clfin">'+docBloque(L.claDoc,0,true,'Adjuntar la clasificación (foto o PDF)','Documento de la clasificación')+'</div>';
+  return h+'</div>';
 }
 
 /* ---- pantallas de campo ---- */
@@ -5302,15 +5307,15 @@ document.getElementById('app').addEventListener('click',function(ev){
     MAT()[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
   else if(a==='adjdoc'){ C.docDestino={i:Number(b.dataset.i),c:b.dataset.c==='1'};
     var dfi=document.getElementById('docinput'); dfi.value=''; dfi.click(); }
-  else if(a==='bordoc'){ var oq=objDoc(b); if(oq){ delete oq.doc; save(); render(); } }
+  else if(a==='bordoc'){ var rq=docRef(b); if(rq){ delete rq.o[rq.p]; save(); render(); } }
   else if(a==='vierdoc'||a==='compdoc'){
-    var Lv=ligaActual(), jv=objDoc(b), dv=jv&&jv.doc, cv=b.dataset.c==='1';
+    var Lv=ligaActual(), rv=docRef(b), dv=rv&&rv.o[rv.p], cv=b.dataset.c==='1';
     if(!dv) return;
-    var nomv=limpiaNombre((Lv.nombre||'liga')+(cv?' clasificacion tras tirada ':' tirada ')+(Number(b.dataset.i)+1))
+    var nomv=limpiaNombre((Lv.nombre||'liga')+(cv?' clasificacion general':' tirada '+(Number(b.dataset.i)+1)))
       +(dv.tipo==='pdf'?'.pdf':'.jpg');
     if(a==='compdoc') comparte(bytesDeDataURL('data:x;base64,'+dv.data),nomv,dv.tipo==='pdf'?'application/pdf':'image/jpeg');
     else if(dv.tipo==='pdf') bajar(bytesDeDataURL('data:x;base64,'+dv.data),nomv,'application/pdf');
-    else mostrarImagen('data:image/jpeg;base64,'+dv.data,Lv.nombre+(cv?' · clasificación tras la tirada ':' · tirada ')+(Number(b.dataset.i)+1),'Documento',nomv,
+    else mostrarImagen('data:image/jpeg;base64,'+dv.data,Lv.nombre+(cv?' · clasificación general':' · tirada '+(Number(b.dataset.i)+1)),'Documento',nomv,
       {w:dv.w||1000,h:dv.h||1400});
   }
   else if(a==='irjor'){ var Li=ligaActual(), ji=Li&&Li.jornadas[Number(b.dataset.i)];
@@ -5491,7 +5496,7 @@ document.getElementById('fotoinput').addEventListener('change',function(ev){
 document.getElementById('docinput').addEventListener('change',function(ev){
   var f=ev.target.files&&ev.target.files[0]; if(!f) return;
   var dst=C.docDestino; if(!dst) return;
-  var L=ligaActual(), j=L&&(dst.c?(L.clasif&&L.clasif[dst.i]):L.jornadas[dst.i]); if(!j) return;
+  var L=ligaActual(), ref=L&&(dst.c?{o:L,p:'claDoc'}:(L.jornadas[dst.i]?{o:L.jornadas[dst.i],p:'doc'}:null)); if(!ref) return;
   var esPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
   var fr=new FileReader();
   fr.onerror=function(){ toast('No se pudo leer el archivo.'); };
@@ -5502,7 +5507,7 @@ document.getElementById('docinput').addEventListener('change',function(ev){
       +'Quita alguno antiguo.'); return; }
     fr.onload=function(){
       var b64=String(fr.result).split(',')[1]||'';
-      j.doc={tipo:'pdf',nombre:f.name||'documento.pdf',data:b64};
+      ref.o[ref.p]={tipo:'pdf',nombre:f.name||'documento.pdf',data:b64};
       save(); render(); toast('PDF guardado.');
     };
     fr.readAsDataURL(f);
@@ -5518,7 +5523,7 @@ document.getElementById('docinput').addEventListener('change',function(ev){
           var cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,w,h);
           cx.drawImage(img,0,0,w,h);
           var url=cv.toDataURL('image/jpeg',0.72);
-          j.doc={tipo:'img',nombre:f.name||'imagen.jpg',data:url.split(',')[1],w:w,h:h};
+          ref.o[ref.p]={tipo:'img',nombre:f.name||'imagen.jpg',data:url.split(',')[1],w:w,h:h};
           save(); render(); toast('Imagen guardada.');
         }catch(e){ toast('No se pudo procesar la imagen.'); }
       };
