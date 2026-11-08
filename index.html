@@ -415,6 +415,16 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .clh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .clh b{font-size:16px;font-weight:800;}
 .clfin{margin-top:14px;padding-top:4px;border-top:1px solid var(--line);}
+.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:4px 0 10px;}
+.ft{position:relative;aspect-ratio:3/4;border-radius:9px;overflow:hidden;background:#151C24;box-shadow:inset 0 0 0 1px var(--line);}
+.ft img,.ft .ftph{width:100%;height:100%;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--dim);}
+.ft .fn{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;font-weight:800;padding:1px 8px;border-radius:99px;}
+.ft .fx{position:absolute;right:4px;top:4px;min-width:30px;height:30px;border-radius:99px;background:rgba(10,14,18,.8);color:#fff;font-size:14px;font-weight:800;padding:0 8px;}
+#visor .vzoom{overflow:auto;border-radius:10px;}
+#visor img.z{width:240%;max-width:none;border-radius:0;}
+#visor .pager{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:center;margin:0 0 10px;}
+#visor .pager span{text-align:center;color:var(--ink);font-weight:700;font-size:15px;}
+#visor .pager .cerrar{padding:11px 0;}
 .rdim{color:var(--dim);font-weight:400;}
 .rok{color:#6FA85B;font-weight:600;font-size:12px;}
 .jgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px;align-items:end;}
@@ -595,7 +605,7 @@ window.addEventListener('unhandledrejection',function(ev){
 <div id="visor"></div>
 <div id="lock"></div>
 <input type="file" id="fotoinput" accept="image/*" style="display:none">
-<input type="file" id="docinput" accept="image/*,application/pdf,.pdf,text/html,.html,.htm" style="display:none">
+<input type="file" id="docinput" accept="image/*,application/pdf,.pdf,text/html,.html,.htm" multiple style="display:none">
 <input type="file" id="copiainput" accept=".json,.txt,application/json,text/plain" style="display:none">
 <script>
 "use strict";
@@ -952,7 +962,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=69;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=71;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1203,7 +1213,8 @@ function reparaDatos(){
       if(L.clasif!==undefined){ L.clasif=(aLista(L.clasif)||[]).filter(Boolean);
         var tenia=!!(L.claDoc&&L.claDoc.data);       /* antes cada fila llevaba su documento: ahora hay uno solo; se conserva el de la última fila */
         L.clasif.forEach(function(r){ if(r&&r.doc){ if(!tenia&&r.doc.data) L.claDoc=r.doc; delete r.doc; } }); }
-      L.jornadas.forEach(function(j){ if(j.cerrada===undefined) j.cerrada=!!(Number(j.mi)>0);
+      migraFotos(L,'claDoc','claFotos');
+      L.jornadas.forEach(function(j){ migraFotos(j,'doc','fotos'); if(j.cerrada===undefined) j.cerrada=!!(Number(j.mi)>0);
       if((j.ptg===undefined||j.ptg===null||j.ptg==='')&&j.co!==undefined&&j.co!==null&&j.co!==''){ j.ptg=j.co; j.co=''; } }); });
   });
 }
@@ -1405,7 +1416,7 @@ function limpiaCachesNube(){
 function cambiaSync(campo,valor){
   var antes=(campo==='url')?normalizaUrl(D.sync.url).base:D.sync.clave;
   var ahora=(campo==='url')?normalizaUrl(valor).base:valor;
-  if(antes!==ahora){ D.sync.ultima=0; D.sync.hs={}; C.syncEstado=''; C.nube=null; C.nubeTs=null; vivoOff(); }
+  if(antes!==ahora){ D.sync.ultima=0; D.sync.hs={}; D.sync.fsub={}; C.syncEstado=''; C.nube=null; C.nubeTs=null; vivoOff(); }
   D.sync[campo]=valor;
 }
 function paquete(){
@@ -1473,28 +1484,129 @@ function clavesLigas(){ return ['ligas','ligasSala']; }
 /* lo que de una liga puede llevar documento: cada tirada (doc) y la clasificación general entera (claDoc) */
 function objetosConDoc(L){
   var r=[];
-  (L.jornadas||[]).forEach(function(j,i){ if(j) r.push({k:'j'+i,o:j,c:'doc'}); });
-  r.push({k:'d',o:L,c:'claDoc'});            /* el documento único de la clasificación general */
+  (L.jornadas||[]).forEach(function(j,i){ if(j) r.push({k:'j'+i,o:j,c:'doc',f:'fotos'}); });
+  r.push({k:'d',o:L,c:'claDoc',f:'claFotos'});     /* la clasificación general entera: un documento y hasta 5 fotos */
   return r;
 }
+function docId(data){ return 'd'+cyrb53(data).toString(36); }    /* el mismo archivo, el mismo identificador en los dos móviles */
 function docsDeLigas(){
   var docs={};
   clavesLigas().forEach(function(k){ (D[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){
-    if(e.o[e.c]&&e.o[e.c].data) docs[k+'|'+L.id+'|'+e.k]=e.o[e.c]; }); }); });
+    var dd=e.o[e.c];
+    if(dd&&dd.data){ docs[k+'|'+L.id+'|'+e.k]=dd; if(dd.id) docs['f|'+dd.id]=dd; }
+    (e.o[e.f]||[]).forEach(function(f){ if(f&&f.id&&f.data) docs['f|'+f.id]=f; });
+  }); }); });
   return docs;
 }
-/* El documento es de cada móvil y no viaja. Al traer datos de la nube cada móvil CONSERVA el suyo, venga o no
-   con el aviso «aquí hay uno»: el móvil que no lo tiene sube la liga sin él, y no por eso se le puede borrar al que sí. */
+/* Las fotos y los documentos (PDF o página) viajan por la nube cada uno por su cuenta (f/ID): en las partes de datos solo va su
+   ficha. Al traer datos, a cada ficha se le devuelve el contenido que este móvil ya tuviera. Si un documento ya tenía identificador
+   y la nube ya no lo trae, es que se quitó en el otro móvil y aquí se quita también. Un documento guardado antes de que viajaran
+   (sin identificador) se conserva y se le pone uno. */
 function reponDocsLigas(docs){
   clavesLigas().forEach(function(k){ (D[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){
-    var l=docs[k+'|'+L.id+'|'+e.k];
-    if(l){ if(!e.o[e.c]||e.o[e.c].soloAqui) e.o[e.c]=l; }
-    else if(e.o[e.c]&&e.o[e.c].soloAqui) delete e.o[e.c];
+    var cur=e.o[e.c], loc=docs[k+'|'+L.id+'|'+e.k];
+    if(cur&&cur.id){
+      if(!cur.data&&docs['f|'+cur.id]){ cur.data=docs['f|'+cur.id].data; delete cur.soloAqui; }
+    } else if(loc&&!loc.id){ loc.id=docId(loc.data); e.o[e.c]=loc; }
+    else if(cur&&cur.soloAqui){ delete e.o[e.c]; }
+    (e.o[e.f]||[]).forEach(function(f){ var q=f&&f.id&&!f.data&&docs['f|'+f.id];
+      if(q){ f.data=q.data; if(!f.w) f.w=q.w; if(!f.h) f.h=q.h; } });
   }); }); });
 }
-function marcaDocsLigas(L){   /* lo que viaja: solo el aviso de que hay un documento, sin su contenido */
+function marcaDocsLigas(L){   /* lo que viaja en la parte: el aviso del documento y la ficha (con miniatura) de cada foto, sin su imagen */
   objetosConDoc(L).forEach(function(e){
-    var d=e.o[e.c]; if(d) e.o[e.c]={tipo:d.tipo,nombre:d.nombre,soloAqui:true}; });
+    var d=e.o[e.c]; if(d) e.o[e.c]={id:d.id||(d.data?docId(d.data):undefined),tipo:d.tipo,nombre:d.nombre,soloAqui:true};
+    if(e.o[e.f]) e.o[e.f]=e.o[e.f].map(function(f){ return {id:f.id,nombre:f.nombre,w:f.w,h:f.h,mini:f.mini}; });
+  });
+}
+/* una imagen guardada antes como «documento» pasa a ser una foto (con un identificador que sale de la propia imagen,
+   así el mismo archivo tiene el mismo identificador en los dos móviles) */
+function migraFotos(o,pDoc,pFot){
+  if(o[pFot]!==undefined) o[pFot]=(aLista(o[pFot])||[]).filter(function(f){ return f&&f.id; });
+  var d=o[pDoc];
+  if(d&&d.tipo==='img'){
+    if(d.data){
+      var id='m'+cyrb53(d.data).toString(36);
+      if(!o[pFot]) o[pFot]=[];
+      if(!o[pFot].some(function(f){ return f.id===id; })) o[pFot].push({id:id,nombre:d.nombre||'foto.jpg',w:d.w||0,h:d.h||0,data:d.data});
+    }
+    delete o[pDoc];
+  }
+  var d2=o[pDoc]; if(d2&&d2.data&&!d2.id) d2.id=docId(d2.data);    /* documento de una versión anterior: se le pone identificador */
+}
+/* ---- fotos y documentos en la nube ---- */
+var MAXFOTOS=5;
+function fotosDeLigas(){
+  var r=[];
+  clavesLigas().forEach(function(k){ (D[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){
+    (e.o[e.f]||[]).forEach(function(f){ if(f&&f.id) r.push(f); });
+    var dd=e.o[e.c]; if(dd&&dd.id) r.push(dd); }); }); });
+  return r;
+}
+function nubeDel(ruta){ return fetch(urlN(ruta),{method:'DELETE'}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); }); }
+function fotosPendientes(){
+  if(!D.sync) return {subir:0,bajar:0};
+  var fs=fotosDeLigas(), fsub=D.sync.fsub||{};
+  return {subir:fs.filter(function(f){ return f.data&&!fsub[f.id]; }).length, bajar:fs.filter(function(f){ return !f.data; }).length};
+}
+/* sube lo que la nube no tiene (fotos y documentos) y baja lo que este móvil no tiene; uno a uno, y un fallo no frena a los demás */
+function quitaBlobNube(x){      /* se llama DESPUÉS de quitar x de su sitio */
+  if(!x||!x.id||!syncListo()||!D.sync.fsub||!D.sync.fsub[x.id]) return;
+  if(fotosDeLigas().some(function(y){ return y.id===x.id; })) return;      /* otro sitio sigue usando el mismo archivo */
+  delete D.sync.fsub[x.id]; nubeDel('f/'+x.id).catch(function(){});
+}
+function sincFotos(){
+  if(!syncListo()||C.fotosOcupado) return;
+  var uu=normalizaUrl(D.sync.url); if(!uu.ok) return;
+  if(!D.sync.fsub) D.sync.fsub={};
+  var fs=fotosDeLigas(), tareas=[], bajadas=0, subidas=0;
+  fs.forEach(function(f){
+    if(f.data&&!D.sync.fsub[f.id]) tareas.push(function(){
+      return nubePut('f/'+f.id,{d:f.data,w:f.w||0,h:f.h||0,t:f.tipo||'',n:f.nombre||''}).then(function(){ D.sync.fsub[f.id]=1; subidas++; }); });
+    else if(!f.data) tareas.push(function(){
+      return nubeGet('f/'+f.id).then(function(r){
+        if(!r||typeof r.d!=='string') return;                         /* aún no la ha subido el otro móvil: se reintenta luego */
+        if(espacioLibre()<r.d.length+200000){ C.fotosSinSitio=true; return; }
+        f.data=r.d; delete f.soloAqui; if(!f.w) f.w=r.w||0; if(!f.h) f.h=r.h||0; D.sync.fsub[f.id]=1; bajadas++; }); });
+  });
+  if(!tareas.length) return;
+  C.fotosOcupado=true; C.fotosError='';
+  var i=0;
+  (function sig(){
+    if(i>=tareas.length){
+      C.fotosOcupado=false;
+      if(subidas||bajadas) save(false);
+      if(bajadas) render(); else { try{ refrescaNube(); }catch(e){} }
+      return;
+    }
+    tareas[i++]().then(sig,function(e){ C.fotosError=String(e&&e.message||e); sig(); });
+  })();
+}
+/* la foto se reduce hasta que ocupe poco, y se le hace una miniatura para la pantalla */
+function procesaFoto(f,cb){
+  var fr=new FileReader();
+  fr.onerror=function(){ cb(null); };
+  fr.onload=function(){
+    var img=new Image();
+    img.onerror=function(){ cb(null); };
+    img.onload=function(){
+      try{
+        var pasos=[[1600,0.62],[1400,0.5],[1200,0.45]], k=0, url, w, h, sc, cv, cx;
+        do{
+          sc=Math.min(1,pasos[k][0]/Math.max(img.width,img.height)); w=Math.round(img.width*sc); h=Math.round(img.height*sc);
+          cv=document.createElement('canvas'); cv.width=w; cv.height=h; cx=cv.getContext('2d');
+          cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(img,0,0,w,h);
+          url=cv.toDataURL('image/jpeg',pasos[k][1]); k++;
+        }while(url.length>330000&&k<pasos.length);
+        var sm=Math.min(1,130/Math.max(img.width,img.height)), mw=Math.round(img.width*sm), mh=Math.round(img.height*sm);
+        var cm=document.createElement('canvas'); cm.width=mw; cm.height=mh; var cc=cm.getContext('2d');
+        cc.fillStyle='#fff'; cc.fillRect(0,0,mw,mh); cc.drawImage(img,0,0,mw,mh);
+        cb({data:url.split(',')[1],w:w,h:h,mini:cm.toDataURL('image/jpeg',0.5).split(',')[1]});
+      }catch(e){ cb(null); }
+    };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(f);
 }
 function ligasSinDocs(k){
   var l=JSON.parse(JSON.stringify(D[k||'ligas']||[]));
@@ -1590,6 +1702,7 @@ function empujaV3(manual,forzar){
       lista.forEach(function(q){ D.sync.hs[q.k]=q.h; });
       D.sync.ultima=ts; C.syncEstado='ok'; C.syncError=''; C.subiendo3=false;
       save(false); repintaNube(manual); if(manual) toast('Subido a la nube.');
+      try{ sincFotos(); }catch(e){}
       if(C.resubir||(D.ts||0)>msDeTs(D.sync.ultima)){ C.resubir=false; programaSubida(300); }
     })
     .catch(function(e){ C.subiendo3=false; C.syncEstado='error'; C.syncError=String(e&&e.message||e);
@@ -1611,6 +1724,7 @@ function aplicaPartes(trozos,rts,manual){
   D.ts=msDeTs(rts); D.sync.ultima=rts; C.nube=null; C.syncError='';
   C.syncEstado=sinDatosPropios()?'vacia':'ok';
   save(false); render(); if(manual) toast('Datos traídos de la nube.');
+  setTimeout(function(){ try{ sincFotos(); }catch(e){} },60);
 }
 function traeV3(manual,rts,soloK){
   var hrP=soloK?Promise.resolve(null):nubeGet('h');
@@ -1700,7 +1814,7 @@ function bajarNube(manual){
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
   if(C.bajando3){ C.rebajar=true; if(manual) toast('Ya estoy consultando la nube…'); return; }
   C.bajando3=true; C.syncEstado='bajando'; if(manual) render(); else refrescaNube();
-  var fin=function(){ C.bajando3=false; if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarNube(false); },60); } };
+  var fin=function(){ C.bajando3=false; try{ sincFotos(); }catch(e){} if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarNube(false); },60); } };
   limpiaCachesNube().then(function(){ return nubeGet('ts'); })
     .then(function(rts){
       C.syncError='';
@@ -1756,7 +1870,7 @@ function bajarRapido(){
   if(!EV.h||!Object.keys(EV.h).length){ bajarNube(false); return; }     /* sin formato nuevo conocido: camino completo */
   if(C.bajando3){ C.rebajar=true; return; }
   C.bajando3=true;
-  var fin=function(){ C.bajando3=false; if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarRapido(); },30); } };
+  var fin=function(){ C.bajando3=false; try{ sincFotos(); }catch(e){} if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarRapido(); },30); } };
   var p=sinDatosPropios()?traeV3(false,null):reconcilia(null,EV.h);
   p.then(function(){ fin(); },function(e){
     C.syncEstado='error'; C.syncError=String(e&&e.message||e); repintaNube(false); fin(); });
@@ -2169,7 +2283,7 @@ function sinFotos(d){
   d.arqueros.forEach(function(a){ a.foto=null; });
   (d.tecnicas||[]).forEach(function(t){ t.fotos=[]; });
   (d.material||[]).forEach(function(t){ t.fotos=[]; });
-  ['ligas','ligasSala'].forEach(function(k){ (d[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){ delete e.o[e.c]; }); }); });
+  ['ligas','ligasSala'].forEach(function(k){ (d[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){ delete e.o[e.c]; delete e.o[e.f]; }); }); });
   (d.campos||[]).forEach(function(c){
     Object.keys(c.animales||{}).forEach(function(k){ c.animales[k].foto=null; }); });
   return d;
@@ -2296,6 +2410,12 @@ function tarjetaCopia(){
         :(D.sync.ultima?'Última sincronización: '+new Date(msDeTs(D.sync.ultima)).toLocaleString('es-ES'):'Aún no has subido nada.'))
       +(C.nubeTs!=null?' En la nube: '+(C.nubeTs?'datos del '+new Date(C.nubeTs).toLocaleString('es-ES'):'nada con esta clave')+'.':'')
       +(D.sync.auto?' Actualización en vivo: '+(C.vivo?'sí':'no')+'.':'')
+      +(function(){ var fp=fotosPendientes(), t=[];
+          if(fp.subir) t.push(fp.subir+(fp.subir===1?' archivo por subir':' archivos por subir'));
+          if(fp.bajar) t.push(fp.bajar+(fp.bajar===1?' archivo por bajar':' archivos por bajar'));
+          return t.length?' '+t.join(' · ')+'.':''; })()
+      +(C.fotosError?' Fotos y documentos: '+esc(explicaError(C.fotosError))+'.':'')
+      +(C.fotosSinSitio?' No queda sitio en este móvil para bajar todos los archivos.':'')
       +'</p>';
     if(C.nube){
       h+='<div class="card" style="background:#2A2118;margin-top:12px"><p class="stat">'
@@ -3327,10 +3447,30 @@ function abreMiniprograma(doc,titulo,nombre){
     +'<iframe sandbox="allow-scripts" title="'+esc(titulo)+'" srcdoc="'+esc(htmlDeDoc(doc))+'"></iframe></div>';
   v.className='web'; v.style.display='block'; v.scrollTop=0;
 }
-function mostrarImagen(url,pie,alt,nombre,medida){
+var galeria=null;
+function abreGaleria(lista,i,titulo,base){ galeria={lista:lista,i:i,titulo:titulo,base:base}; pintaGaleria(); }
+function pintaGaleria(){
+  var g=galeria, f=g.lista[g.i], n=g.lista.length;
+  mostrarImagen('data:image/jpeg;base64,'+f.data,g.titulo,'Foto',limpiaNombre(g.base+(n>1?' foto '+(g.i+1):''))+'.jpg',
+    {w:f.w||1000,h:f.h||1400},n>1?{i:g.i,n:n}:null,true);
+}
+function mostrarImagen(url,pie,alt,nombre,medida,pag,gal){
   var v=document.getElementById('visor');
   imgActual=nombre?{url:url,nombre:nombre,w:(medida&&medida.w)||900,h:(medida&&medida.h)||1200}:null;
+  var pager=pag?'<div class="pager"><button class="cerrar" data-fb="antfoto">◀</button><span>Foto '+(pag.i+1)+' de '+pag.n+'</span>'
+      +'<button class="cerrar" data-fb="sigfoto">▶</button></div>':'';
+  if(gal){     /* visor de fotos: lo primero, la foto; al tocarla se amplía */
+    v.innerHTML='<div class="vcard">'+pager
+      +'<div class="pair" style="margin-bottom:10px"><button class="capbtn" data-fb="compartir" style="margin:0">Compartir</button>'
+      +'<button class="cerrar" data-fb="cerrar">Cerrar</button></div>'
+      +'<div class="vzoom"><img data-fb="zoom" src="'+url+'" alt="'+esc(alt||'')+'"></div>'
+      +'<p style="text-align:center">'+esc(pie)+' · toca la foto para ampliarla</p>'
+      +'<button class="cerrar" data-fb="cerrar">Cerrar</button></div>';
+    v.className=''; v.style.display='block'; v.scrollTop=0;
+    return;
+  }
   v.innerHTML='<div class="vcard">'
+    +pager
     +'<button class="capbtn" data-fb="captura">Preparar para captura</button>'
     +(imgActual?'<button class="capbtn" data-fb="compartir" style="margin-bottom:10px">Compartir</button>'
       +'<div class="pair" style="margin-bottom:10px">'
@@ -3733,6 +3873,12 @@ var CAMPOSJ=[
 ];
 /* Las ligas de Sala y las de Campo son listas distintas, con la misma pantalla. La lista y la liga abierta dependen del modo. */
 /* a qué documento apunta un botón: el de la clasificación general de la liga (c) o el de una tirada */
+function fotosRef(b){
+  var L=ligaActual(); if(!L) return null;
+  if(b.dataset.c==='1') return {o:L,p:'claFotos'};
+  var j=L.jornadas&&L.jornadas[Number(b.dataset.i)];
+  return j?{o:j,p:'fotos'}:null;
+}
 function docRef(b){
   var L=ligaActual(); if(!L) return null;
   if(b.dataset.c==='1') return {o:L,p:'claDoc'};
@@ -3903,25 +4049,8 @@ function pantallaLigas(){
       +(Number(j.gl)?' · '+j.gl+'º'+(Number(j.ptg)?' de '+j.ptg:'')+' en la general':'')
       +(Number(j.lari)?' · '+j.lari+'º'+(Number(j.pari)?' de '+j.pari:'')+' en ARI':'')+'</p>';
 
-    /* ---- documento o imagen del club ---- */
-    var doc=j.doc;
-    h+='<div class="chead" style="margin:16px 0 8px"><h2>Documento del club</h2>'
-      +'<span>'+(doc?(doc.tipo==='pdf'?'PDF':'imagen'):'ninguno')+'</span></div>';
-    if(doc){
-      if(doc.tipo==='img'){
-        h+='<img class="docimg" src="data:image/jpeg;base64,'+doc.data+'" alt="Documento" data-act="vierdoc" data-i="'+i+'">';
-      } else {
-        h+='<div class="docpdf"><b>'+esc(doc.nombre||'documento.pdf')+'</b>'
-          +'<small>'+Math.round(doc.data.length*0.75/1024)+' KB</small></div>';
-      }
-      h+='<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'
-        +'<button class="mini" data-act="vierdoc" data-i="'+i+'">'+(doc.tipo==='pdf'?'Abrir':'Ver')+'</button>'
-        +'<button class="mini" data-act="compdoc" data-i="'+i+'">Compartir</button>'
-        +'<button class="mini" data-act="bordoc" data-i="'+i+'">✕</button></div>';
-    }
-    h+='<button class="act act2" data-act="adjdoc" data-i="'+i+'">'
-      +(doc?'Cambiar el documento':'Adjuntar foto o PDF del club')+'</button>'
-      ;
+    /* ---- fotos y documento del club ---- */
+    h+=adjBloque(j,'doc','fotos',i,false,'Documento del club','Añadir fotos o PDF del club');
     h+='<button class="act" data-act="jorguarda" data-i="'+i+'">Guardar esta tirada</button>'
       +'<button class="ghost" data-act="jorbor" data-i="'+i+'">Borrar esta tirada</button></div>';
   } else if(!js.length){
@@ -3929,13 +4058,27 @@ function pantallaLigas(){
   }
   return h+tarjetaClasif(L);
 }
-/* ---- bloque de documento (foto o PDF) reutilizable: i = posición; c = '1' si es de la clasificación general ---- */
-function docBloque(doc,i,c,textoAdjuntar,titulo){
-  var at=' data-i="'+i+'"'+(c?' data-c="1"':'');
-  var h='<div class="chead" style="margin:12px 0 8px"><h2 style="font-size:15px">'+(titulo||'Documento')+'</h2>'
-    +'<span>'+(doc?(doc.tipo==='pdf'?'PDF':doc.tipo==='html'?'miniprograma':'imagen'):'ninguno')+'</span></div>';
+/* ---- bloque de fotos (hasta 5) y documento (PDF o página) de una tirada o de la clasificación general ----
+   i = posición de la tirada; c = true si es la clasificación general */
+function adjBloque(ho,pDoc,pFot,i,c,titulo,textoAdj){
+  var doc=ho[pDoc], fs=ho[pFot]||[], at=' data-i="'+i+'"'+(c?' data-c="1"':''), est=[];
+  if(fs.length) est.push(fs.length+(fs.length===1?' foto':' fotos'));
+  if(doc) est.push(doc.tipo==='pdf'?'PDF':doc.tipo==='html'?'miniprograma':'imagen');
+  var h='<div class="chead" style="margin:12px 0 8px"><h2 style="font-size:15px">'+titulo+'</h2>'
+    +'<span>'+(est.length?est.join(' + '):'ninguno')+'</span></div>';
+  if(fs.length){
+    h+='<div class="fotos">'+fs.map(function(f,k){
+      var src=f.mini?'data:image/jpeg;base64,'+f.mini:(f.data?'data:image/jpeg;base64,'+f.data:'');
+      return '<div class="ft">'
+        +(src?'<img src="'+src+'" alt="Foto '+(k+1)+'" data-act="vierfoto"'+at+' data-k="'+k+'">'
+             :'<div class="ftph" data-act="vierfoto"'+at+' data-k="'+k+'">⏳</div>')
+        +'<span class="fn">'+(k+1)+'</span>'
+        +'<button class="fx" data-act="borfoto"'+at+' data-k="'+k+'" aria-label="Quitar la foto '+(k+1)+'">✕</button></div>';
+    }).join('')+'</div>';
+  }
   if(doc){
-    if(doc.tipo==='img') h+='<img class="docimg" src="data:image/jpeg;base64,'+doc.data+'" alt="Documento" data-act="vierdoc"'+at+'>';
+    if(!doc.data) h+='<div class="docpdf"><b>'+(doc.tipo==='html'?'🧩 ':'')+esc(doc.nombre||'documento')+'</b><small>⏳ Aún no ha llegado de la nube · se baja solo</small></div>';
+    else if(doc.tipo==='img') h+='<img class="docimg" src="data:image/jpeg;base64,'+doc.data+'" alt="Documento" data-act="vierdoc"'+at+'>';
     else if(doc.tipo==='html') h+='<div class="docpdf"><b>🧩 '+esc(doc.nombre||'clasificacion.html')+'</b><small>Miniprograma · '
       +Math.round(doc.data.length*0.75/1024)+' KB · funciona sin conexión</small></div>';
     else h+='<div class="docpdf"><b>'+esc(doc.nombre||'documento.pdf')+'</b><small>'+Math.round(doc.data.length*0.75/1024)+' KB</small></div>';
@@ -3944,14 +4087,15 @@ function docBloque(doc,i,c,textoAdjuntar,titulo){
       +'<button class="mini" data-act="compdoc"'+at+'>Compartir</button>'
       +'<button class="mini" data-act="bordoc"'+at+'>✕</button></div>';
   }
-  return h+'<button class="act act2" data-act="adjdoc"'+at+'>'+(doc?'Cambiar el documento':textoAdjuntar)+'</button>';
+  return h+'<button class="act act2" data-act="adjdoc"'+at+'>'+textoAdj
+    +'<small style="display:block;font-weight:500;margin-top:2px">fotos: '+fs.length+' de '+MAXFOTOS+'</small></button>';
 }
 /* ---- Clasificación General: tu puesto en la general y en ARI tras cada tirada, con su documento ---- */
 function tarjetaClasif(L){
   var cl=L.clasif||[];
   var h='<div class="card"><div class="chead"><h2>Clasificación General</h2><span>'+cl.length+(cl.length===1?' tirada':' tiradas')+'</span></div>'
     +'<p class="stat" style="margin-bottom:6px">Tu puesto en la clasificación general y en ARI después de cada tirada. '
-    +'Añade las que quieras. Al final puedes subir el documento de la clasificación.</p>';
+    +'Añade las que quieras. Al final puedes subir sus fotos (hasta 5) o el documento de la clasificación.</p>';
   if(!cl.length) h+='<p class="empty" style="margin:10px 0">Todavía no hay ninguna. Pulsa «Añadir tirada».</p>';
   cl.forEach(function(r,i){
     var campo=function(k,et){ return '<div class="jcampo"><span>'+et+'</span><input class="cinp" type="number" inputmode="numeric" min="0" '
@@ -3961,7 +4105,7 @@ function tarjetaClasif(L){
       +'<div class="jgrid">'+campo('gen','General')+campo('ari','ARI')+'</div></div>';
   });
   h+='<button class="act act2" data-act="claadd">Añadir tirada</button>'
-    +'<div class="clfin">'+docBloque(L.claDoc,0,true,'Adjuntar la clasificación (foto, PDF o página .html)','Documento de la clasificación')+'</div>';
+    +'<div class="clfin">'+adjBloque(L,'claDoc','claFotos',0,true,'Documento de la clasificación','Añadir fotos, PDF o página .html')+'</div>';
   return h+'</div>';
 }
 
@@ -5342,10 +5486,24 @@ document.getElementById('app').addEventListener('click',function(ev){
     MAT()[Number(b.dataset.b)].items.splice(Number(b.dataset.i),1); save(); render(); }
   else if(a==='adjdoc'){ C.docDestino={i:Number(b.dataset.i),c:b.dataset.c==='1'};
     var dfi=document.getElementById('docinput'); dfi.value=''; dfi.click(); }
-  else if(a==='bordoc'){ var rq=docRef(b); if(rq){ delete rq.o[rq.p]; save(); render(); } }
+  else if(a==='vierfoto'){
+    var rf=fotosRef(b), Lf=ligaActual(); if(!rf||!Lf) return;
+    var lf=rf.o[rf.p]||[], ff=lf[Number(b.dataset.k)]; if(!ff) return;
+    if(!ff.data){ toast('Esta foto aún no ha llegado de la nube. Se baja sola cuando hay conexión.'); try{ sincFotos(); }catch(e){} return; }
+    var con=lf.filter(function(x){ return x.data; }), cf=b.dataset.c==='1';
+    abreGaleria(con,con.indexOf(ff),Lf.nombre+(cf?' · clasificación general':' · tirada '+(Number(b.dataset.i)+1)),
+      (Lf.nombre||'liga')+(cf?' clasificacion general':' tirada '+(Number(b.dataset.i)+1)));
+  }
+  else if(a==='borfoto'){
+    if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Quitar?'; return; }
+    var rb=fotosRef(b); if(rb){
+      quitaBlobNube((rb.o[rb.p]||[]).splice(Number(b.dataset.k),1)[0]);
+      save(); render(); } }
+  else if(a==='bordoc'){ var rq=docRef(b); if(rq){ var xq=rq.o[rq.p]; delete rq.o[rq.p]; quitaBlobNube(xq); save(); render(); } }
   else if(a==='vierdoc'||a==='compdoc'){
     var Lv=ligaActual(), rv=docRef(b), dv=rv&&rv.o[rv.p], cv=b.dataset.c==='1';
     if(!dv) return;
+    if(!dv.data){ toast('Este documento aún no ha llegado de la nube. Se baja solo cuando hay conexión.'); try{ sincFotos(); }catch(e){} return; }
     var nomv=limpiaNombre((Lv.nombre||'liga')+(cv?' clasificacion general':' tirada '+(Number(b.dataset.i)+1)))
       +(dv.tipo==='pdf'?'.pdf':'.jpg');
     if(dv.tipo==='html'){
@@ -5535,54 +5693,55 @@ document.getElementById('fotoinput').addEventListener('change',function(ev){
   cargarFoto(ev.target.files && ev.target.files[0]);
 });
 document.getElementById('docinput').addEventListener('change',function(ev){
-  var f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  var fs=ev.target.files?Array.prototype.slice.call(ev.target.files):[]; if(!fs.length) return;
   var dst=C.docDestino; if(!dst) return;
-  var L=ligaActual(), ref=L&&(dst.c?{o:L,p:'claDoc'}:(L.jornadas[dst.i]?{o:L.jornadas[dst.i],p:'doc'}:null)); if(!ref) return;
-  var esPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
-  var fr=new FileReader();
-  fr.onerror=function(){ toast('No se pudo leer el archivo.'); };
-  var esHtml=/html/i.test(f.type)||/\.html?$/i.test(f.name||'');
-  if(esHtml){
-    if(!dst.c){ toast('Una página .html solo se puede adjuntar a la clasificación general.'); return; }
-    if(f.size>614400){ toast('La página pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB.'); return; }
-    if(espacioLibre()<f.size*1.4+300000){ toast('No queda sitio suficiente en el móvil para este documento. Quita alguno antiguo.'); return; }
-    fr.onload=function(){
-      var b64=String(fr.result).split(',')[1]||'';
-      ref.o[ref.p]={tipo:'html',nombre:f.name||'clasificacion.html',data:b64};
-      save(); render(); toast('Miniprograma guardado.');
-    };
-    fr.readAsDataURL(f);
-  } else if(esPdf){
-    if(f.size>614400){ toast('El PDF pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB: '
-      +'más llenaría el móvil. Mejor hazle una foto, que la app la reduce.'); return; }
-    if(espacioLibre()<f.size*1.4+300000){ toast('No queda sitio suficiente en el móvil para este documento. '
-      +'Quita alguno antiguo.'); return; }
-    fr.onload=function(){
-      var b64=String(fr.result).split(',')[1]||'';
-      ref.o[ref.p]={tipo:'pdf',nombre:f.name||'documento.pdf',data:b64};
-      save(); render(); toast('PDF guardado.');
-    };
-    fr.readAsDataURL(f);
-  } else {
-    fr.onload=function(){
-      var img=new Image();
-      img.onerror=function(){ toast('Ese archivo no es una imagen válida.'); };
-      img.onload=function(){
-        try{
-          var mx=1400, k=Math.min(1,mx/Math.max(img.width,img.height));
-          var w=Math.round(img.width*k), h=Math.round(img.height*k);
-          var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
-          var cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,w,h);
-          cx.drawImage(img,0,0,w,h);
-          var url=cv.toDataURL('image/jpeg',0.72);
-          ref.o[ref.p]={tipo:'img',nombre:f.name||'imagen.jpg',data:url.split(',')[1],w:w,h:h};
-          save(); render(); toast('Imagen guardada.');
-        }catch(e){ toast('No se pudo procesar la imagen.'); }
-      };
-      img.src=fr.result;
-    };
+  var L=ligaActual(), ho=L&&(dst.c?L:(L.jornadas&&L.jornadas[dst.i])); if(!ho) return;
+  var pDoc=dst.c?'claDoc':'doc', pFot=dst.c?'claFotos':'fotos';
+  var nFotos=0, pdfOk=false, htmlOk=false, avisos=[], avisoMax=false;
+  function lee(f,alCargar){
+    var fr=new FileReader();
+    fr.onerror=function(){ avisos.push('No se pudo leer el archivo.'); sig(); };
+    fr.onload=function(){ alCargar(String(fr.result).split(',')[1]||''); };
     fr.readAsDataURL(f);
   }
+  function fin(){
+    var t=[];
+    if(nFotos) t.push((nFotos===1?'Foto guardada':nFotos+' fotos guardadas')+' ('+(ho[pFot]||[]).length+' de '+MAXFOTOS+').');
+    if(pdfOk) t.push('PDF guardado.');
+    if(htmlOk) t.push('Miniprograma guardado.');
+    avisos.forEach(function(a){ t.push(a); });
+    if(nFotos||pdfOk||htmlOk){ save(); render(); try{ sincFotos(); }catch(e){} }
+    if(t.length) toast(t.join(' '));
+  }
+  function sig(){
+    var f=fs.shift(); if(!f){ fin(); return; }
+    var esHtml=/html/i.test(f.type)||/\.html?$/i.test(f.name||''), esPdf=!esHtml&&(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||''));
+    if(esHtml){
+      if(!dst.c){ avisos.push('Una página .html solo se puede adjuntar a la clasificación general.'); sig(); return; }
+      if(f.size>614400){ avisos.push('La página pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB.'); sig(); return; }
+      if(espacioLibre()<f.size*1.4+300000){ avisos.push('No queda sitio suficiente en el móvil para este documento. Quita alguno antiguo.'); sig(); return; }
+      lee(f,function(b64){ var nd={id:docId(b64),tipo:'html',nombre:f.name||'clasificacion.html',data:b64};
+        var vie=ho[pDoc]; ho[pDoc]=nd; if(vie&&vie.id!==nd.id) quitaBlobNube(vie); htmlOk=true; sig(); });
+    } else if(esPdf){
+      if(f.size>614400){ avisos.push('El PDF pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB: más llenaría el móvil. Mejor hazle una foto, que la app la reduce.'); sig(); return; }
+      if(espacioLibre()<f.size*1.4+300000){ avisos.push('No queda sitio suficiente en el móvil para este documento. Quita alguno antiguo.'); sig(); return; }
+      lee(f,function(b64){ var nd={id:docId(b64),tipo:'pdf',nombre:f.name||'documento.pdf',data:b64};
+        var vie=ho[pDoc]; ho[pDoc]=nd; if(vie&&vie.id!==nd.id) quitaBlobNube(vie); pdfOk=true; sig(); });
+    } else {
+      if((ho[pFot]||[]).length>=MAXFOTOS){
+        if(!avisoMax){ avisos.push('Ya hay '+MAXFOTOS+' fotos. Quita alguna para añadir otra.'); avisoMax=true; }
+        sig(); return;
+      }
+      procesaFoto(f,function(r){
+        if(!r){ avisos.push('Ese archivo no es una imagen válida.'); sig(); return; }
+        if(espacioLibre()<r.data.length+r.mini.length+250000){ avisos.push('No queda sitio suficiente en el móvil para otra foto. Quita alguna.'); sig(); return; }
+        if(!ho[pFot]) ho[pFot]=[];
+        ho[pFot].push({id:'f'+uid(),nombre:f.name||'foto.jpg',w:r.w,h:r.h,data:r.data,mini:r.mini});
+        nFotos++; sig();
+      });
+    }
+  }
+  sig();
 });
 document.getElementById('copiainput').addEventListener('change',function(ev){
   var f=ev.target.files&&ev.target.files[0]; if(!f) return;
@@ -5611,6 +5770,10 @@ document.getElementById('visor').addEventListener('click',function(ev){
     try{ bajar(pdfDeImagen(imgActual.url,imgActual.w,imgActual.h),
       imgActual.nombre.replace(/\.jpg$/,'')+'.pdf','application/pdf'); }
     catch(e){ toast('No se pudo preparar el PDF.'); }
+  }
+  else if(fb==='zoom'){ if(ev.target.classList) ev.target.classList.toggle('z'); }
+  else if((fb==='antfoto'||fb==='sigfoto')&&galeria){
+    galeria.i=(galeria.i+(fb==='sigfoto'?1:-1)+galeria.lista.length)%galeria.lista.length; pintaGaleria();
   }
   else if(fb==='compartirweb' && webActual){
     try{ comparte(webActual.bytes,webActual.nombre,'text/html'); }
