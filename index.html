@@ -324,6 +324,14 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
   box-shadow:inset 0 0 0 1px var(--line);font-size:15px;font-weight:600;}
 #visor .capbtn{width:100%;padding:13px;border-radius:11px;background:var(--gold);color:#181206;
   font-size:15px;font-weight:600;margin-bottom:10px;}
+#visor.web{padding:0;overflow:hidden;background:#fff;}
+#visor.web .vweb{display:flex;flex-direction:column;height:100%;}
+#visor.web .vbar{flex:none;display:flex;align-items:center;gap:8px;background:#121A22;
+  padding:calc(8px + env(safe-area-inset-top)) 10px 8px;}
+#visor.web .vbar b{flex:1;min-width:0;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#visor.web .vbar button{flex:none;padding:10px 13px;border-radius:9px;background:#242E39;color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--line);font-size:13px;font-weight:700;}
+#visor.web iframe{flex:1;width:100%;border:0;background:#fff;}
 #visor.cap{background:#FFFFFF;padding:0;}
 #visor.cap .vcard{width:100%;max-width:none;margin:0;}
 #visor.cap p,#visor.cap .cerrar,#visor.cap .capbtn{display:none;}
@@ -585,7 +593,7 @@ window.addEventListener('unhandledrejection',function(ev){
 <div id="visor"></div>
 <div id="lock"></div>
 <input type="file" id="fotoinput" accept="image/*" style="display:none">
-<input type="file" id="docinput" accept="image/*,application/pdf,.pdf" style="display:none">
+<input type="file" id="docinput" accept="image/*,application/pdf,.pdf,text/html,.html,.htm" style="display:none">
 <input type="file" id="copiainput" accept=".json,.txt,application/json,text/plain" style="display:none">
 <script>
 "use strict";
@@ -942,7 +950,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=67;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=68;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -3296,6 +3304,27 @@ function tresMinis(k){
 
 /* ---- visor ---- */
 var imgActual=null;
+/* ---- miniprograma: una página .html guardada como documento, que se abre dentro de la app y funciona sin conexión ---- */
+var webActual=null;
+function htmlDeDoc(doc){
+  var t;
+  try{ t=new TextDecoder('utf-8').decode(bytesDeDataURL('data:x;base64,'+doc.data)); }
+  catch(e){ t=decodeURIComponent(escape(atob(doc.data))); }
+  /* la página no puede pedir nada fuera de sí misma: solo sus propios scripts, estilos e imágenes incrustadas */
+  var csp='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'; '
+    +'script-src \'unsafe-inline\'; font-src data:; media-src data:">';
+  if(/<head[^>]*>/i.test(t)) return t.replace(/<head[^>]*>/i,function(m){ return m+csp; });
+  if(/<html[^>]*>/i.test(t)) return t.replace(/<html[^>]*>/i,function(m){ return m+'<head>'+csp+'</head>'; });
+  return csp+t;
+}
+function abreMiniprograma(doc,titulo,nombre){
+  var v=document.getElementById('visor');
+  webActual={bytes:bytesDeDataURL('data:x;base64,'+doc.data),nombre:nombre};
+  v.innerHTML='<div class="vweb"><div class="vbar"><b>'+esc(titulo)+'</b>'
+    +'<button data-fb="compartirweb">Compartir</button><button data-fb="cerrar">✕ Cerrar</button></div>'
+    +'<iframe sandbox="allow-scripts" title="'+esc(titulo)+'" srcdoc="'+esc(htmlDeDoc(doc))+'"></iframe></div>';
+  v.className='web'; v.style.display='block'; v.scrollTop=0;
+}
 function mostrarImagen(url,pie,alt,nombre,medida){
   var v=document.getElementById('visor');
   imgActual=nombre?{url:url,nombre:nombre,w:(medida&&medida.w)||900,h:(medida&&medida.h)||1200}:null;
@@ -3901,12 +3930,14 @@ function pantallaLigas(){
 function docBloque(doc,i,c,textoAdjuntar,titulo){
   var at=' data-i="'+i+'"'+(c?' data-c="1"':'');
   var h='<div class="chead" style="margin:12px 0 8px"><h2 style="font-size:15px">'+(titulo||'Documento')+'</h2>'
-    +'<span>'+(doc?(doc.tipo==='pdf'?'PDF':'imagen'):'ninguno')+'</span></div>';
+    +'<span>'+(doc?(doc.tipo==='pdf'?'PDF':doc.tipo==='html'?'miniprograma':'imagen'):'ninguno')+'</span></div>';
   if(doc){
     if(doc.tipo==='img') h+='<img class="docimg" src="data:image/jpeg;base64,'+doc.data+'" alt="Documento" data-act="vierdoc"'+at+'>';
+    else if(doc.tipo==='html') h+='<div class="docpdf"><b>🧩 '+esc(doc.nombre||'clasificacion.html')+'</b><small>Miniprograma · '
+      +Math.round(doc.data.length*0.75/1024)+' KB · funciona sin conexión</small></div>';
     else h+='<div class="docpdf"><b>'+esc(doc.nombre||'documento.pdf')+'</b><small>'+Math.round(doc.data.length*0.75/1024)+' KB</small></div>';
     h+='<div class="hbts" style="grid-template-columns:1fr 1fr 42px">'
-      +'<button class="mini" data-act="vierdoc"'+at+'>'+(doc.tipo==='pdf'?'Abrir':'Ver')+'</button>'
+      +'<button class="mini" data-act="vierdoc"'+at+'>'+(doc.tipo==='img'?'Ver':'Abrir')+'</button>'
       +'<button class="mini" data-act="compdoc"'+at+'>Compartir</button>'
       +'<button class="mini" data-act="bordoc"'+at+'>✕</button></div>';
   }
@@ -3927,7 +3958,7 @@ function tarjetaClasif(L){
       +'<div class="jgrid">'+campo('gen','General')+campo('ari','ARI')+'</div></div>';
   });
   h+='<button class="act act2" data-act="claadd">Añadir tirada</button>'
-    +'<div class="clfin">'+docBloque(L.claDoc,0,true,'Adjuntar la clasificación (foto o PDF)','Documento de la clasificación')+'</div>';
+    +'<div class="clfin">'+docBloque(L.claDoc,0,true,'Adjuntar la clasificación (foto, PDF o página .html)','Documento de la clasificación')+'</div>';
   return h+'</div>';
 }
 
@@ -5313,6 +5344,12 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(!dv) return;
     var nomv=limpiaNombre((Lv.nombre||'liga')+(cv?' clasificacion general':' tirada '+(Number(b.dataset.i)+1)))
       +(dv.tipo==='pdf'?'.pdf':'.jpg');
+    if(dv.tipo==='html'){
+      var nomh=limpiaNombre(dv.nombre||'clasificacion.html'); if(!/\.html?$/i.test(nomh)) nomh+='.html';
+      if(a==='compdoc') comparte(bytesDeDataURL('data:x;base64,'+dv.data),nomh,'text/html');
+      else abreMiniprograma(dv,Lv.nombre+' · clasificación general',nomh);
+      return;
+    }
     if(a==='compdoc') comparte(bytesDeDataURL('data:x;base64,'+dv.data),nomv,dv.tipo==='pdf'?'application/pdf':'image/jpeg');
     else if(dv.tipo==='pdf') bajar(bytesDeDataURL('data:x;base64,'+dv.data),nomv,'application/pdf');
     else mostrarImagen('data:image/jpeg;base64,'+dv.data,Lv.nombre+(cv?' · clasificación general':' · tirada '+(Number(b.dataset.i)+1)),'Documento',nomv,
@@ -5500,7 +5537,18 @@ document.getElementById('docinput').addEventListener('change',function(ev){
   var esPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name||'');
   var fr=new FileReader();
   fr.onerror=function(){ toast('No se pudo leer el archivo.'); };
-  if(esPdf){
+  var esHtml=/html/i.test(f.type)||/\.html?$/i.test(f.name||'');
+  if(esHtml){
+    if(!dst.c){ toast('Una página .html solo se puede adjuntar a la clasificación general.'); return; }
+    if(f.size>614400){ toast('La página pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB.'); return; }
+    if(espacioLibre()<f.size*1.4+300000){ toast('No queda sitio suficiente en el móvil para este documento. Quita alguno antiguo.'); return; }
+    fr.onload=function(){
+      var b64=String(fr.result).split(',')[1]||'';
+      ref.o[ref.p]={tipo:'html',nombre:f.name||'clasificacion.html',data:b64};
+      save(); render(); toast('Miniprograma guardado.');
+    };
+    fr.readAsDataURL(f);
+  } else if(esPdf){
     if(f.size>614400){ toast('El PDF pesa '+Math.round(f.size/1024)+' KB. Máximo 600 KB: '
       +'más llenaría el móvil. Mejor hazle una foto, que la app la reduce.'); return; }
     if(espacioLibre()<f.size*1.4+300000){ toast('No queda sitio suficiente en el móvil para este documento. '
@@ -5559,6 +5607,10 @@ document.getElementById('visor').addEventListener('click',function(ev){
     try{ bajar(pdfDeImagen(imgActual.url,imgActual.w,imgActual.h),
       imgActual.nombre.replace(/\.jpg$/,'')+'.pdf','application/pdf'); }
     catch(e){ toast('No se pudo preparar el PDF.'); }
+  }
+  else if(fb==='compartirweb' && webActual){
+    try{ comparte(webActual.bytes,webActual.nombre,'text/html'); }
+    catch(e){ toast('No se pudo compartir.'); }
   }
   else if(fb==='compartir' && imgActual){
     try{ comparte(bytesDeDataURL(imgActual.url),imgActual.nombre,'image/jpeg'); }
