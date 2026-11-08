@@ -143,6 +143,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .navtop .volver{background:#242E39;color:var(--ink);font-size:14px;font-weight:700;padding:10px 13px;border-radius:9px;
   box-shadow:inset 0 0 0 1px var(--line);flex:none;}
 .navtop .ttl{font-size:22px;font-weight:800;}
+.navtop .navnuevo{flex:none;margin-left:auto;background:var(--gold);color:#181206;font-size:13.5px;font-weight:800;
+  padding:10px 13px;border-radius:9px;}
 .apt{display:block;margin:20px 0 10px;padding:11px 13px;border-radius:11px;font-size:20px;font-weight:800;color:#fff;
   background:rgba(61,124,201,.24);border-left:7px solid #3D7CC9;}
 .apt.dr{background:rgba(242,193,27,.18);border-left-color:#F2C11B;}
@@ -950,7 +952,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=68;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=69;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -3827,10 +3829,11 @@ function pantallaLigas(){
       +'<button class="act" data-act="ligaadd">Crear una liga</button></div>';
   }
   var L=ligaActual(), r=resumenLiga(L);
-  var h='<div class="dosel"><select class="arq" data-ligasel>'
+  var h='<div class="dosel" style="grid-template-columns:1fr"><select class="arq" data-ligasel'
+    +((L.nombre||'').length>34?' style="font-size:'+((L.nombre||'').length>40?'12.5px':'13.5px')+'"':'')+'>'
     +LIGS().map(function(x){ return '<option value="'+x.id+'"'+(x.id===L.id?' selected':'')+'>'
       +esc(x.nombre||'Liga sin nombre')+'</option>'; }).join('')
-    +'</select><button class="act act2" data-act="ligaadd" style="margin-top:0">Nueva liga</button></div>';
+    +'</select></div>';
 
   h+='<div class="card"><div class="chead"><h2>Datos de la liga</h2>'
     +'<span>'+((L.jornadas||[]).length)+' tiradas</span></div>'
@@ -4494,8 +4497,9 @@ function selArq(){
 /* ---- pantalla de inicio: un botón por apartado ---- */
 var TITULOS={tirada:'Tirada',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso',historial:'Historial',ligas:'Ligas',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
+function botonNuevaLiga(t){ return t==='ligas'?'<button class="navnuevo" data-act="ligaadd">+ Nueva liga</button>':''; }
 function navTop(t){
-  return '<div class="navtop"><button class="volver" data-act="tab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOS[t]||'')+'</span></div>';
+  return '<div class="navtop"><button class="volver" data-act="tab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOS[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
 }
 function pantallaInicio(){
   var a=arqActual(), tot=gimItems().length, hs=gimHechas(a), okg=gimOk(a), nom=nombreArq(a);
@@ -4528,7 +4532,7 @@ function menuInicio(M,acto){
 var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',histcampo:'Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function navTopC(t){
-  return '<div class="navtop"><button class="volver" data-act="ctab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span></div>';
+  return '<div class="navtop"><button class="volver" data-act="ctab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
 }
 function pantallaInicioCampo(){
   var r=recActual(), abierto=!!(r&&!r.cerrado), nrec=D.recorridos.length, nlig=(D.ligas||[]).length;
