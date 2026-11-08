@@ -962,7 +962,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=71;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=72;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1308,6 +1308,10 @@ var U={dist:18,col:false,tri:false,pCol:false,pTri:false,site:0,arq:0,sel:{end:0
 var C={tab:'inicio',idx:0,sel:{a:0,f:0},abierto:null,nuevos:2,fotoDestino:null};
 
 var tSubida=null;
+/* Lo que este móvil sube también le llega de vuelta como «cambio en la nube». Hay que reconocerlo como propio: si no,
+   al seguir escribiendo mientras se completa la subida, lo tomaría por un cambio de OTRO móvil y avisaría de un choque. */
+function subiendoAhora(){ return !!C.subiendo3&&Date.now()-(C.subiendoDesde||0)<20000; }
+function esHuellaPropia(k,h){ return !!(C.propias&&C.propias[k]&&C.propias[k].indexOf(h)>=0); }
 function programaSubida(ms){ clearTimeout(tSubida); tSubida=setTimeout(function(){ empujaV3(false,false); },ms); }
 function save(marca){
   if(marca!==false) D.ts=Date.now();
@@ -1694,7 +1698,9 @@ function empujaV3(manual,forzar){
   C.esperaGrande=false;
   if(!lista.length&&msDeTs(D.sync.ultima)>=(D.ts||0)){ C.syncEstado='ok'; repintaNube(manual); return; }
   var ts=Math.max(Date.now(),msDeTs(D.sync.ultima)+1,Math.floor(D.ts||0)+1)*1000+idDisp();
-  C.subiendo3=true; C.tsPropio=ts; C.syncEstado='subiendo'; if(manual) render(); else refrescaNube();
+  C.subiendo3=true; C.subiendoDesde=Date.now(); C.tsPropio=ts; C.syncEstado='subiendo'; if(manual) render(); else refrescaNube();
+  if(!C.propias) C.propias={};
+  lista.forEach(function(q){ var a=(C.propias[q.k]=C.propias[q.k]||[]); a.push(q.h); if(a.length>12) a.shift(); });
   var cambios={ts:ts};
   lista.forEach(function(q){ cambios['p/'+q.k]=q.t; cambios['h/'+q.k]=q.h; });
   escribeV3(cambios)
@@ -1704,9 +1710,11 @@ function empujaV3(manual,forzar){
       save(false); repintaNube(manual); if(manual) toast('Subido a la nube.');
       try{ sincFotos(); }catch(e){}
       if(C.resubir||(D.ts||0)>msDeTs(D.sync.ultima)){ C.resubir=false; programaSubida(300); }
+      if(C.pendRebajar){ C.pendRebajar=false; setTimeout(function(){ bajarRapido(); },80); }
     })
     .catch(function(e){ C.subiendo3=false; C.syncEstado='error'; C.syncError=String(e&&e.message||e);
-      repintaNube(manual); if(manual) toast('No se pudo subir: '+explicaError(C.syncError)); });
+      repintaNube(manual); if(manual) toast('No se pudo subir: '+explicaError(C.syncError));
+      if(C.pendRebajar){ C.pendRebajar=false; setTimeout(function(){ bajarRapido(); },80); } });
 }
 
 /* traer: solo las partes que se diferencian de las de este móvil */
@@ -1771,6 +1779,7 @@ function reconcilia(rts,hrDado){
       if(lh===rh){ hs[k]=lh; continue; }
       if(rh===undefined){ push.push(k); continue; }
       if(lh===undefined){ pull.push(k); continue; }
+      if(esHuellaPropia(k,rh)){ push.push(k); continue; }            /* lo de la nube es una subida mía anterior: solo falta subir lo nuevo */
       if(rh!==sh&&lh===sh) pull.push(k);
       else if(lh!==sh&&rh===sh) push.push(k);
       else choque.push(k);
@@ -1812,6 +1821,7 @@ function bajarNube(manual){
   if(!syncListo()) return;
   var uu=normalizaUrl(D.sync.url);
   if(!uu.ok){ C.syncEstado='error'; C.syncError=uu.msg; repintaNube(manual); if(manual) toast(uu.msg); return; }
+  if(subiendoAhora()&&!manual){ C.pendRebajar=true; return; }
   if(C.bajando3){ C.rebajar=true; if(manual) toast('Ya estoy consultando la nube…'); return; }
   C.bajando3=true; C.syncEstado='bajando'; if(manual) render(); else refrescaNube();
   var fin=function(){ C.bajando3=false; try{ sincFotos(); }catch(e){} if(C.rebajar){ C.rebajar=false; setTimeout(function(){ bajarNube(false); },60); } };
@@ -1867,6 +1877,7 @@ function vivoOff(){
 /* respuesta a un aviso de la nube: ya sabemos qué huellas hay, solo se pide lo que falta */
 function bajarRapido(){
   if(!syncListo()||!D.sync.auto) return;
+  if(subiendoAhora()){ C.pendRebajar=true; return; }               /* la propia subida está en camino: se mira al terminar */
   if(!EV.h||!Object.keys(EV.h).length){ bajarNube(false); return; }     /* sin formato nuevo conocido: camino completo */
   if(C.bajando3){ C.rebajar=true; return; }
   C.bajando3=true;
