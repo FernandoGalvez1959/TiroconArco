@@ -395,8 +395,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .tec textarea{width:100%;min-height:96px;background:#151C24;border:1px solid var(--line);
   border-radius:9px;padding:11px;color:var(--ink);font-size:14px;line-height:1.5;resize:vertical;}
 .tecfotos{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
-.tf{position:relative;}
-.tf img{width:92px;height:69px;border-radius:8px;object-fit:cover;display:block;background:#151C24;}
+.tf{position:relative;flex:0 0 calc((100% - 16px)/3);}
+.tf img{width:100%;height:auto;aspect-ratio:4/3;border-radius:8px;object-fit:cover;display:block;background:#151C24;}
 .tf button{position:absolute;top:-6px;right:-6px;width:23px;height:23px;border-radius:50%;
   background:var(--panel2);color:var(--ink);font-size:12px;box-shadow:inset 0 0 0 1px var(--line);}
 .docimg{width:100%;border-radius:10px;display:block;margin:4px 0 10px;background:#fff;}
@@ -1039,7 +1039,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=75;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=76;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -2567,7 +2567,7 @@ function cargarFoto(file){
         var dat={data:url.split(',')[1],w:ancho,h:alto};
         if(destino&&destino.tipo==='ficha'){
           var t2=D[destino.lista][destino.i];
-          if(t2){ if(!t2.fotos) t2.fotos=[]; if(t2.fotos.length<3) t2.fotos.push(dat); }
+          if(t2){ if(!t2.fotos) t2.fotos=[]; if(t2.fotos.length<maxFotosFicha(destino.lista)) t2.fotos.push(dat); }
           C.fotoDestino=null;
         }
         else if(destino){ var rr=recActual(); if(rr) animal(rr,destino.pu).foto=dat; C.fotoDestino=null; }
@@ -2580,6 +2580,50 @@ function cargarFoto(file){
   fr.readAsDataURL(file);
 }
 function fotoURL(a){ return 'data:image/jpeg;base64,'+a.foto.data; }
+/* fotos de las fichas (material y técnicas): se puede elegir varias a la vez, hasta el tope de cada lista */
+function reduceFotoFicha(file,cb){
+  var fr=new FileReader();
+  fr.onerror=function(){ cb(null); };
+  fr.onload=function(){
+    var img=new Image();
+    img.onerror=function(){ cb(null); };
+    img.onload=function(){
+      try{
+        var ancho=320, alto=240, cv=document.createElement('canvas'); cv.width=ancho; cv.height=alto;
+        var ctx=cv.getContext('2d'), ar=img.width/img.height, tar=ancho/alto, sw,sh,sx,sy;
+        if(ar>tar){ sh=img.height; sw=sh*tar; sx=(img.width-sw)/2; sy=0; }
+        else { sw=img.width; sh=sw/tar; sx=0; sy=(img.height-sh)/2; }
+        ctx.drawImage(img,sx,sy,sw,sh,0,0,ancho,alto);
+        cb({data:cv.toDataURL('image/jpeg',0.62).split(',')[1],w:ancho,h:alto});
+      }catch(e){ cb(null); }
+    };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function cargarFotosFicha(fs){
+  var d=C.fotoDestino; C.fotoDestino=null;
+  var t=d&&D[d.lista]&&D[d.lista][d.i]; if(!t||!fs.length) return;
+  var mx=maxFotosFicha(d.lista), n=0, avisos=[], lleno=false;
+  if(!t.fotos) t.fotos=[];
+  function fin(){
+    var m=[];
+    if(n) m.push((n===1?'Foto guardada':n+' fotos guardadas')+' ('+t.fotos.length+' de '+mx+').');
+    if(lleno) m.push('Ya hay '+mx+' fotos. Quita alguna para añadir otra.');
+    avisos.forEach(function(a){ m.push(a); });
+    if(n){ save(); render(); }
+    if(m.length) toast(m.join(' '));
+  }
+  (function sig(){
+    var f=fs.shift(); if(!f){ fin(); return; }
+    if(t.fotos.length>=mx){ lleno=true; sig(); return; }
+    reduceFotoFicha(f,function(r){
+      if(!r){ avisos.push('Ese archivo no es una imagen válida.'); sig(); return; }
+      if(espacioLibre()<r.data.length+150000){ avisos.push('No queda sitio suficiente en el móvil para otra foto. Quita alguna.'); sig(); return; }
+      t.fotos.push(r); n++; sig();
+    });
+  })();
+}
 
 /* ---- bloqueo por PIN ----
    Cerrojo local: evita miradas ajenas, no cifra nada. Sin recuperación posible. */
@@ -4422,8 +4466,9 @@ function pantallaResumen(r){
 }
 var SUGMAT=['Arco','Flechas','Cuerda','Visor','Estabilizador','Botón','Reposaflechas','Clicker',
   'Dragonera','Aljaba','Protector de dedos','Protector de brazo','Puntas','Plumas','Culatines','Disparador'];
+function maxFotosFicha(lista){ return lista==='material'?6:3; }      /* material: hasta 6 fotos por ficha; técnicas: 3 */
 function fichas(lista,titulo,ayuda,ph,sug){
-  var arr=D[lista]||[];
+  var arr=D[lista]||[], mx=maxFotosFicha(lista);
   var h='<div class="card"><div class="chead"><h2>'+titulo+'</h2><span>'+arr.length+'</span></div>'
     +'<p class="stat">'+ayuda+'</p></div>';
   arr.forEach(function(t,i){
@@ -4449,7 +4494,7 @@ function fichas(lista,titulo,ayuda,ph,sug){
       +'<button class="mini" data-act="fichabaja" data-l="'+lista+'" data-i="'+i+'"'
       +(i===arr.length-1?' disabled':'')+' aria-label="Bajar">▼</button>'
       +'<button class="mini" data-act="copiarficha" data-l="'+lista+'" data-i="'+i+'">Copiar</button>'
-      +(fotos.length<3?'<button class="mini" data-act="fotoficha" data-l="'+lista+'" data-i="'+i+'">Añadir foto</button>':'')
+      +(fotos.length<mx?'<button class="mini" data-act="fotoficha" data-l="'+lista+'" data-i="'+i+'">Añadir foto ('+fotos.length+'/'+mx+')</button>':'')
       +'<button class="mini" data-act="borficha" data-l="'+lista+'" data-i="'+i+'">Borrar</button></div></div>';
   });
   h+='<button class="act'+(lista==='tecnicas'?' act2':'')+'" data-act="nuevaficha" data-l="'+lista+'">'
@@ -5662,12 +5707,13 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='copiarficha'){ var tf=D[b.dataset.l][Number(b.dataset.i)];
     copiar((tf.titulo?tf.titulo+'\n\n':'')+tf.texto,b.dataset.l==='material'?'Material':'Técnica'); }
   else if(a==='fotoficha'){ C.fotoDestino={tipo:'ficha',lista:b.dataset.l,i:Number(b.dataset.i)};
-    var fi3=document.getElementById('fotoinput'); fi3.value=''; fi3.click(); }
+    var fi3=document.getElementById('fotoinput'); fi3.value=''; fi3.multiple=true; fi3.click(); }
   else if(a==='borfichafoto'){ var tg=D[b.dataset.l][Number(b.dataset.i)];
     if(tg&&tg.fotos) tg.fotos.splice(Number(b.dataset.j),1); save(); render(); }
   else if(a==='verfichafoto'){ var th=D[b.dataset.l][Number(b.dataset.i)];
-    if(th&&th.fotos&&th.fotos[b.dataset.j]) mostrarImagen('data:image/jpeg;base64,'+th.fotos[b.dataset.j].data,
-      th.titulo||'Foto','Foto',limpiaNombre(th.titulo||'foto')+'.jpg'); }
+    if(th&&th.fotos&&th.fotos[b.dataset.j]){
+      var conF=th.fotos.filter(function(x){ return x&&x.data; }), foF=th.fotos[Number(b.dataset.j)];
+      abreGaleria(conF,conF.indexOf(foF),(th.titulo||'Foto')+(b.dataset.l==='material'?' · material':' · técnica'),th.titulo||'foto'); } }
   else if(a==='borficha'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
     D[b.dataset.l].splice(Number(b.dataset.i),1); save(); render();
@@ -5801,7 +5847,9 @@ document.getElementById('app').addEventListener('change',function(ev){
 });
 
 document.getElementById('fotoinput').addEventListener('change',function(ev){
-  cargarFoto(ev.target.files && ev.target.files[0]);
+  var fs=ev.target.files?Array.prototype.slice.call(ev.target.files):[];
+  ev.target.multiple=false;
+  if(C.fotoDestino&&C.fotoDestino.tipo==='ficha') cargarFotosFicha(fs); else cargarFoto(fs[0]);
 });
 document.getElementById('docinput').addEventListener('change',function(ev){
   var fs=ev.target.files?Array.prototype.slice.call(ev.target.files):[]; if(!fs.length) return;
