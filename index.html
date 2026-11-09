@@ -1039,7 +1039,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=76;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=77;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1215,6 +1215,9 @@ function reformar(s,ne,na){
 function fecha(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
 function fechaCorta(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
 function iso(d){ return new Date(d).toISOString().slice(0,10); }
+/* nombre de la copia de seguridad: primero la fecha como añomesdía (20261109) y luego «Tiro con Arco».
+   La fecha es la del móvil (no la UTC: de madrugada la UTC aún va un día por detrás). */
+function nombreCopia(ms,ext,sinFotos){ return fechaCompacta(ms)+' Tiro con Arco'+(sinFotos?' sin fotos':'')+'.'+ext; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* ---- reparador: Firebase borra los nulos y convierte las listas en objetos ---- */
@@ -3124,7 +3127,10 @@ function buildPDF(s){
   for(k=0;k<out.length;k++) bytes[k]=out.charCodeAt(k)&255;
   return bytes;
 }
-function fechaCompacta(f){ return iso(f).replace(/-/g,''); }
+function fechaCompacta(f){      /* AAAAMMDD: de un instante (número) con la fecha del móvil; de un texto AAAA-MM-DD, tal cual */
+  if(typeof f==='number'){ var d=new Date(f), z=function(n){ return (n<10?'0':'')+n; }; return d.getFullYear()+z(d.getMonth()+1)+z(d.getDate()); }
+  return iso(f).replace(/-/g,'');
+}
 function limpiaNombre(t){ return String(t).replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim(); }
 function baseSala(s){ return limpiaNombre(fechaCompacta(s.fecha)+' '+distTag(s)+' '+sitio(s.site)); }
 function baseCampo(r){ return limpiaNombre(fechaCompacta(r.fecha)+' '+r.puestos+'p '+D.campos[r.campo].nombre); }
@@ -5493,9 +5499,9 @@ document.getElementById('app').addEventListener('click',function(ev){
   }
   else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
-    'copia-tiro-con-arco-'+iso(Date.now())+'.json','application/json'); }
+    nombreCopia(Date.now(),'json',C.conFotos===false),'application/json'); }
   else if(a==='compartircopia'){ comparte(copiaJSON(C.conFotos!==false),
-    'copia-tiro-con-arco-'+iso(Date.now())+'.txt','text/plain'); }
+    nombreCopia(Date.now(),'txt',C.conFotos===false),'text/plain'); }
   else if(a==='compartirapp'){
     var enlace=(typeof location!=='undefined'&&location.href)?String(location.href).split('#')[0]:'';
     var txt='Tiro con Arco, la app para anotar. Ábrelo en Chrome y elige "Instalar aplicación": '+enlace;
