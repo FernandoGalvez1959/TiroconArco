@@ -188,6 +188,10 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .segmat button[data-on="1"] small{color:var(--gold);}
 .avisoalm{background:#2A1818;border:1px solid #9C3B38;color:#F2C3C0;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13px;line-height:1.45;}
 .avisoalm b{color:#fff;}
+.avisocopia{background:#2A2412;border:1px solid #B8901A;color:#F5E3A6;border-radius:12px;padding:10px 12px;margin:0 0 8px;font-size:13px;line-height:1.4;}
+.avisocopia b{display:block;color:#fff;font-size:14.5px;margin-bottom:2px;}
+.avisocopia .pair{margin-top:8px;}
+.avisocopia .act,.avisocopia .ghost{margin:0;padding:11px 8px;font-size:15px;}
 .objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
 .objfila b{color:var(--gold);}
 .objfila .dias{color:var(--dim);}
@@ -1039,7 +1043,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=78;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=79;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1215,6 +1219,49 @@ function reformar(s,ne,na){
 function fecha(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
 function fechaCorta(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
 function iso(d){ return new Date(d).toISOString().slice(0,10); }
+/* ---- aviso de copia: al abrir la app, si han pasado N días desde la última copia, sale un botón para guardarla ----
+   (la app web no puede guardar un archivo sola: el móvil exige que toques tú). Es un ajuste de ESTE móvil: no viaja ni se copia. */
+var COPIAAUTO='arqueria:copiaauto';
+function copiaAuto(){
+  var o={on:true,dias:2,ult:0,oculto:0};
+  try{ var v=JSON.parse(localStorage.getItem(COPIAAUTO)||'null');
+    if(v&&typeof v==='object'){ if(v.on===false) o.on=false; if([1,2,3,7].indexOf(Number(v.dias))>=0) o.dias=Number(v.dias); o.ult=Number(v.ult)||0; o.oculto=Number(v.oculto)||0; } }catch(e){}
+  return o;
+}
+function guardaCopiaAuto(o){ try{ localStorage.setItem(COPIAAUTO,JSON.stringify(o)); }catch(e){} }
+function dia0(ms){ var d=new Date(ms); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); }
+function diasEntre(a,b){ return Math.round((dia0(b)-dia0(a))/86400000); }          /* días de calendario (no horas): aguanta el cambio de hora */
+function hayDatosCopia(){
+  return !!((D.sessions&&D.sessions.length)||(D.recorridos&&D.recorridos.length)||(D.ligas&&D.ligas.length)||(D.ligasSala&&D.ligasSala.length)
+    ||(D.tecnicas&&D.tecnicas.length)||(D.material&&D.material.length)||(D.arqueros||[]).some(function(a){ return a&&(a.eq||a.foto); })
+    ||(D.pend&&(((D.pend.trabajos||[]).length)+((D.pend.compras||[]).length))));
+}
+function copiaVencida(){       /* null si no toca avisar; si toca, {nunca:true} o {dias:N} */
+  var o=copiaAuto(), ahora=Date.now();
+  if(!o.on||!hayDatosCopia()) return null;
+  if(o.oculto&&ahora<o.oculto) return null;
+  if(!o.ult) return {nunca:true};
+  var d=diasEntre(o.ult,ahora);
+  return d>=o.dias?{dias:d}:null;
+}
+function marcaCopia(){ var o=copiaAuto(); o.ult=Date.now(); o.oculto=0; guardaCopiaAuto(o); }
+function hace(ms){ var d=diasEntre(ms,Date.now()); return d<=0?'hoy':d===1?'ayer':'hace '+d+' días'; }
+function avisoCopia(){
+  var v=copiaVencida(); if(!v) return '';
+  var t=v.nunca?'Todavía no has hecho ninguna copia de seguridad.':'Hace '+v.dias+(v.dias===1?' día':' días')+' que no haces copia de seguridad.';
+  return '<div class="avisocopia"><b>🛟 '+t+'</b>Un toque y se guarda todo como «'+esc(nombreCopia(Date.now(),'json',false))+'».'
+    +'<div class="pair"><button class="act" data-act="copiaahora">Hacer copia ahora</button>'
+    +'<button class="ghost" data-act="copiamastarde">Más tarde</button></div></div>';
+}
+function tarjetaAvisoCopia(){
+  var o=copiaAuto(), op=[['off','Nunca'],['1','1 día'],['2','2 días'],['3','3 días'],['7','7 días']], sel=o.on?String(o.dias):'off';
+  return '<div class="card"><div class="chead"><h2>Aviso de copia</h2><span>'+(o.on?'cada '+o.dias+(o.dias===1?' día':' días'):'apagado')+'</span></div>'
+    +'<p class="stat">Al abrir la app, si han pasado esos días desde tu última copia, sale un aviso arriba con un botón para guardarla con un toque. '
+    +'La app no puede guardar el archivo ella sola: el móvil exige que toques tú.</p>'
+    +'<div class="seg" style="margin:10px 0">'+op.map(function(x){
+      return '<button data-act="copiaautodias" data-v="'+x[0]+'" data-on="'+(sel===x[0]?1:0)+'">'+x[1]+'</button>'; }).join('')+'</div>'
+    +'<p class="stat">'+(o.ult?'Última copia: <i>'+fecha(o.ult)+'</i> ('+hace(o.ult)+').':'Todavía no has hecho ninguna copia en este móvil.')+'</p></div>';
+}
 /* nombre de la copia de seguridad: primero «Arco» y luego la fecha como añomesdía (Arco 20261109).
    La fecha es la del móvil (no la UTC: de madrugada la UTC aún va un día por detrás). */
 function nombreCopia(ms,ext,sinFotos){ return 'Arco '+fechaCompacta(ms)+(sinFotos?' sin fotos':'')+'.'+ext; }
@@ -2060,28 +2107,34 @@ function b64(bytes){
   for(i=0;i<bytes.length;i+=CH) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));
   return btoa(s);
 }
-function bajar(bytes,nombre,tipo){
+/* alExito (opcional): se llama solo cuando el archivo se ha guardado de verdad: el menú de compartir se completó, la descarga
+   se lanzó, o se tocó el enlace manual. Si se cancela el menú de compartir, NO se llama. */
+function bajar(bytes,nombre,tipo,alExito){
   var blob;
   try{ blob=new Blob([bytes],{type:tipo}); }catch(e){ blob=null; }
+  var ok=function(){ try{ if(alExito) alExito(); }catch(e){} };
   if(blob && navigator.share && navigator.canShare && typeof File!=='undefined'){
     try{
       var f=new File([blob],nombre,{type:tipo});
       if(navigator.canShare({files:[f]})){
-        navigator.share({files:[f],title:nombre}).catch(function(){ enlaceManual(bytes,nombre,tipo,blob); });
+        navigator.share({files:[f],title:nombre}).then(ok,function(){ enlaceManual(bytes,nombre,tipo,blob,alExito); });
         return;
       }
     }catch(e){}
   }
+  var hecho=false;
   if(blob && !WV){
     try{
       var url=URL.createObjectURL(blob), a=document.createElement('a');
-      a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+      a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); hecho=true;
     }catch(e){}
   }
-  enlaceManual(bytes,nombre,tipo,blob);
+  if(hecho) ok();
+  enlaceManual(bytes,nombre,tipo,blob,hecho?null:alExito);
 }
-function enlaceManual(bytes,nombre,tipo,blob){
+function enlaceManual(bytes,nombre,tipo,blob,alExito){
   var caja=document.getElementById('fallback'), href;
+  C.alExitoLink=alExito||null;
   try{ href='data:'+tipo+';base64,'+b64(bytes); }
   catch(e){ href=blob?URL.createObjectURL(blob):''; }
   caja.innerHTML='<div class="fbcard"><b>'+esc(nombre)+'</b>'
@@ -2456,6 +2509,7 @@ function tarjetaCopia(){
     +'Guárdalo donde quieras: correo, nube o el propio móvil. Con él podrás restaurarlo '
     +'aquí o en cualquier otro teléfono.</p></div>';
 
+  h+=tarjetaAvisoCopia();
   h+='<div class="card"><div class="chead"><h2>Restaurar</h2></div>'
     +'<p class="stat">Elige un archivo de copia. Lo que tengas ahora se sustituye por completo.</p>'
     +'<button class="act act2" data-act="elegircopia">Elegir archivo de copia</button>';
@@ -2518,8 +2572,8 @@ function tarjetaCopia(){
         +'<button class="act act2" data-act="syncganaNube" style="margin-top:0">Traer lo de la nube</button></div></div>';
     }
   }
-  h+='<p class="stat" style="margin-top:10px">Los documentos del club no se suben a la nube, por su peso: '
-    +'se quedan en el móvil donde los adjuntes.</p>'
+  h+='<p class="stat" style="margin-top:10px">Las fotos y los documentos de las ligas (PDF y páginas .html) también viajan a la nube, cada uno por su cuenta. '
+    +'El otro móvil se los baja solo si le queda sitio.</p>'
     +'<p class="stat" style="margin-top:10px">Quien conozca la dirección y la clave puede ver y cambiar '
     +'estos datos. No es un secreto fuerte: no pongas ahí nada que no quieras que se vea.</p></div>';
 
@@ -4802,7 +4856,7 @@ function pantallaInicio(){
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
-  return menuInicio(M,'tab');
+  return avisoCopia()+menuInicio(M,'tab');
 }
 /* un botón por línea, de ancho completo; el que lleva el séptimo dato (true) es el grande */
 function menuInicio(M,acto){
@@ -4839,7 +4893,7 @@ function pantallaInicioCampo(){
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
-  return menuInicio(M,'ctab');
+  return avisoCopia()+menuInicio(M,'ctab');
 }
 
 /* ---- anotar una tirada solo con su total (sin las flechas una a una) ---- */
@@ -5499,7 +5553,14 @@ document.getElementById('app').addEventListener('click',function(ev){
   }
   else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
-    nombreCopia(Date.now(),'json',C.conFotos===false),'application/json'); }
+    nombreCopia(Date.now(),'json',C.conFotos===false),'application/json',function(){ marcaCopia(); render(); }); }
+  else if(a==='copiaahora'){ var ncp=nombreCopia(Date.now(),'json',false);
+    bajar(copiaJSON(true),ncp,'application/json',function(){ marcaCopia(); render(); toast('Copia guardada: '+ncp); }); }
+  else if(a==='copiamastarde'){ var ocp=copiaAuto(), hoy0=new Date(); ocp.oculto=new Date(hoy0.getFullYear(),hoy0.getMonth(),hoy0.getDate()+1).getTime();
+    guardaCopiaAuto(ocp); render(); toast('Te lo recuerdo mañana.'); }
+  else if(a==='copiaautodias'){ var oca=copiaAuto();
+    if(v==='off') oca.on=false; else { oca.on=true; oca.dias=Number(v); } oca.oculto=0; guardaCopiaAuto(oca); render();
+    toast(v==='off'?'No te avisaré de la copia.':'Te avisaré cada '+v+(v==='1'?' día':' días')+'.'); }
   else if(a==='compartircopia'){ comparte(copiaJSON(C.conFotos!==false),
     nombreCopia(Date.now(),'txt',C.conFotos===false),'text/plain'); }
   else if(a==='compartirapp'){
@@ -5951,8 +6012,9 @@ document.getElementById('visor').addEventListener('click',function(ev){
 });
 document.getElementById('fallback').addEventListener('click',function(ev){
   var fb=ev.target.dataset.fb;
-  if(fb==='cerrar'){ this.style.display='none'; this.innerHTML=''; }
+  if(fb==='cerrar'){ this.style.display='none'; this.innerHTML=''; C.alExitoLink=null; }
   else if(fb==='link' && WV){ ev.preventDefault(); toast('Mantén el dedo pulsado sobre el botón, no lo toques.'); }
+  else if(fb==='link'){ if(C.alExitoLink){ var fnl=C.alExitoLink; C.alExitoLink=null; try{ fnl(); }catch(e){} } }
 });
 window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferredPrompt=e; render(); });
 
