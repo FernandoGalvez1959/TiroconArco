@@ -189,6 +189,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .avisoalm{background:#2A1818;border:1px solid #9C3B38;color:#F2C3C0;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13px;line-height:1.45;}
 .avisoalm b{color:#fff;}
 .fslot.r3s[data-sel="1"]{box-shadow:inset 0 0 0 3px var(--gold) !important;}
+.rec.r3rec .v{flex:0 1 auto;min-width:0;max-width:64%;}
+.rec.r3rec .v small{white-space:normal;}
 .r3row{display:grid;grid-template-columns:26px 58px 1fr 38px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer;}
 .r3row b{font-size:16px;}
 .r3row .r3ch i{display:inline-block;font-style:normal;font-weight:800;font-size:14px;min-width:30px;text-align:center;padding:4px 6px;margin-right:5px;border-radius:7px;}
@@ -1056,7 +1058,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=81;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=84;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1217,6 +1219,14 @@ function pantallaMejores(){
         +'<p class="nota">'+esc(nombreArq(arqPorId(sel)))+' no tiene tiradas en esta diana, pero otros arqueros sí. Elige «Todos los arqueros» arriba para verlas.</p></div>';
     }
   });
+  var f3='';
+  D.sites.forEach(function(sn,si){
+    var c3=r3MejorSitio(sel===''?null:sel,si); if(!c3) return; hay=true;
+    f3+='<div class="hrow mej" data-act="hver" data-mod="3d" data-site="'+si+'">'
+      +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+r3Total(c3)+'</span></div>'
+      +'<div class="l2">'+r3Formato(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
+  });
+  if(f3) h+='<div class="card"><div class="chead"><h2>Recorrido 3D</h2><span>mejor recorrido</span></div>'+f3+'</div>';
   if(!hay) h+='<div class="card"><p class="empty">Aún no hay tiradas completas'+(sel!==''&&arqs.length>1?' de este arquero':'')
     +'. Cuando guardes una, aquí saldrá la mejor de cada diana y de cada sitio.</p></div>';
   return h;
@@ -3516,11 +3526,16 @@ function clasifJPG(gp,cb){
 /* ---- imagen de progreso: gráfica y mejores marcas ---- */
 function progresoJPG(cb){
   var A=arqActual(), CW=900, M=60;
-  var serie=D.sessions.filter(function(x){ return x.arquero===A.id && modDe(x)===modP() && x.site===U.pSite; })
+  var es3=(U.pVista==='3d');
+  var serie=es3?r3Cerrados(A.id,U.pSite).filter(function(x){ return r3Flechas(x); }).map(function(x){ return {fecha:x.fecha, media:r3Media(x), total:r3Total(x)}; })
+    :D.sessions.filter(function(x){ return x.arquero===A.id && modDe(x)===modP() && x.site===U.pSite; })
     .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
     .map(function(x){ return {fecha:x.fecha, media:media(x), total:total(x)}; });
   var filas=[];
-  MODS.forEach(function(md){ var d=md.id;
+  if(es3){ var m3=null, st3=null, i3;
+    for(i3=0;i3<D.sites.length;i3++){ var b3=r3MejorSitio(A.id,i3); if(b3&&(!m3||r3Media(b3)>r3Media(m3))){ m3=b3; st3=i3; } }
+    filas.push({es3:true,b:m3,st:st3});
+  } else MODS.forEach(function(md){ var d=md.id;
     var mejor=null, st=null, i;
     for(i=0;i<D.sites.length;i++){ var b=best(A.id,d,i); if(b&&(!mejor||media(b)>media(mejor))){ mejor=b; st=i; } }
     filas.push({d:d,b:mejor,st:st});
@@ -3529,7 +3544,7 @@ function progresoJPG(cb){
   var L=lienzo(CW,CH), g=L.g, P=pintor(g);
   var nom=limpiaNombre(fechaCompacta(Date.now())+' progreso '+nombreArq(A))+'.jpg';
   encabezado(P,g,CW,M,'Progreso',nom,
-    nombreArq(A)+'  ·  '+descMod(modP())+'  ·  '+sitio(U.pSite), serie.length+' tiradas');
+    nombreArq(A)+'  ·  '+(es3?'Recorrido 3D':descMod(modP()))+'  ·  '+sitio(U.pSite), serie.length+(es3?' recorridos':' tiradas'));
 
   var gx=M, gy=210, gw=CW-2*M, gh=altoG;
   g.fillStyle='#F7F8F9'; g.fillRect(gx,gy,gw,gh);
@@ -3537,7 +3552,7 @@ function progresoJPG(cb){
   if(serie.length){
     var vs=serie.map(function(x){ return x.media; });
     var lo=Math.max(0,Math.floor(Math.min.apply(null,vs)*2)/2-0.5);
-    var hi=Math.min(10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
+    var hi=Math.min(es3?11:10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
     var px=function(i){ return gx+46+(serie.length===1?(gw-70)/2:i*(gw-70)/(serie.length-1)); };
     var py=function(v){ return gy+18+(gh-46)*(1-(v-lo)/(hi-lo)); };
     var i2;
@@ -3565,7 +3580,7 @@ function progresoJPG(cb){
       P.T(X,ty2+4,30,par[1],{b:1});
     });
   } else {
-    P.T(CW/2,gy+gh/2,20,'Todavía no hay tiradas a esta distancia y sitio.',{a:'center',c:'#7A858F'});
+    P.T(CW/2,gy+gh/2,20,(es3?'Todavía no hay recorridos 3D en este sitio.':'Todavía no hay tiradas a esta distancia y sitio.'),{a:'center',c:'#7A858F'});
   }
 
   var ty=gy+gh+100;
@@ -3573,11 +3588,11 @@ function progresoJPG(cb){
   ty+=16; P.LN(M,ty,CW-M,ty,'#12181F',1.5);
   filas.forEach(function(f){
     ty+=46;
-    P.T(M+2,ty-14,22,descMod(f.d),{b:1});
+    P.T(M+2,ty-14,22,f.es3?'Recorrido 3D':descMod(f.d),{b:1});
     if(f.b){
-      P.TF(M+215,ty-14,CW-M-235-(M+215),sitio(f.st)+'  ·  '+formato(f.b)+'  ·  '+fecha(f.b.fecha),{s:19,c:'#5B6975'});
-      P.T(CW-M-215,ty-14,24,total(f.b),{b:1,a:'right'});
-      P.T(CW-M,ty-14,19,dec(media(f.b))+' por flecha',{a:'right',c:'#42505C'});
+      P.TF(M+215,ty-14,CW-M-235-(M+215),sitio(f.st)+'  ·  '+(f.es3?f.b.fp+' fl./puesto':formato(f.b))+'  ·  '+fecha(f.b.fecha),{s:19,c:'#5B6975'});
+      P.T(CW-M-215,ty-14,24,f.es3?r3Total(f.b):total(f.b),{b:1,a:'right'});
+      P.T(CW-M,ty-14,19,dec(f.es3?r3Media(f.b):media(f.b))+' por flecha',{a:'right',c:'#42505C'});
     } else P.T(M+215,ty-14,19,'Sin marca',{c:'#9AA3AB'});
     P.LN(M,ty,CW-M,ty,'#DDE2E7',1);
   });
@@ -3715,12 +3730,12 @@ function verClasif(gp){
 }
 
 /* ---- gráfica ---- */
-function chart(pts){
-  if(!pts.length) return '<p class="empty">Sin tiradas guardadas en esta distancia y sitio.</p>';
+function chart(pts,maxY,vacio){
+  if(!pts.length) return '<p class="empty">'+(vacio||'Sin tiradas guardadas en esta distancia y sitio.')+'</p>';
   var W=300,H=132,L=24,R=8,T=10,B=20;
   var vs=pts.map(function(p){ return p.media; });
   var lo=Math.max(0,Math.floor(Math.min.apply(null,vs)*2)/2-0.5);
-  var hi=Math.min(10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
+  var hi=Math.min(maxY||10,Math.max(Math.ceil(Math.max.apply(null,vs)*2)/2+0.5,lo+1));
   var x=function(i){ return L+(pts.length===1?(W-L-R)/2:i*(W-L-R)/(pts.length-1)); };
   var y=function(v){ return T+(H-T-B)*(1-(v-lo)/(hi-lo)); };
   var g='',i;
@@ -4877,7 +4892,7 @@ function pantallaInicio(){
     ['rec3d','🦌','Recorrido 3D',r3sub,'#F2C11B',''],
     ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
     ['progreso','📈','Progreso','cómo vas mejorando','#3D7CC9',''],
-    ['historial','🕘','Historial',ns+(ns===1?' tirada guardada':' tiradas guardadas'),'#3D7CC9',''],
+    ['historial','🕘','Historial',ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':''),'#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
     ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
     ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
@@ -4977,6 +4992,47 @@ function guardaTotal(){
 /* ---- Recorrido 3D de sala: 5 puestos con su distancia; 2 flechas por puesto (ajustable); puntuación 3D: 11, 10, 8, 5 y fallo ---- */
 function r3Lista(){ return D.rec3d||(D.rec3d=[]); }
 function r3fDef(){ return {fecha:hoyISO(),site:0,fp:2}; }
+function r3Cerrados(arqId,site){ return r3Lista().filter(function(x){ return x.cerrado&&(arqId==null||x.arq===arqId)&&(site==null||x.site===site); })
+  .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); }); }
+function r3Media(x){ var n=r3Flechas(x); return n?r3Total(x)/n:0; }
+function r3Formato(x){ return x.dist.length+' puestos · '+x.fp+(x.fp===1?' flecha':' flechas')+' por puesto'; }
+function r3EsMejor(x){ var mx=r3Max(x), t=r3Total(x); return r3Completo(x)&&!r3Lista().some(function(y){ return y.cerrado&&r3Completo(y)&&y.arq===x.arq&&y.id!==x.id&&r3Max(y)===mx&&r3Total(y)>t; }); }
+function r3MejorSitio(arqId,site){      /* el mejor por media por flecha (así se comparan recorridos de 1, 2 o 3 flechas por puesto) */
+  var m=null;
+  r3Cerrados(arqId,site).forEach(function(x){ if(!r3Completo(x)) return;
+    if(!m||r3Media(x)>r3Media(m)||(r3Media(x)===r3Media(m)&&r3Total(x)>r3Total(m))) m=x; });
+  return m;
+}
+function segProgreso(){ var v3=(U.pVista==='3d'); return '<div class="seg" style="margin-bottom:10px">'
+  +'<button data-act="pvista" data-v="dianas" data-on="'+(v3?0:1)+'">Dianas</button>'
+  +'<button data-act="pvista" data-v="3d" data-on="'+(v3?1:0)+'">Recorrido 3D</button></div>'; }
+function progreso3D(A){
+  var serie=r3Cerrados(A.id,U.pSite).filter(function(x){ return r3Flechas(x); }).map(function(x){ return {fecha:x.fecha,media:r3Media(x),total:r3Total(x)}; });
+  var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
+  var h=segProgreso()+'<div class="selrow">'+selArq()+'</div>'+selSitio('data-selpsite',U.pSite)+'<div style="height:12px"></div>';
+  h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+(serie.length===1?' recorrido':' recorridos')+'</span></div>'
+    +chart(serie,11,'Sin recorridos 3D guardados en este sitio.')
+    +(serie.length?'<div class="legend"><div>Última<b>'+dec(ms[ms.length-1])+'</b></div>'
+      +'<div>Mejor<b>'+dec(Math.max.apply(null,ms))+'</b></div>'
+      +'<div>Media de 5<b>'+dec(u5.reduce(function(a,v){ return a+v; },0)/u5.length)+'</b></div></div>':'')+'</div>';
+  h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
+  D.sites.forEach(function(sn,i){
+    var b=r3MejorSitio(A.id,i);
+    h+='<div class="rec r3rec"><div class="lbl">Recorrido 3D<small>'+esc(sn)+'</small></div><div class="v">'
+      +(b?'<b>'+dec(r3Media(b))+'</b><small>'+r3Total(b)+' de '+r3Max(b)+' · '+b.fp+(b.fp===1?' flecha':' flechas')+' por puesto · '+fecha(b.fecha).replace(/ /g,'\u00a0')+'</small>':'<small>Sin registro</small>')+'</div></div>';
+  });
+  h+='</div><div class="card"><div class="chead"><h2>Guardar</h2></div>'+dosBotones('prog')+'</div>';
+  return h;
+}
+function filaR3(x){
+  var a=arqPorId(x.arq), n=r3Flechas(x), inc=!r3Completo(x);
+  return '<div class="hrow"><div class="l1"><b>Recorrido 3D</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+'</div>'
+    +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(x.fecha)+'</div>'
+    +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.dist.length*x.fp)+' flechas</span>':'')
+    +(n?' · '+dec(r3Media(x))+' por flecha':'')+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
+    +'<div class="hbts" style="grid-template-columns:1fr 42px"><button class="mini" data-act="r3abre" data-id="'+x.id+'">Abrir</button>'
+    +'<button class="mini" data-act="r3borrar" data-id="'+x.id+'">✕</button></div></div>';
+}
 function r3Nuevo3(arq,f,dist,fp){
   var r={id:uid(),fecha:isoDia(f.fecha),arq:arq.id,site:Number(f.site)||0,dist:dist.map(function(x,i){ return x>0?x:[10,30,9,13,16][i]; }),fp:fp,
     tiros:dist.map(function(){ var o=[],j; for(j=0;j<fp;j++) o.push(null); return o; }),cerrado:false};
@@ -4995,7 +5051,7 @@ function r3Actual(){
 function r3Primero(r){ var i; for(i=0;i<r.dist.length;i++) if(!r3Hecho(r,i)) return i; return 0; }
 function r3Mejor(arq,max,salvoId){      /* mejor total de los recorridos cerrados del mismo arquero y la misma puntuación máxima */
   var m=null;
-  r3Lista().forEach(function(x){ if(x.cerrado&&x.arq===arq&&x.id!==salvoId&&r3Max(x)===max&&(m===null||r3Total(x)>m)) m=r3Total(x); });
+  r3Lista().forEach(function(x){ if(x.cerrado&&r3Completo(x)&&x.arq===arq&&x.id!==salvoId&&r3Max(x)===max&&(m===null||r3Total(x)>m)) m=r3Total(x); });
   return m;
 }
 function r3Dists(l){ var d=(l||D.rec3dDist||[10,30,9,13,16]).map(function(x){ return fmtN(Number(x)); }); return d.slice(0,-1).join(', ')+' y '+d[d.length-1]+' m'; }
@@ -5058,8 +5114,7 @@ function r3Historial(){
   if(!lista.length) return h+'<p class="stat">Aún no hay ninguno de '+esc(nombreArq(a))+'. Al cerrar un recorrido aparecerá aquí.</p></div>';
   lista.forEach(function(x){
     var tot=r3Total(x), mx=r3Max(x), n=r3Flechas(x), mej=r3Mejor(x.arq,mx,x.id), es=(mej===null||tot>mej);
-    var otros=r3Lista().filter(function(y){ return y.cerrado&&y.arq===x.arq&&y.id!==x.id&&r3Max(y)===mx&&r3Total(y)>tot; }).length;
-    h+='<div class="r3row r3h" data-act="r3abre" data-id="'+x.id+'"><div><b>'+fecha(x.fecha)+'</b><small>'+esc(sitio(x.site))+' · '+x.fp+' flecha'+(x.fp>1?'s':'')+' por puesto'+(!otros?' · ★ mejor':'')+'</small></div>'
+    h+='<div class="r3row r3h" data-act="r3abre" data-id="'+x.id+'"><div><b>'+fecha(x.fecha)+'</b><small>'+esc(sitio(x.site))+' · '+x.fp+' flecha'+(x.fp>1?'s':'')+' por puesto'+(r3EsMejor(x)?' · ★ mejor':'')+'</small></div>'
       +'<div class="r3pt"><b>'+tot+'</b>/'+mx+'<small>'+(n?'media '+fmtN(Math.round(tot/n*10)/10):'')+'</small></div>'
       +'<button class="mini" data-act="r3borrar" data-id="'+x.id+'">✕</button></div>';
   });
@@ -5268,7 +5323,9 @@ function render(){
     });
   }
 
-  if(U.tab==='progreso'){
+  if(U.tab==='progreso'&&U.pVista==='3d'){ h+=progreso3D(A); }
+  if(U.tab==='progreso'&&U.pVista!=='3d'){
+    h+=segProgreso();
     var serie=D.sessions.filter(function(x){ return x.arquero===A.id && modDe(x)===modP() && x.site===U.pSite; })
       .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
       .map(function(x){ return {fecha:x.fecha, media:media(x)}; });
@@ -5314,6 +5371,12 @@ function render(){
     }).sort(function(x,y){
       return (x.site-y.site) || (modIdx(x)-modIdx(y)) || (new Date(y.fecha)-new Date(x.fecha));
     });
+    var lista3=((U.hDist===''||U.hDist==null||U.hDist==='3d')?r3Cerrados(null,null):[]).filter(function(x){
+      return (U.hSite===''||U.hSite==null||Number(U.hSite)===x.site)&&(!U.hSoloInc||!r3Completo(x)); });
+    var todos=lista.map(function(x){ return {t:'s',x:x,site:x.site,mi:modIdx(x),f:x.fecha}; })
+      .concat(lista3.map(function(x){ return {t:'r',x:x,site:x.site,mi:MODS.length,f:x.fecha}; }))
+      .sort(function(p,q){ return (p.site-q.site)||(p.mi-q.mi)||(new Date(q.f)-new Date(p.f)); });
+    var ntot=D.sessions.length+r3Cerrados(null,null).length;
     if(U.hSoloInc) h+='<p class="nota" style="margin:0 0 10px">Solo las <b>tiradas incompletas</b>. <button class="mini" data-act="hinc0">Ver todas</button></p>';
     h+='<div class="dosel"><select class="arq" data-hsite>'
       +'<option value=""'+(U.hSite?'':' selected')+'>Todos los sitios</option>'
@@ -5322,13 +5385,16 @@ function render(){
       +'</select><select class="arq" data-hdist>'
       +'<option value=""'+(U.hDist?'':' selected')+'>Todas las distancias</option>'
       +MODS.map(function(md){ return '<option value="'+md.id+'"'+(String(U.hDist)===md.id?' selected':'')+'>'+descMod(md.id)+'</option>'; }).join('')
+      +'<option value="3d"'+(U.hDist==='3d'?' selected':'')+'>Recorrido 3D</option>'
       +'</select></div>';
-    var tope=U.hTope||15, vistos=lista.slice(0,tope);
+    var tope=U.hTope||15, vistos=todos.slice(0,tope);
     h+='<div class="card"><div class="chead"><h2>Historial</h2>'
-      +'<span>'+(vistos.length<lista.length?vistos.length+' de ':'')+lista.length
-      +(lista.length!==D.sessions.length?' (de '+D.sessions.length+')':'')+'</span></div>';
-    if(!lista.length) h+='<p class="empty">'+(D.sessions.length?'Nada con ese filtro.':'Guarda una tirada y aparecerá aquí.')+'</p>';
-    vistos.forEach(function(s){
+      +'<span>'+(vistos.length<todos.length?vistos.length+' de ':'')+todos.length
+      +(todos.length!==ntot?' (de '+ntot+')':'')+'</span></div>';
+    if(!todos.length) h+='<p class="empty">'+(ntot?'Nada con ese filtro.':'Guarda una tirada y aparecerá aquí.')+'</p>';
+    vistos.forEach(function(it){
+      if(it.t==='r'){ h+=filaR3(it.x); return; }
+      var s=it.x;
       var a=arqPorId(s.arquero), b=best(s.arquero,modDe(s),s.site), pr=pctObj(a,s);
       h+='<div class="hrow">'
         +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
@@ -5340,8 +5406,8 @@ function render(){
         +(reparable(s)?'<button class="mini" style="margin-top:8px;width:100%" data-act="hcompleta" data-id="'+s.id+'">Darla por completa ('+tandasLlenas(s)+' tandas)</button>':'')
         +'</div>';
     });
-    if(vistos.length<lista.length)
-      h+='<button class="act act2" data-act="hmas">Ver '+Math.min(15,lista.length-vistos.length)+' más</button>';
+    if(vistos.length<todos.length)
+      h+='<button class="act act2" data-act="hmas">Ver '+Math.min(15,todos.length-vistos.length)+' más</button>';
     h+='</div>';
   }
 
@@ -5552,6 +5618,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(sc&&reparable(sc)){ sc.ends=sc.ends.slice(0,tandasLlenas(sc)); save(); render(); toast('Tirada completa: '+nE(sc)+' tandas'); }
   }
   else if(a==='hver'){ U.hSoloInc=false; U.hVista='todas'; U.hSite=String(b.dataset.site); U.hDist=String(b.dataset.mod); U.hTope=15; render(); }
+  else if(a==='pvista'){ U.pVista=(v==='3d')?'3d':'dianas'; render(); }
   else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; U.pTri=!!mp.tri; render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
@@ -5604,7 +5671,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='r3nuevo'){
     var f3=U.r3f||(U.r3f=r3fDef()), ar3=arqActual(), dd3=(D.rec3dDist||[10,30,9,13,16]).map(Number), fp3=Number(f3.fp)||2;
     var n3=r3Nuevo3(ar3,f3,dd3,fp3); U.r3=n3.id; U.r3i=0; U.r3s=0; save(); render(); window.scrollTo(0,0); }
-  else if(a==='r3abre'){ U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; render(); window.scrollTo(0,0); }
+  else if(a==='r3abre'){ U.tab='rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; render(); window.scrollTo(0,0); }
   else if(a==='r3ir'){ U.r3i=Number(v); U.r3s=0; render(); }
   else if(a==='r3slot'){ U.r3s=Number(v); render(); }
   else if(a==='r3key'){
@@ -5629,7 +5696,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(!r3Completo(rc)&&b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='Faltan flechas: ¿cerrar igualmente?'; return; }
     var mejc=r3Mejor(rc.arq,r3Max(rc),rc.id), tc=r3Total(rc);
     rc.cerrado=true; U.r3=null; U.r3i=null; U.r3s=0; save(); render();
-    toast((r3Flechas(rc)&&(mejc===null||tc>mejc)?'¡Mejor marca! ':'Recorrido guardado: ')+tc+' de '+r3Max(rc)); }
+    toast((r3Completo(rc)&&(mejc===null||tc>mejc)?'¡Mejor marca! ':'Recorrido guardado: ')+tc+' de '+r3Max(rc)); }
   else if(a==='r3reabrir'){ var rr3=r3Lista().filter(function(x){ return x.id===b.dataset.id; })[0]; if(rr3){ rr3.cerrado=false; U.r3=rr3.id; U.r3i=r3Primero(rr3); U.r3s=0; save(); render(); } }
   else if(a==='r3descarta'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Descartarlo? Pulsa otra vez'; return; }
