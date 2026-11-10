@@ -1039,7 +1039,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=77;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=78;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1215,9 +1215,9 @@ function reformar(s,ne,na){
 function fecha(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
 function fechaCorta(iso){ return new Date(iso).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
 function iso(d){ return new Date(d).toISOString().slice(0,10); }
-/* nombre de la copia de seguridad: primero la fecha como añomesdía (20261109) y luego «Tiro con Arco».
+/* nombre de la copia de seguridad: primero «Arco» y luego la fecha como añomesdía (Arco 20261109).
    La fecha es la del móvil (no la UTC: de madrugada la UTC aún va un día por detrás). */
-function nombreCopia(ms,ext,sinFotos){ return fechaCompacta(ms)+' Tiro con Arco'+(sinFotos?' sin fotos':'')+'.'+ext; }
+function nombreCopia(ms,ext,sinFotos){ return 'Arco '+fechaCompacta(ms)+(sinFotos?' sin fotos':'')+'.'+ext; }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* ---- reparador: Firebase borra los nulos y convierte las listas en objetos ---- */
