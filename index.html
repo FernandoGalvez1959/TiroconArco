@@ -210,6 +210,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
 .objfila b{color:var(--gold);}
 .objfila .dias{color:var(--dim);}
+.objfila b.pctok{color:#6FC38C;}
+.objfila b.ko{color:var(--red);}
 .objfila .vencido{color:var(--red);}
 .objrow{display:grid;grid-template-columns:1fr 74px 138px;gap:7px;align-items:center;margin:6px 0;}
 .objrow .lbl{font-size:13px;color:var(--ink);}
@@ -904,6 +906,17 @@ function objetivosCampoArq(a,i){
   });
   return h;
 }
+/* ---- objetivo del recorrido 3D de sala: puntos de un recorrido de 5 puestos con 2 flechas por puesto, tope de M y fecha ---- */
+function objetivos3DArq(a,i){
+  var o=a.obj3d||{}, n=(D.rec3dDist||[1,2,3,4,5]).length, mx=n*2*11;
+  return '<p class="subapt">Objetivo recorrido 3D</p>'
+    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo), máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha.</p>'
+    +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>'
+    +'<div class="objrow objc4"><div class="lbl">'+n+' puestos</div>'
+    +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+    +'<input class="cinp" type="number" inputmode="numeric" min="0" step="1" placeholder="—" aria-label="Máximo de M del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="m" value="'+esc(o.m==null?'':String(o.m))+'">'
+    +'<input class="cinp" type="date" aria-label="Fecha límite del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="f" value="'+esc(o.f||'')+'"></div>';
+}
 /* ---- gimnasia previa a la tirada ---- */
 var GM={abierta:null,edita:false};
 function gimItems(){ return (D.gim&&D.gim.items)||[]; }
@@ -1058,7 +1071,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=84;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=85;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4711,6 +4724,11 @@ function mejoresDe(a){
       +(mejor?'<b>'+total(mejor)+'</b><small>'+dec(media(mejor))+' por flecha</small>':'<small>Sin marca</small>')
       +'</div></div>';
   });
+  var m3=r3MejorSitio(a.id,null);
+  if(m3) hay=true;
+  h+='<div class="rec" style="padding:8px 0"><div class="lbl">Recorrido 3D'
+    +(m3?'<small>'+esc(sitio(m3.site))+' · '+r3Formato(m3)+' · '+fecha(m3.fecha)+'</small>':'')+'</div><div class="v">'
+    +(m3?'<b>'+r3Total(m3)+'</b><small>'+dec(r3Media(m3))+' por flecha</small>':'<small>Sin marca</small>')+'</div></div>';
   return h+(hay?'':'<p class="stat">Aún no hay tiradas completas guardadas.</p>');
 }
 function pantallaHistorialCampo(){
@@ -5029,10 +5047,21 @@ function filaR3(x){
   return '<div class="hrow"><div class="l1"><b>Recorrido 3D</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+'</div>'
     +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(x.fecha)+'</div>'
     +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.dist.length*x.fp)+' flechas</span>':'')
-    +(n?' · '+dec(r3Media(x))+' por flecha':'')+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
+    +(n?' · '+dec(r3Media(x))+' por flecha':'')+r3ObjMini(x)+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
     +'<div class="hbts" style="grid-template-columns:1fr 42px"><button class="mini" data-act="r3abre" data-id="'+x.id+'">Abrir</button>'
     +'<button class="mini" data-act="r3borrar" data-id="'+x.id+'">✕</button></div></div>';
 }
+function r3ObjDe(arqId){ var a=arqPorId(arqId), o=a&&a.obj3d; return (o&&Number(o.p)>0)?o:null; }
+function r3ObjEstado(x){      /* el objetivo se define para 2 flechas por puesto; con 1 o 3 se compara por media por flecha */
+  var o=r3ObjDe(x.arq); if(!o) return null;
+  var fl=r3Flechas(x), tot=r3Total(x), todas=x.dist.length*x.fp, base=x.dist.length*2, ms=0;
+  x.tiros.forEach(function(t){ t.forEach(function(v){ if(v==='M') ms++; }); });
+  var pct=fl?(tot/fl*base/Number(o.p)*100):null;
+  var lim=(o.m==null||o.m==='')?null:Number(o.m), aplicaM=(lim!=null&&x.fp===2), okM=!aplicaM||ms<=lim, completo=fl>=todas;
+  return {o:o,pct:pct,ms:ms,lim:lim,aplicaM:aplicaM,okM:okM,completo:completo,logrado:completo&&pct!=null&&pct>=100&&okM};
+}
+function r3ObjMini(x){ var e=r3ObjEstado(x); if(!e||e.pct==null) return '';
+  return ' · <b class="'+(e.pct>=100?'pctok':'')+'">'+Math.round(e.pct)+' %</b> del objetivo'+(e.okM?'':' · <b class="ko">M ✗</b>'); }
 function r3Nuevo3(arq,f,dist,fp){
   var r={id:uid(),fecha:isoDia(f.fecha),arq:arq.id,site:Number(f.site)||0,dist:dist.map(function(x,i){ return x>0?x:[10,30,9,13,16][i]; }),fp:fp,
     tiros:dist.map(function(){ var o=[],j; for(j=0;j<fp;j++) o.push(null); return o; }),cerrado:false};
@@ -5090,6 +5119,11 @@ function r3Resumen(r){
       +t.map(function(v){ return '<i style="'+sty(color3(v))+'">'+(v==null?'·':v)+'</i>'; }).join('')+'</span><b>'+(t.some(function(v){ return v!=null; })?s:'')+'</b></div>';
   });
   h+='<div class="r3tot"><span>Total</span><b>'+tot+'</b><small>de '+mx+(n?' · media '+fmtN(Math.round(tot/n*10)/10)+' por flecha':'')+'</small></div>';
+  var oe=r3ObjEstado(r);
+  if(oe) h+='<div class="objfila"><b>Objetivo</b> Recorrido 3D: '+objCTexto(oe.o)
+    +(oe.pct!=null?'<br>Vas al <b class="'+(oe.pct>=100?'pctok':'')+'">'+Math.round(oe.pct)+' %</b>'
+      +(oe.aplicaM?' · '+oe.ms+(oe.ms===1?' M':' M')+(oe.okM?'':' <b class="ko">✗ pasa del máximo</b>'):'')
+      +(oe.logrado?' · <b class="pctok">✓ conseguido</b>':''):'')+'</div>';
   if(!r.cerrado){
     h+='<button class="act" data-act="r3cerrar">'+(r3Completo(r)?'Cerrar y guardar el recorrido':'Cerrar el recorrido')+'</button>'
       +'<button class="ghost" data-act="r3descarta">Descartar este recorrido</button>';
@@ -5155,6 +5189,7 @@ function pantallaArqueros(){
         +equipoArq(a,i)
         +'<div class="apt dr">🎯 Objetivos</div>'
         +objetivosArq(a,i)
+        +objetivos3DArq(a,i)
         +objetivosCampoArq(a,i)
         +mejoresDe(a)
         +'</div>';
@@ -6060,6 +6095,14 @@ document.getElementById('app').addEventListener('input',function(ev){
       if(cpo==='p'){ if(isNaN(cn)||cn<=0) delete co.p; else co.p=cn; }
       else if(cpo==='m'){ if(cv===''||isNaN(cn)||cn<0) delete co.m; else co.m=Math.floor(cn); }
       else co.f=t.value;
+      save(); } }
+  else if(t.dataset.obj3arq!=null){
+    var oa3=D.arqueros[Number(t.dataset.obj3arq)], ok3=t.dataset.obj3po;
+    if(oa3){ if(!oa3.obj3d) oa3.obj3d={};
+      var ov3=String(t.value).trim(), on3=parseFloat(ov3.replace(',','.'));
+      if(ok3==='p'){ if(isNaN(on3)||on3<=0) delete oa3.obj3d.p; else oa3.obj3d.p=on3; }
+      else if(ok3==='m'){ if(ov3===''||isNaN(on3)||on3<0) delete oa3.obj3d.m; else oa3.obj3d.m=Math.floor(on3); }
+      else oa3.obj3d.f=t.value;
       save(); } }
   else if(t.dataset.objarq!=null){
     var oa=D.arqueros[Number(t.dataset.objarq)], om=t.dataset.objmod, oc=t.dataset.objcampo;
