@@ -191,6 +191,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .fslot.r3s[data-sel="1"]{box-shadow:inset 0 0 0 3px var(--gold) !important;}
 .rec.r3rec .v{flex:0 1 auto;min-width:0;max-width:64%;}
 .rec.r3rec .v small{white-space:normal;}
+.r3tn{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px;border-bottom:1px solid var(--line);color:var(--gold);font-size:14px;}
+.r3tn span{color:var(--dim);font-size:13px;}
 .r3row{display:grid;grid-template-columns:26px 58px 1fr 38px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer;}
 .r3row b{font-size:16px;}
 .r3row .r3ch i{display:inline-block;font-style:normal;font-weight:800;font-size:14px;min-width:30px;text-align:center;padding:4px 6px;margin-right:5px;border-radius:7px;}
@@ -910,7 +912,7 @@ function objetivosCampoArq(a,i){
 function objetivos3DArq(a,i){
   var o=a.obj3d||{}, n=(D.rec3dDist||[1,2,3,4,5]).length, mx=n*2*11;
   return '<p class="subapt">Objetivo recorrido 3D</p>'
-    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo), máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha.</p>'
+    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo), máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha. Si das varias tandas, se compara por la media por flecha y el tope de M vale por vuelta.</p>'
     +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>'
     +'<div class="objrow objc4"><div class="lbl">'+n+' puestos</div>'
     +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="p" value="'+esc(o.p==null?'':String(o.p))+'">'
@@ -1071,7 +1073,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=85;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=87;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1372,8 +1374,9 @@ function reparaDatos(){
   D.rec3d.forEach(function(r){
     r.dist=(aLista(r.dist)||[]).map(function(x){ return Number(x)||0; });
     if(!(r.fp>=1&&r.fp<=3)) r.fp=2;
-    var t3=aLista(r.tiros)||[];
-    r.tiros=r.dist.map(function(_,i){ var par=aLista(t3[i])||[], o=[], j; for(j=0;j<r.fp;j++) o.push(par[j]===undefined?null:par[j]); return o; });
+    r.tandas=r3T(r);
+    var t3=aLista(r.tiros)||[], est=r.dist.length*r.tandas, ii;
+    r.tiros=[]; for(ii=0;ii<est;ii++){ var par=aLista(t3[ii])||[], o=[], j; for(j=0;j<r.fp;j++) o.push(par[j]===undefined?null:par[j]); r.tiros.push(o); }
   });
   var d3=(aLista(D.rec3dDist)||[]).map(Number), def3=[10,30,9,13,16];
   D.rec3dDist=def3.map(function(x,i){ return d3[i]>0?d3[i]:x; });
@@ -4902,7 +4905,7 @@ function pantallaInicio(){
   var a=arqActual(), tot=gimItems().length, hs=gimHechas(a), okg=gimOk(a), nom=nombreArq(a);
   var pend=((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length;
   var ns=D.sessions.length, nlig=(D.ligasSala||[]).length, r3o=r3Actual(), n3=r3Lista().filter(function(x){ return x.cerrado; }).length;
-  var r3sub=(r3o&&!r3o.cerrado)?'en curso · puesto '+(Math.min(r3Primero(r3o),r3o.dist.length-1)+1)+' de '+r3o.dist.length:n3?n3+(n3===1?' recorrido guardado':' recorridos guardados'):r3Dists().replace(/ m$/,'')+' m';
+  var r3sub=(r3o&&!r3o.cerrado)?'en curso · '+(r3T(r3o)>1?'tanda '+(Math.floor(Math.min(r3Primero(r3o),r3o.tiros.length-1)/r3o.dist.length)+1)+' de '+r3T(r3o)+', ':'')+'puesto '+(Math.min(r3Primero(r3o),r3o.tiros.length-1)%r3o.dist.length+1)+' de '+r3o.dist.length:n3?n3+(n3===1?' recorrido guardado':' recorridos guardados'):r3Dists().replace(/ m$/,'')+' m';
   var gsub=!tot?'sin ejercicios':!gimExige(a)?'no se exige a '+esc(nom):okg?'✓ completa':'✗ '+hs+' de '+tot+' hechos';
   var M=[
     ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(tot&&gimExige(a))?(okg?'bien':'mal'):''],
@@ -5009,11 +5012,11 @@ function guardaTotal(){
 
 /* ---- Recorrido 3D de sala: 5 puestos con su distancia; 2 flechas por puesto (ajustable); puntuación 3D: 11, 10, 8, 5 y fallo ---- */
 function r3Lista(){ return D.rec3d||(D.rec3d=[]); }
-function r3fDef(){ return {fecha:hoyISO(),site:0,fp:2}; }
+function r3fDef(){ return {fecha:hoyISO(),site:0,fp:2,tandas:1}; }
 function r3Cerrados(arqId,site){ return r3Lista().filter(function(x){ return x.cerrado&&(arqId==null||x.arq===arqId)&&(site==null||x.site===site); })
   .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); }); }
 function r3Media(x){ var n=r3Flechas(x); return n?r3Total(x)/n:0; }
-function r3Formato(x){ return x.dist.length+' puestos · '+x.fp+(x.fp===1?' flecha':' flechas')+' por puesto'; }
+function r3Formato(x){ var T=r3T(x); return x.dist.length+' puestos'+(T>1?' · '+T+' tandas':'')+' · '+x.fp+(x.fp===1?' flecha':' flechas')+' por puesto'; }
 function r3EsMejor(x){ var mx=r3Max(x), t=r3Total(x); return r3Completo(x)&&!r3Lista().some(function(y){ return y.cerrado&&r3Completo(y)&&y.arq===x.arq&&y.id!==x.id&&r3Max(y)===mx&&r3Total(y)>t; }); }
 function r3MejorSitio(arqId,site){      /* el mejor por media por flecha (así se comparan recorridos de 1, 2 o 3 flechas por puesto) */
   var m=null;
@@ -5037,7 +5040,7 @@ function progreso3D(A){
   D.sites.forEach(function(sn,i){
     var b=r3MejorSitio(A.id,i);
     h+='<div class="rec r3rec"><div class="lbl">Recorrido 3D<small>'+esc(sn)+'</small></div><div class="v">'
-      +(b?'<b>'+dec(r3Media(b))+'</b><small>'+r3Total(b)+' de '+r3Max(b)+' · '+b.fp+(b.fp===1?' flecha':' flechas')+' por puesto · '+fecha(b.fecha).replace(/ /g,'\u00a0')+'</small>':'<small>Sin registro</small>')+'</div></div>';
+      +(b?'<b>'+dec(r3Media(b))+'</b><small>'+r3Total(b)+' de '+r3Max(b)+' · '+(r3T(b)>1?r3T(b)+' tandas · ':'')+b.fp+(b.fp===1?' flecha':' flechas')+' por puesto · '+fecha(b.fecha).replace(/ /g,'\u00a0')+'</small>':'<small>Sin registro</small>')+'</div></div>';
   });
   h+='</div><div class="card"><div class="chead"><h2>Guardar</h2></div>'+dosBotones('prog')+'</div>';
   return h;
@@ -5046,7 +5049,7 @@ function filaR3(x){
   var a=arqPorId(x.arq), n=r3Flechas(x), inc=!r3Completo(x);
   return '<div class="hrow"><div class="l1"><b>Recorrido 3D</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+'</div>'
     +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(x.fecha)+'</div>'
-    +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.dist.length*x.fp)+' flechas</span>':'')
+    +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.tiros.length*x.fp)+' flechas</span>':'')
     +(n?' · '+dec(r3Media(x))+' por flecha':'')+r3ObjMini(x)+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
     +'<div class="hbts" style="grid-template-columns:1fr 42px"><button class="mini" data-act="r3abre" data-id="'+x.id+'">Abrir</button>'
     +'<button class="mini" data-act="r3borrar" data-id="'+x.id+'">✕</button></div></div>';
@@ -5054,30 +5057,66 @@ function filaR3(x){
 function r3ObjDe(arqId){ var a=arqPorId(arqId), o=a&&a.obj3d; return (o&&Number(o.p)>0)?o:null; }
 function r3ObjEstado(x){      /* el objetivo se define para 2 flechas por puesto; con 1 o 3 se compara por media por flecha */
   var o=r3ObjDe(x.arq); if(!o) return null;
-  var fl=r3Flechas(x), tot=r3Total(x), todas=x.dist.length*x.fp, base=x.dist.length*2, ms=0;
+  var fl=r3Flechas(x), tot=r3Total(x), todas=x.tiros.length*x.fp, base=x.dist.length*2, ms=0;
   x.tiros.forEach(function(t){ t.forEach(function(v){ if(v==='M') ms++; }); });
   var pct=fl?(tot/fl*base/Number(o.p)*100):null;
-  var lim=(o.m==null||o.m==='')?null:Number(o.m), aplicaM=(lim!=null&&x.fp===2), okM=!aplicaM||ms<=lim, completo=fl>=todas;
+  var lim=(o.m==null||o.m==='')?null:Number(o.m)*r3T(x), aplicaM=(lim!=null&&x.fp===2), okM=!aplicaM||ms<=lim, completo=fl>=todas;     /* el tope de M vale por vuelta */
   return {o:o,pct:pct,ms:ms,lim:lim,aplicaM:aplicaM,okM:okM,completo:completo,logrado:completo&&pct!=null&&pct>=100&&okM};
 }
 function r3ObjMini(x){ var e=r3ObjEstado(x); if(!e||e.pct==null) return '';
   return ' · <b class="'+(e.pct>=100?'pctok':'')+'">'+Math.round(e.pct)+' %</b> del objetivo'+(e.okM?'':' · <b class="ko">M ✗</b>'); }
-function r3Nuevo3(arq,f,dist,fp){
+/* anota una flecha en la posición actual y avanza; guarda lo que había antes para poder deshacer (por toque o por voz) */
+function r3Anota(r3,v){
+  var i3=Math.min(Math.max(U.r3i==null?r3Primero(r3):U.r3i,0),r3.tiros.length-1), s3=Math.min(U.r3s||0,r3.fp-1);
+  if(!U.r3u) U.r3u=[];
+  U.r3u.push({id:r3.id,i:i3,s:s3,p:r3.tiros[i3][s3]}); if(U.r3u.length>60) U.r3u.shift();
+  r3.tiros[i3][s3]=v;
+  if(s3<r3.fp-1) U.r3s=s3+1;
+  else { var sig3=r3.tiros[i3].indexOf(null);
+    if(sig3>=0) U.r3s=sig3;
+    else if(i3<r3.tiros.length-1){ U.r3i=i3+1; U.r3s=0; }
+    else { U.r3s=0; if(r3Completo(r3)) toast('Recorrido completo: '+r3Total(r3)+' de '+r3Max(r3)+'. Ciérralo para guardarlo.'); } }
+}
+function r3Deshacer(r){      /* quita la última flecha anotada y vuelve a esa posición */
+  var u=U.r3u||[], x;
+  while(u.length){ x=u.pop(); if(x.id===r.id&&r.tiros[x.i]){ r.tiros[x.i][x.s]=x.p; U.r3i=x.i; U.r3s=x.s; return true; } }
+  return false;
+}
+function r3VozAplica(texto){
+  var r=r3Actual(), dicho='«'+String(texto).trim()+'»';
+  if(!r||r.cerrado){ VOZ.oido=dicho; VOZ.aviso='Abre un recorrido para anotar.'; render(); return; }
+  var acc=vozInterpreta(texto,true), hechos=[], malos=[], llena=false;
+  if(!acc.length){ VOZ.oido=dicho; VOZ.aviso='No he entendido ninguna flecha.'; render(); return; }
+  if(!gimOk(arqPorId(r.arq))){ toast('Completa la gimnasia antes de anotar'); return; }
+  acc.forEach(function(a){
+    if(a.t==='u'){ hechos.push(r3Deshacer(r)?'borrar':'nada que borrar'); return; }
+    if(a.t==='x'){ malos.push(a.p); return; }
+    if(r3Completo(r)){ llena=true; return; }
+    r3Anota(r,a.v); hechos.push(a.v);
+  });
+  VOZ.oido=dicho+(hechos.length?' → '+hechos.join(' · '):'');
+  VOZ.aviso=malos.length?'No vale en el 3D: '+malos.join(', ')+'. Di once, diez, ocho, cinco o fallo.':(llena?'Recorrido completo: ciérralo para guardarlo.':'');
+  save(); render();
+}
+function r3Nuevo3(arq,f,dist,fp,tandas){
   var r={id:uid(),fecha:isoDia(f.fecha),arq:arq.id,site:Number(f.site)||0,dist:dist.map(function(x,i){ return x>0?x:[10,30,9,13,16][i]; }),fp:fp,
-    tiros:dist.map(function(){ var o=[],j; for(j=0;j<fp;j++) o.push(null); return o; }),cerrado:false};
+    tandas:tandas||1,
+    tiros:(function(){ var t=[],i,j; for(i=0;i<dist.length*(tandas||1);i++){ var o=[]; for(j=0;j<fp;j++) o.push(null); t.push(o); } return t; })(),cerrado:false};
   r3Lista().unshift(r); return r;
 }
-function r3Max(r){ return r.dist.length*r.fp*11; }
+function r3T(r){ var t=Math.floor(Number(r.tandas)); return (t>=1&&t<=10)?t:1; }                       /* tandas (vueltas al recorrido) */
+function r3Dist(r,i){ return r.dist[i%r.dist.length]; }                                              /* cada vuelta repite los mismos puestos y distancias */
+function r3Max(r){ return r.tiros.length*r.fp*11; }
 function r3Total(r){ var n=0; r.tiros.forEach(function(t){ t.forEach(function(v){ n+=pts3(v); }); }); return n; }
 function r3Flechas(r){ var n=0; r.tiros.forEach(function(t){ t.forEach(function(v){ if(v!=null) n++; }); }); return n; }
-function r3Completo(r){ return r3Flechas(r)===r.dist.length*r.fp; }
+function r3Completo(r){ return r3Flechas(r)===r.tiros.length*r.fp; }
 function r3Hecho(r,i){ return r.tiros[i].every(function(v){ return v!=null; }); }
-function r3Hechos(r){ var n=0,i; for(i=0;i<r.dist.length;i++) if(r3Hecho(r,i)) n++; return n; }
+function r3Hechos(r){ var n=0,i; for(i=0;i<r.tiros.length;i++) if(r3Hecho(r,i)) n++; return n; }
 function r3Actual(){
   var l=r3Lista(), a=arqActual(), r=l.filter(function(x){ return x.id===U.r3; })[0];
   return r||l.filter(function(x){ return !x.cerrado&&x.arq===a.id; })[0]||null;
 }
-function r3Primero(r){ var i; for(i=0;i<r.dist.length;i++) if(!r3Hecho(r,i)) return i; return 0; }
+function r3Primero(r){ var i; for(i=0;i<r.tiros.length;i++) if(!r3Hecho(r,i)) return i; return 0; }
 function r3Mejor(arq,max,salvoId){      /* mejor total de los recorridos cerrados del mismo arquero y la misma puntuación máxima */
   var m=null;
   r3Lista().forEach(function(x){ if(x.cerrado&&r3Completo(x)&&x.arq===arq&&x.id!==salvoId&&r3Max(x)===max&&(m===null||r3Total(x)>m)) m=r3Total(x); });
@@ -5085,12 +5124,13 @@ function r3Mejor(arq,max,salvoId){      /* mejor total de los recorridos cerrado
 }
 function r3Dists(l){ var d=(l||D.rec3dDist||[10,30,9,13,16]).map(function(x){ return fmtN(Number(x)); }); return d.slice(0,-1).join(', ')+' y '+d[d.length-1]+' m'; }
 function r3Puesto(r){
-  var a=arqPorId(r.arq), i=Math.min(Math.max(U.r3i==null?r3Primero(r):U.r3i,0),r.dist.length-1), sel=Math.min(U.r3s||0,r.fp-1);
-  var h='<div class="card"><div class="chead"><h2>Puesto '+(i+1)+' · '+fmtN(r.dist[i])+' m</h2>'
-    +'<span>'+(i+1)+' de '+r.dist.length+(r.cerrado?' · cerrado':'')+'</span></div>'
+  var n=r.dist.length, T=r3T(r), a=arqPorId(r.arq), i=Math.min(Math.max(U.r3i==null?r3Primero(r):U.r3i,0),r.tiros.length-1), sel=Math.min(U.r3s||0,r.fp-1);
+  var pn=i%n, tn=Math.floor(i/n)+1;
+  var h='<div class="card"><div class="chead"><h2>Puesto '+(pn+1)+' · '+fmtN(r3Dist(r,i))+' m</h2>'
+    +'<span>'+(T>1?'Tanda '+tn+' de '+T+' · ':'')+(pn+1)+' de '+n+(r.cerrado?' · cerrado':'')+'</span></div>'
     +'<p class="stat">'+esc(nombreArq(a))+' · '+fecha(r.fecha)+' · '+esc(sitio(r.site))+'</p>';
   if(!r.cerrado) h+='<div class="distrow"><span class="distlab">Distancia de este puesto</span>'
-    +'<input type="number" inputmode="decimal" class="distinp" data-r3pdist="'+i+'" placeholder="m" value="'+(r.dist[i]||'')+'"><span class="distlab">m</span></div>';
+    +'<input type="number" inputmode="decimal" class="distinp" data-r3pdist="'+pn+'" placeholder="m" value="'+(r.dist[pn]||'')+'"><span class="distlab">m</span></div>';
   var t=r.tiros[i], suma=0; t.forEach(function(v){ suma+=pts3(v); });
   h+='<div class="tiro"><div class="qn">Flechas<small>'+r.fp+' por puesto</small></div><div class="fl">';
   t.forEach(function(v,fi){
@@ -5104,18 +5144,21 @@ function r3Puesto(r){
     if(bloq) h+='<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>';
     h+='<div class="pad3" data-bloq="'+(bloq?1:0)+'">';
     KEYS3D.forEach(function(v){ h+='<button data-act="r3key" data-v="'+v+'"'+(bloq?' disabled':'')+' style="'+sty(color3(v))+'">'+v+'</button>'; });
-    h+='</div><button class="ghost" data-act="r3borra" style="width:100%">Borrar esta flecha</button>';
+    h+='</div>'+vozFila(true)+'<button class="ghost" data-act="r3borra" style="width:100%;margin-top:10px">Borrar esta flecha</button>';
   }
   h+='<div class="navp"><button data-act="r3ant"'+(i===0?' disabled':'')+'>◀ Anterior</button>'
-    +'<button data-act="r3sig"'+(i>=r.dist.length-1?' disabled':'')+'>Siguiente ▶</button></div></div>';
+    +'<button data-act="r3sig"'+(i>=r.tiros.length-1?' disabled':'')+'>Siguiente ▶</button></div></div>';
   return h;
 }
 function r3Resumen(r){
   var tot=r3Total(r), mx=r3Max(r), n=r3Flechas(r);
-  var h='<div class="card"><div class="chead"><h2>Resumen</h2><span>'+r3Hechos(r)+' de '+r.dist.length+' puestos</span></div>';
+  var nn=r.dist.length, TT=r3T(r);
+  var h='<div class="card"><div class="chead"><h2>Resumen</h2><span>'+r3Hechos(r)+' de '+r.tiros.length+' puestos</span></div>';
   r.tiros.forEach(function(t,i){
     var s=0; t.forEach(function(v){ s+=pts3(v); });
-    h+='<div class="r3row" data-act="r3ir" data-v="'+i+'"><b>'+(i+1)+'</b><span>'+fmtN(r.dist[i])+' m</span><span class="r3ch">'
+    if(TT>1&&i%nn===0){ var st=0,k; for(k=i;k<i+nn;k++) r.tiros[k].forEach(function(v){ st+=pts3(v); });
+      h+='<div class="r3tn"><b>Tanda '+(i/nn+1)+'</b><span>'+st+' de '+(nn*r.fp*11)+'</span></div>'; }
+    h+='<div class="r3row" data-act="r3ir" data-v="'+i+'"><b>'+(i%nn+1)+'</b><span>'+fmtN(r3Dist(r,i))+' m</span><span class="r3ch">'
       +t.map(function(v){ return '<i style="'+sty(color3(v))+'">'+(v==null?'·':v)+'</i>'; }).join('')+'</span><b>'+(t.some(function(v){ return v!=null; })?s:'')+'</b></div>';
   });
   h+='<div class="r3tot"><span>Total</span><b>'+tot+'</b><small>de '+mx+(n?' · media '+fmtN(Math.round(tot/n*10)/10)+' por flecha':'')+'</small></div>';
@@ -5137,6 +5180,9 @@ function r3Nuevo(){
     +'<div class="field"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
     +'<div class="field"><label>Sitio</label><select class="arq" data-r3f="site">'
     +D.sites.map(function(x,i){ return '<option value="'+i+'"'+(Number(f.site)===i?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+'</select></div>'
+    +'<div class="fmt" style="margin:10px 0 4px"><div class="step"><span class="lb">Tandas<br>(vueltas)</span>'
+    +'<button data-act="r3tandas" data-v="-1">−</button><b>'+(Math.min(10,Math.max(1,Number(f.tandas)||1)))+'</b><button data-act="r3tandas" data-v="1">+</button></div></div>'
+    +'<p class="stat" style="margin:0 0 6px">Cada tanda es una vuelta completa por los '+(D.rec3dDist||[]).length+' puestos.</p>'
     +'<p class="stat" style="margin-top:8px">Flechas por puesto</p><div class="seg" style="margin:6px 0 12px">'
     +[1,2,3].map(function(n){ return '<button data-act="r3fp" data-v="'+n+'" data-on="'+(Number(f.fp)===n?1:0)+'">'+n+'</button>'; }).join('')+'</div>'
     +'<button class="act" data-act="r3nuevo">Empezar recorrido</button></div>';
@@ -5219,7 +5265,7 @@ function pantallaSitios(){
 }
 
 function render(){
-  if(VOZ.activa&&!(D.modo!=='campo'&&U.tab==='tirada')) vozStop();
+  if(VOZ.activa&&!(D.modo!=='campo'&&(U.tab==='tirada'||U.tab==='rec3d'))) vozStop();
   if(['inicio','tirada','rec3d','clasif','progreso','historial','ligas','arqueros','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
@@ -5482,27 +5528,28 @@ function shoot(v){
 }
 /* ---- anotar flechas con la voz (reconocimiento de voz del navegador; en Chrome usa internet) ---- */
 var VOZ={rec:null,activa:false,oido:'',aviso:'',tm:null};
-var PAL_VOZ={cero:'M',uno:'1',una:'1',dos:'2',tres:'3',cuatro:'4',cinco:'5',seis:'6',siete:'7',ocho:'8',nueve:'9',diez:'10',
+var PAL_VOZ={once:'11',cero:'M',uno:'1',una:'1',dos:'2',tres:'3',cuatro:'4',cinco:'5',seis:'6',siete:'7',ocho:'8',nueve:'9',diez:'10',
   equis:'X',ics:'X',x:'X',eme:'M',m:'M',emes:'M',fallo:'M',fallos:'M',mal:'M',fuera:'M',nada:'M',
   amarillo:'A',amarilla:'A',rojo:'R',roja:'R',negro:'N',negra:'N'};
 var PAL_BORRA={borrar:1,borra:1,atras:1,deshacer:1,deshaz:1,corrige:1,corregir:1,quita:1,quitar:1};
-function claveValida(v){ var K=U.col?KEYSCOL:U.tri?KEYSTRI:KEYS; return K.indexOf(v)>=0; }
-function vozSeparaCifras(t){ var o=[], i=0;
-  while(i<t.length){ if(t.substr(i,2)==='10'){ o.push('10'); i+=2; } else { o.push(t.charAt(i)==='0'?'M':t.charAt(i)); i++; } }
+function claveValida(v,es3){ if(es3) return KEYS3D.indexOf(v)>=0; var K=U.col?KEYSCOL:U.tri?KEYSTRI:KEYS; return K.indexOf(v)>=0; }
+function vozSeparaCifras(t,es3){ var o=[], i=0;
+  while(i<t.length){ if(t.substr(i,2)==='10'||(es3&&t.substr(i,2)==='11')){ o.push(t.substr(i,2)); i+=2; } else { o.push(t.charAt(i)==='0'?'M':t.charAt(i)); i++; } }
   return o; }
 /* convierte lo dicho en una lista de acciones: {t:'v',v:'10'} anotar, {t:'u'} borrar, {t:'x',p:'cinco'} no vale aquí */
-function vozInterpreta(texto){
+function vozInterpreta(texto,es3){
   var t=String(texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ');
   var acc=[];
   t.split(/\s+/).forEach(function(p){
     if(!p) return;
     if(PAL_BORRA[p]){ acc.push({t:'u'}); return; }
-    var vs=/^\d+$/.test(p)?vozSeparaCifras(p):(PAL_VOZ[p]!==undefined?[PAL_VOZ[p]]:[]);
-    vs.forEach(function(v){ acc.push(claveValida(v)?{t:'v',v:v}:{t:'x',p:p}); });
+    var vs=/^\d+$/.test(p)?vozSeparaCifras(p,es3):(PAL_VOZ[p]!==undefined?[PAL_VOZ[p]]:[]);
+    vs.forEach(function(v){ acc.push(claveValida(v,es3)?{t:'v',v:v}:{t:'x',p:p}); });
   });
   return acc;
 }
 function vozAplica(texto){
+  if(D.modo!=='campo'&&U.tab==='rec3d'){ r3VozAplica(texto); return; }
   if(!(D.modo!=='campo'&&U.tab==='tirada')) return;
   var acc=vozInterpreta(texto), hechos=[], malos=[];
   if(!acc.length){ VOZ.oido='«'+String(texto).trim()+'»'; VOZ.aviso='No he entendido ninguna flecha.'; render(); return; }
@@ -5545,11 +5592,12 @@ function vozInicia(){
   try{ r.start(); }catch(e){ vozStop(); VOZ.aviso='No se ha podido activar el micrófono.'; }
   render();
 }
-function vozFila(){
+function vozFila(es3){
   var on=VOZ.activa;
   return '<div class="vozfila" data-on="'+(on?1:0)+'"><button class="vozbtn" data-act="voz" data-on="'+(on?1:0)+'" aria-label="'+(on?'Parar la voz':'Anotar con la voz')+'">'
     +'<span class="vozic">🎤</span><span class="voztx"><b>'+(on?'Escuchando…':'Anotar con la voz')+'</b>'
-    +'<small>'+(on?'Di las flechas, por ejemplo «diez nueve equis». Toca para parar.':'Di: diez, nueve, equis, eme… y «borrar» para corregir.')+'</small></span></button>'
+    +'<small>'+(on?(es3?'Di las flechas, por ejemplo «once diez fallo». Toca para parar.':'Di las flechas, por ejemplo «diez nueve equis». Toca para parar.')
+      :(es3?'Di: once, diez, ocho, cinco, fallo… y «borrar» para corregir.':'Di: diez, nueve, equis, eme… y «borrar» para corregir.'))+'</small></span></button>'
     +((VOZ.oido||VOZ.aviso)?'<p class="vozinfo">'+(VOZ.oido?'He oído '+esc(VOZ.oido)+'<br>':'')+(VOZ.aviso?'<span class="vozav">'+esc(VOZ.aviso)+'</span>':'')+'</p>':'')+'</div>';
 }
 function undo(){
@@ -5702,40 +5750,34 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
+  else if(a==='r3tandas'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.tandas=Math.min(10,Math.max(1,(Number(U.r3f.tandas)||1)+Number(v))); render(); }
   else if(a==='r3fp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.fp=Number(v); render(); }
   else if(a==='r3nuevo'){
     var f3=U.r3f||(U.r3f=r3fDef()), ar3=arqActual(), dd3=(D.rec3dDist||[10,30,9,13,16]).map(Number), fp3=Number(f3.fp)||2;
-    var n3=r3Nuevo3(ar3,f3,dd3,fp3); U.r3=n3.id; U.r3i=0; U.r3s=0; save(); render(); window.scrollTo(0,0); }
-  else if(a==='r3abre'){ U.tab='rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; render(); window.scrollTo(0,0); }
+    var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
+  else if(a==='r3abre'){ U.tab='rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; U.r3u=[]; render(); window.scrollTo(0,0); }
   else if(a==='r3ir'){ U.r3i=Number(v); U.r3s=0; render(); }
   else if(a==='r3slot'){ U.r3s=Number(v); render(); }
   else if(a==='r3key'){
     var r3=r3Actual(); if(!r3||r3.cerrado) return;
     if(!gimOk(arqPorId(r3.arq))){ toast('Completa la gimnasia antes de anotar'); return; }
-    var i3=Math.min(Math.max(U.r3i==null?r3Primero(r3):U.r3i,0),r3.dist.length-1), s3=Math.min(U.r3s||0,r3.fp-1);
-    r3.tiros[i3][s3]=v;
-    if(s3<r3.fp-1) U.r3s=s3+1;
-    else { var sig3=r3.tiros[i3].indexOf(null);
-      if(sig3>=0) U.r3s=sig3;
-      else if(i3<r3.dist.length-1){ U.r3i=i3+1; U.r3s=0; }
-      else { U.r3s=0; if(r3Completo(r3)) toast('Recorrido completo: '+r3Total(r3)+' de '+r3Max(r3)+'. Ciérralo para guardarlo.'); } }
-    save(); render(); }
+    r3Anota(r3,v); save(); render(); }
   else if(a==='r3borra'){
     var rb=r3Actual(); if(!rb||rb.cerrado) return;
-    var ib=Math.min(Math.max(U.r3i==null?r3Primero(rb):U.r3i,0),rb.dist.length-1), sb=Math.min(U.r3s||0,rb.fp-1);
+    var ib=Math.min(Math.max(U.r3i==null?r3Primero(rb):U.r3i,0),rb.tiros.length-1), sb=Math.min(U.r3s||0,rb.fp-1);
     rb.tiros[ib][sb]=null; save(); render(); }
   else if(a==='r3ant'){ var ra=r3Actual(); if(ra){ U.r3i=Math.max(0,(U.r3i==null?r3Primero(ra):U.r3i)-1); U.r3s=0; render(); } }
-  else if(a==='r3sig'){ var rs=r3Actual(); if(rs){ U.r3i=Math.min(rs.dist.length-1,(U.r3i==null?r3Primero(rs):U.r3i)+1); U.r3s=0; render(); } }
+  else if(a==='r3sig'){ var rs=r3Actual(); if(rs){ U.r3i=Math.min(rs.tiros.length-1,(U.r3i==null?r3Primero(rs):U.r3i)+1); U.r3s=0; render(); } }
   else if(a==='r3cerrar'){
     var rc=r3Actual(); if(!rc) return;
     if(!r3Completo(rc)&&b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='Faltan flechas: ¿cerrar igualmente?'; return; }
     var mejc=r3Mejor(rc.arq,r3Max(rc),rc.id), tc=r3Total(rc);
-    rc.cerrado=true; U.r3=null; U.r3i=null; U.r3s=0; save(); render();
+    rc.cerrado=true; U.r3=null; U.r3i=null; U.r3s=0; U.r3u=[]; vozStop(); VOZ.oido=''; VOZ.aviso=''; save(); render();
     toast((r3Completo(rc)&&(mejc===null||tc>mejc)?'¡Mejor marca! ':'Recorrido guardado: ')+tc+' de '+r3Max(rc)); }
-  else if(a==='r3reabrir'){ var rr3=r3Lista().filter(function(x){ return x.id===b.dataset.id; })[0]; if(rr3){ rr3.cerrado=false; U.r3=rr3.id; U.r3i=r3Primero(rr3); U.r3s=0; save(); render(); } }
+  else if(a==='r3reabrir'){ var rr3=r3Lista().filter(function(x){ return x.id===b.dataset.id; })[0]; if(rr3){ rr3.cerrado=false; U.r3=rr3.id; U.r3i=r3Primero(rr3); U.r3s=0; U.r3u=[]; save(); render(); } }
   else if(a==='r3descarta'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Descartarlo? Pulsa otra vez'; return; }
-    var rd=r3Actual(); if(rd){ D.rec3d=r3Lista().filter(function(x){ return x.id!==rd.id; }); U.r3=null; U.r3i=null; save(); render(); toast('Recorrido descartado.'); } }
+    var rd=r3Actual(); if(rd){ D.rec3d=r3Lista().filter(function(x){ return x.id!==rd.id; }); U.r3=null; U.r3i=null; U.r3u=[]; vozStop(); VOZ.oido=''; VOZ.aviso=''; save(); render(); toast('Recorrido descartado.'); } }
   else if(a==='r3borrar'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Borrar?'; return; }
     D.rec3d=r3Lista().filter(function(x){ return x.id!==b.dataset.id; }); if(U.r3===b.dataset.id) U.r3=null; save(); render(); }
