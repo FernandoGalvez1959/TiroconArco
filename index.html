@@ -163,7 +163,17 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .wrap[data-t=copia] .card:nth-of-type(4n)>.chead:first-child{--ac:#E8833A;--acbg:rgba(232,131,58,.18);}
 .card>.chead:first-child{margin:-13px -13px 12px;padding:12px 13px;border-radius:14px 14px 0 0;background:var(--acbg);border-left:7px solid var(--ac);}
 .card>.chead:first-child h2{font-size:19px;font-weight:800;}
-.card>.chead:first-child:last-child{margin-bottom:-13px;border-radius:14px;}   /* tarjeta plegada: solo el título, que ocupa toda la tarjeta */
+.card>.chead:first-child:last-child{margin-bottom:-13px;border-radius:14px;}
+.acard[data-ab="0"]>.chead:first-child{margin-bottom:-13px;border-radius:14px;}
+.chead.acab{cursor:pointer;align-items:center;gap:10px;user-select:none;}
+.chead.acab .acfoto{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none;}
+.chead.acab h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chead.acab .acsub{margin-left:auto;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:rgba(255,255,255,.72);}
+.chead.acab .acchev,.apt.acsec .acchev{flex:none;margin-left:10px;font-size:18px;color:#fff;font-weight:700;}
+.apt.acsec{display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin:10px 0 0;user-select:none;}
+.apt.acsec+.acbody{padding-top:6px;}
+.acbody[hidden]{display:none !important;}
+.acdel{margin-top:16px;}   /* tarjeta plegada: solo el título, que ocupa toda la tarjeta */
 .field .seg.segpal{flex:1;}
 .segpal button{padding:9px 2px;font-size:13px;}
 .nota{margin:0 0 8px;font-size:14px;color:var(--dim);line-height:1.5;}
@@ -777,8 +787,7 @@ function equipoArq(a,i){
     +campo(kc,phc,aria+' en centímetros')+'<span class="un">cm</span></div>'; };
   var poner=function(k,v,txt){ return ' <button class="mini" data-act="eqponer" data-i="'+i+'" data-k="'+k+'" data-v="'+v+'">'+txt+'</button>'; };
   var calc=function(g){ return au[g]?' <span class="calc">✓ calculado</span>':''; };
-  var h='<div class="apt">🏹 Arco y flechas</div>'
-    +'<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. '
+  var h='<p class="consejo" style="margin:0 0 10px">Los consejos son orientativos (reglas habituales de arco olímpico); tu entrenador o tu tienda los afinará. '
     +'Pulgadas primero, siempre. <b>La apertura, el riser, las palas, la medida del arco, la cuerda y las flechas se calculan solos</b> con tu envergadura; si escribes uno tú, manda el tuyo.</p>';
   /* 1. envergadura */
   h+=par('Envergadura','envIn','envCm','70','178','Envergadura')
@@ -1084,7 +1093,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=90;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=91;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4723,7 +4732,7 @@ function pantallaMateriales(){
   return h;
 }
 function mejoresDe(a){
-  var h='<div class="apt vd">🏅 Mejores marcas</div>';
+  var h='';
   var hay=false;
   MODS.forEach(function(md){ var d=md.id;
     var mejor=null, sitio2=null, i;
@@ -5233,34 +5242,45 @@ function pantallaRec3d(){
 }
 
 /* ---- pantallas que comparten Sala y Campo ---- */
+/* un arquero abierto a la vez (el que usas, por defecto) y, dentro, una sola sección abierta: así la página no se hace larguísima */
+function seccionArq(i,key,titulo,cls,cuerpo,abierta){
+  return '<div class="apt acsec '+cls+'" role="button" tabindex="0" aria-expanded="'+(abierta?'true':'false')+'" data-act="arqsec" data-i="'+i+'" data-s="'+key+'">'
+    +titulo+'<span class="acchev">'+(abierta?'▾':'▸')+'</span></div>'
+    +'<div class="acbody" data-sec="'+key+'"'+(abierta?'':' hidden')+'>'+cuerpo+'</div>';
+}
+function arqAbierto(){ var n=D.arqueros.length; return (U.arqAb==null)?Math.min(U.arq||0,n-1):(U.arqAb>=n?-1:U.arqAb); }
+function arqVe(sel){ setTimeout(function(){ try{ var el=document.querySelector(sel); if(el&&el.scrollIntoView) el.scrollIntoView({block:'start'}); }catch(e){} },40); }
 function pantallaArqueros(){
   var h='', cambioEq=false;
   D.arqueros.forEach(function(a){ if(a.eq&&recalcEq(a)) cambioEq=true; });
   if(cambioEq) setTimeout(function(){ save(); },0);
-    D.arqueros.forEach(function(a,i){
-      h+='<div class="card"><div class="chead"><h2>'+esc(nombreArq(a))+'</h2>'
-        +(D.arqueros.length>1?'<span><button class="mini" data-act="borrararq" data-i="'+i+'">Borrar</button></span>':'')
-        +'</div>'
-        +'<div class="fotorow">'
-        +(a.foto?'<img class="foto" src="'+fotoURL(a)+'" alt="Foto">':'<div class="fotoph">Sin<br>foto</div>')
-        +'<div class="fotobtns">'
-        +'<button class="mini" data-act="fotoadd" data-i="'+i+'">'+(a.foto?'Cambiar foto':'Añadir foto')+'</button>'
-        +(a.foto?'<button class="ghost" data-act="fotodel" data-i="'+i+'" style="padding:0 2px">Quitar</button>':'')
-        +'</div></div>'
-        +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
-        +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
-        +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
-        +equipoArq(a,i)
-        +'<div class="apt dr">🎯 Objetivos</div>'
-        +objetivosArq(a,i)
-        +objetivos3DArq(a,i)
-        +objetivosCampoArq(a,i)
-        +mejoresDe(a)
-        +'</div>';
-    });
-    h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
+  var ab=arqAbierto(), sec=U.arqSec||null;
+  D.arqueros.forEach(function(a,i){
+    var abierto=(i===ab), sub=[a.federacion,a.licencia?'lic. '+a.licencia:''].filter(Boolean).join(' · ');
+    h+='<div class="card acard" data-arqcard="'+i+'" data-ab="'+(abierto?1:0)+'">'
+      +'<div class="chead acab" role="button" tabindex="0" aria-expanded="'+(abierto?'true':'false')+'" data-act="arqab" data-i="'+i+'">'
+      +(a.foto?'<img class="acfoto" src="'+fotoURL(a)+'" alt="">':'')
+      +'<h2>'+esc(nombreArq(a))+'</h2><span class="acsub">'+esc(sub)+'</span><span class="acchev">'+(abierto?'▾':'▸')+'</span></div>'
+      +'<div class="acbody"'+(abierto?'':' hidden')+'>'
+      +'<div class="fotorow">'
+      +(a.foto?'<img class="foto" src="'+fotoURL(a)+'" alt="Foto">':'<div class="fotoph">Sin<br>foto</div>')
+      +'<div class="fotobtns">'
+      +'<button class="mini" data-act="fotoadd" data-i="'+i+'">'+(a.foto?'Cambiar foto':'Añadir foto')+'</button>'
+      +(a.foto?'<button class="ghost" data-act="fotodel" data-i="'+i+'" style="padding:0 2px">Quitar</button>':'')
+      +'</div></div>'
+      +'<div class="field"><label for="n'+i+'">Nombre</label><input id="n'+i+'" data-arq="nombre" data-i="'+i+'" maxlength="40" value="'+esc(a.nombre)+'"></div>'
+      +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
+      +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
+      +seccionArq(i,'arco','🏹 Arco y flechas','',equipoArq(a,i),abierto&&sec==='arco')
+      +seccionArq(i,'obj','🎯 Objetivos','dr',objetivosArq(a,i)+objetivos3DArq(a,i)+objetivosCampoArq(a,i),abierto&&sec==='obj')
+      +seccionArq(i,'mej','🏅 Mejores marcas','vd',mejoresDe(a),abierto&&sec==='mej')
+      +(D.arqueros.length>1?'<button class="mini acdel" data-act="borrararq" data-i="'+i+'">Borrar este arquero</button>':'')
+      +'</div></div>';
+  });
+  h+='<button class="act" data-act="nuevoarq">Añadir arquero</button>';
   return h;
 }
+
 function pantallaSitios(){
   var h='';
   if(D.modo==='campo'){
@@ -5748,9 +5768,18 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='borrar'){ D.sessions=D.sessions.filter(function(x){ return x.id!==b.dataset.id; }); save(); render(); }
   else if(a==='nuevoarq'){
     D.arqueros.push({id:uid(),nombre:'',federacion:'',licencia:'',foto:null});
-    U.arq=D.arqueros.length-1; U.tab='arqueros'; save(); render();
+    U.arq=D.arqueros.length-1; U.tab='arqueros'; U.arqAb=D.arqueros.length-1; U.arqSec=null; save(); render();
+    arqVe('[data-arqcard="'+(D.arqueros.length-1)+'"]');
     toast('Arquero añadido. Ponle nombre.');
   }
+  else if(a==='arqab'){
+    var iab=Number(b.dataset.i), ya=arqAbierto();
+    U.arqAb=(ya===iab)?-1:iab; U.arqSec=null; render();
+    if(U.arqAb===iab) arqVe('[data-arqcard="'+iab+'"]'); }
+  else if(a==='arqsec'){
+    var ks=b.dataset.s, ik=Number(b.dataset.i);
+    U.arqSec=(U.arqSec===ks)?null:ks; render();
+    if(U.arqSec===ks) arqVe('[data-arqcard="'+ik+'"] .acsec[data-s="'+ks+'"]'); }
   else if(a==='borrararq'){
     var i=Number(b.dataset.i), quien=D.arqueros[i];
     if(D.arqueros.length<2) return;
@@ -5758,7 +5787,7 @@ document.getElementById('app').addEventListener('click',function(ev){
       toast('Sus tiradas guardadas no se borran.'); return; }
     Object.keys(D.drafts).forEach(function(k){ if(k.indexOf(quien.id+'|')===0) delete D.drafts[k]; });
     D.arqueros.splice(i,1);
-    U.arq=0; save(); render();
+    U.arq=0; U.arqAb=0; U.arqSec=null; save(); render();
   }
   else if(a==='fotoadd'){ U.fotoIdx=Number(b.dataset.i); C.fotoDestino=null;
     var fi=document.getElementById('fotoinput'); fi.value=''; fi.click(); }
