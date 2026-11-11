@@ -97,6 +97,7 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .un{font-size:12px;color:var(--dim);flex:none;}
 .consejo{margin:-3px 0 12px;font-size:12.5px;color:var(--dim);line-height:1.5;}
 .consejo b{color:var(--ink);}
+.consejo .avisoeq{color:#F5A94E;font-weight:600;}
 .consejo .calc{color:#6FC38C;font-weight:700;white-space:nowrap;}
 .consejo .mini{margin-left:4px;padding:3px 9px;}
 /* ---- pantalla de inicio, título de cada pantalla y apartados con fondo ---- */
@@ -728,6 +729,12 @@ function recalcEq(a,salvo){
   [['reserva','reservaCm'],['palasIn','palasCm'],['largo','largoCm'],['cuerdaIn','cuerdaCm'],['flechaIn','flechaCm'],['envIn','envCm'],['apIn','apCm']].forEach(function(q){
     if(e[q[0]]>0&&!(e[q[1]]>0)){ e[q[1]]=cmDe(e[q[0]]); cambio=true; } });
   if(e.palas&&!(e.palasIn>0)&&PALAS_NOM[e.palas]) par('palasIn','palasCm',PALAS_NOM[e.palas]);
+  /* el arco y la cuerda guardados a mano que ya cuadraban (arco = riser + talla − 25; cuerda = arco − 4) pasan a seguir los cambios */
+  var r0=e.reserva>0?Number(e.reserva):0, pn0=e.palasIn>0?Number(e.palasIn):0;
+  if(!(e.auto&&e.auto.largo)&&e.largo>0&&r0&&pn0&&Math.abs(Number(e.largo)-(r0+pn0-25))<0.01) marca('largo');
+  var L0=e.largo>0?Number(e.largo):0;
+  if(!(e.auto&&e.auto.cuerda)&&e.cuerdaIn>0&&L0&&Math.abs(Number(e.cuerdaIn)-(L0-4))<0.01) marca('cuerda');
+  au=e.auto||{};
   if(e.envIn>0&&salvo!=='ap'&&(au.ap||!(e.apIn>0))){ par('apIn','apCm',Math.round(Number(e.envIn)/2.5*10)/10); marca('ap'); au=e.auto||{}; }
   var c=consejosEq(a);
   if(c.ap){
@@ -802,11 +809,13 @@ function equipoArq(a,i){
   /* 4. medida del arco */
   h+=par('Medida del arco','largo','largoCm','68','172.7','Medida del arco')
     +'<p class="consejo">'+(c.largo?'Con riser de <b>'+pc(c.r)+'</b> y palas '+(c.p?NOM_PALAS[c.p]+' ':'')+'de <b>'+pc(c.pn)+'</b>, el arco mide <b>'+pc(c.largo)+'</b> (riser + talla de las palas − 25″).'
+      +(!au.largo&&e.largo>0&&Math.abs(Number(e.largo)-c.largo)>0.5?'<br><span class="avisoeq">⚠ Tu arco está puesto en '+pc(e.largo)+' y no cuadra con tu riser y tus palas.</span>':'')
       +(au.largo?calc('largo'):(Number(e.largo)!==c.largo?poner('largo',c.largo,'Usar el calculado ('+pc(c.largo)+')'):''))
       :'Es el largo total del arco: el riser más la talla de las palas menos 25″.')+'</p>';
   /* 5. cuerda */
   h+=par('Cuerda','cuerdaIn','cuerdaCm','64','162.6','Cuerda')
     +'<p class="consejo">'+(c.cuerda?'Para un arco de <b>'+pc(c.L)+'</b>, cuerda de unas <b>'+pc(c.cuerda)+'</b> (arco menos 4″).'
+      +(!au.cuerda&&e.cuerdaIn>0&&Math.abs(Number(e.cuerdaIn)-c.cuerda)>1.5?'<br><span class="avisoeq">⚠ Tu cuerda es de '+pc(e.cuerdaIn)+': para un arco de '+pc(c.L)+' lo normal son unas '+pc(c.cuerda)+'.</span>':'')
       +(au.cuerda?calc('cuerda'):(Number(e.cuerdaIn)!==c.cuerda?poner('cuerda',c.cuerda,'Usar el calculado ('+pc(c.cuerda)+')'):''))
       :'Suele medir unas 4″ menos que el arco: '+pc(64)+' para uno de '+pc(68)+'.')+'</p>';
   /* 6. flechas */
@@ -1075,7 +1084,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=89;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=90;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -5659,7 +5668,9 @@ document.getElementById('app').addEventListener('click',function(ev){
         if(pk==='ap'){ delete PQ.apIn; delete PQ.apCm; }
         if(pk==='reserva'){ delete PQ.reserva; delete PQ.reservaCm; }
         if(pk==='palas'){ delete PQ.palas; delete PQ.palasIn; delete PQ.palasCm; }
-        if(pk==='largo'){ delete PQ.largo; delete PQ.largoCm; }
+        if(pk==='largo'){ var lvie=Number(PQ.largo);
+          if(lvie>0&&!(PQ.auto&&PQ.auto.cuerda)&&PQ.cuerdaIn>0&&Math.abs(Number(PQ.cuerdaIn)-(lvie-4))<0.01){ delete PQ.cuerdaIn; delete PQ.cuerdaCm; if(PQ.auto) delete PQ.auto.cuerda; }
+          delete PQ.largo; delete PQ.largoCm; }
         if(pk==='cuerda'){ delete PQ.cuerdaIn; delete PQ.cuerdaCm; }
         if(pk==='flecha'){ delete PQ.flechaIn; delete PQ.flechaCm; }
         if(PQ.auto) delete PQ.auto[pk];
