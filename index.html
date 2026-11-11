@@ -188,6 +188,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .segmat button[data-on="1"] small{color:var(--gold);}
 .avisoalm{background:#2A1818;border:1px solid #9C3B38;color:#F2C3C0;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:13px;line-height:1.45;}
 .avisoalm b{color:#fff;}
+.act.r3borrar{padding:13px 10px;font-size:15px;font-weight:600;}
+.act.r3borrar:disabled{opacity:.45;}
 .fslot.r3s[data-sel="1"]{box-shadow:inset 0 0 0 3px var(--gold) !important;}
 .rec.r3rec .v{flex:0 1 auto;min-width:0;max-width:64%;}
 .rec.r3rec .v small{white-space:normal;}
@@ -1073,7 +1075,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=87;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=89;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -5075,7 +5077,12 @@ function r3Anota(r3,v){
   else { var sig3=r3.tiros[i3].indexOf(null);
     if(sig3>=0) U.r3s=sig3;
     else if(i3<r3.tiros.length-1){ U.r3i=i3+1; U.r3s=0; }
-    else { U.r3s=0; if(r3Completo(r3)) toast('Recorrido completo: '+r3Total(r3)+' de '+r3Max(r3)+'. Ciérralo para guardarlo.'); } }
+    else { U.r3s=r3.fp-1; if(r3Completo(r3)) toast('Recorrido completo: '+r3Total(r3)+' de '+r3Max(r3)+'. Ciérralo para guardarlo.'); } }
+}
+function r3Objetivo(r,i,s){
+  if(r.tiros[i]&&r.tiros[i][s]!=null) return {i:i,s:s,sel:true};
+  var pi=i, ps=s;
+  while(true){ if(ps>0) ps--; else if(pi>0){ pi--; ps=r.fp-1; } else return null; if(r.tiros[pi][ps]!=null) return {i:pi,s:ps,sel:false}; }
 }
 function r3Deshacer(r){      /* quita la última flecha anotada y vuelve a esa posición */
   var u=U.r3u||[], x;
@@ -5144,7 +5151,9 @@ function r3Puesto(r){
     if(bloq) h+='<p class="gimaviso">✗ Completa la gimnasia para poder anotar</p>';
     h+='<div class="pad3" data-bloq="'+(bloq?1:0)+'">';
     KEYS3D.forEach(function(v){ h+='<button data-act="r3key" data-v="'+v+'"'+(bloq?' disabled':'')+' style="'+sty(color3(v))+'">'+v+'</button>'; });
-    h+='</div>'+vozFila(true)+'<button class="ghost" data-act="r3borra" style="width:100%;margin-top:10px">Borrar esta flecha</button>';
+    var bo=r3Objetivo(r,i,sel);
+    h+='</div>'+vozFila(true)+'<button class="act act2 r3borrar" data-act="r3borra" style="margin-top:10px"'+(bo?'':' disabled')+'>'
+      +(bo&&!bo.sel?'Borrar la flecha anterior':'Borrar esta flecha')+'</button>';
   }
   h+='<div class="navp"><button data-act="r3ant"'+(i===0?' disabled':'')+'>◀ Anterior</button>'
     +'<button data-act="r3sig"'+(i>=r.tiros.length-1?' disabled':'')+'>Siguiente ▶</button></div></div>';
@@ -5765,7 +5774,11 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='r3borra'){
     var rb=r3Actual(); if(!rb||rb.cerrado) return;
     var ib=Math.min(Math.max(U.r3i==null?r3Primero(rb):U.r3i,0),rb.tiros.length-1), sb=Math.min(U.r3s||0,rb.fp-1);
-    rb.tiros[ib][sb]=null; save(); render(); }
+    var ob=r3Objetivo(rb,ib,sb);
+    if(!ob){ toast('No hay ninguna flecha anotada que borrar.'); return; }
+    rb.tiros[ob.i][ob.s]=null; U.r3i=ob.i; U.r3s=ob.s;
+    if(U.r3u){ var kb=U.r3u.length-1; while(kb>=0&&!(U.r3u[kb].id===rb.id&&U.r3u[kb].i===ob.i&&U.r3u[kb].s===ob.s)) kb--; if(kb>=0) U.r3u.splice(kb,1); }
+    save(); render(); }
   else if(a==='r3ant'){ var ra=r3Actual(); if(ra){ U.r3i=Math.max(0,(U.r3i==null?r3Primero(ra):U.r3i)-1); U.r3s=0; render(); } }
   else if(a==='r3sig'){ var rs=r3Actual(); if(rs){ U.r3i=Math.min(rs.tiros.length-1,(U.r3i==null?r3Primero(rs):U.r3i)+1); U.r3s=0; render(); } }
   else if(a==='r3cerrar'){
