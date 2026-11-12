@@ -222,6 +222,12 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .avisocopia b{display:block;color:#fff;font-size:14.5px;margin-bottom:2px;}
 .avisocopia .pair{margin-top:8px;}
 .avisocopia .act,.avisocopia .ghost{margin:0;padding:11px 8px;font-size:15px;}
+.sitiobox{background:linear-gradient(135deg,#FF7A1A,#FFB020);border-radius:14px;padding:9px 12px 12px;margin:0 0 12px;box-shadow:0 2px 10px rgba(255,122,26,.35);}
+.sitiobox label{display:block;font-size:13px;font-weight:800;color:#2A1400;letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px;}
+.sitiobox select.sitiosel{display:block;width:100%;height:58px;font-size:22px;font-weight:800;color:#1A0F00;background:#fff;border:none;border-radius:11px;padding:0 12px;}
+.objcard .objtxt{font-size:15px;line-height:1.45;color:var(--ink);}
+.objcard .objtxt b{color:var(--gold);}
+.objcard .objtxt .dias{color:var(--dim);}.objcard .objtxt .vencido{color:var(--red);}
 .objfila{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 11px;margin:0 0 10px;font-size:13px;color:var(--ink);line-height:1.4;}
 .objfila b{color:var(--gold);}
 .objfila .dias{color:var(--dim);}
@@ -1093,7 +1099,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=91;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=92;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4897,6 +4903,10 @@ function segDist(act,cur){
     return '<button data-act="'+act+'" data-v="'+m.id+'" data-on="'+(m.id===String(cur)?1:0)+'">'+dianaSVG(m)
       +'<b>'+m.dist+' m</b><small>'+m.txt+'</small></button>'; }).join('')+'</div>';
 }
+function selSitioGrande(attr,cur){
+  return '<div class="sitiobox"><label>📍 Sitio</label><select class="sitiosel" '+attr+'>'
+    +D.sites.map(function(sn,i){ return '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+esc(sn)+'</option>'; }).join('')+'</select></div>';
+}
 function selSitio(attr,cur){
   return '<select class="arq" style="width:100%" '+attr+'>'
     +D.sites.map(function(sn,i){ return '<option value="'+i+'"'+(i===cur?' selected':'')+'>'
@@ -5205,8 +5215,7 @@ function r3Nuevo(){
   var h='<div class="card"><div class="chead"><h2>Nuevo recorrido 3D</h2><span>'+(D.rec3dDist||[]).length+' puestos</span></div>'
     +'<p class="stat">Puestos a '+r3Dists()+'. Puntuación 3D: 11, 10, 8, 5 o fallo.</p>'
     +'<div class="field"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
-    +'<div class="field"><label>Sitio</label><select class="arq" data-r3f="site">'
-    +D.sites.map(function(x,i){ return '<option value="'+i+'"'+(Number(f.site)===i?' selected':'')+'>'+esc(x)+'</option>'; }).join('')+'</select></div>'
+    +selSitioGrande('data-r3f="site"',Number(f.site)||0)
     +'<div class="fmt" style="margin:10px 0 4px"><div class="step"><span class="lb">Tandas<br>(vueltas)</span>'
     +'<button data-act="r3tandas" data-v="-1">−</button><b>'+(Math.min(10,Math.max(1,Number(f.tandas)||1)))+'</b><button data-act="r3tandas" data-v="1">+</button></div></div>'
     +'<p class="stat" style="margin:0 0 6px">Cada tanda es una vuelta completa por los '+(D.rec3dDist||[]).length+' puestos.</p>'
@@ -5331,7 +5340,7 @@ function render(){
     var N=shots(s), T2=total(s), rec=best(A.id,modU(),U.site), pc0=pctObj(A,s);
 
     if(U.tf&&U.tf.donde==='tirada') h+=formTotal();
-    h+=selSitio('data-selsite',U.site)+'<div style="height:8px"></div>'
+    h+=selSitioGrande('data-selsite',U.site)
       +segDist('dist',modU())+'<div style="height:12px"></div>';
     h+='<div class="fmt">'
       +'<div class="step"><span class="lb">Tandas</span>'
@@ -5357,7 +5366,8 @@ function render(){
                           :'Se marcará en la clasificación del día')+'</small></div></div>';
     }
     var obj0=objDe(A,modU());
-    if(obj0) h+='<div class="objfila"><b>Objetivo</b> '+descMod(modU())+': '+objTexto(obj0)+'</div>';
+    if(obj0) h+='<div class="card objcard"><div class="chead"><h2>🎯 Objetivo</h2><span>'+descMod(modU())+'</span></div>'
+      +'<div class="objtxt">'+objTexto(obj0)+'</div></div>';
     h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>'+gimBoton(A);
 
     var slotSz=na<=6?19:na<=9?16:14;
@@ -5394,8 +5404,6 @@ function render(){
     });
     h+='</tbody></table></div></div>';
 
-    h+=tarjetaCrono();
-
     var tarjetaObs='<div class="card">'
       +'<div class="chead"><h2>Reglajes a '+descMod(modU())+'</h2><span>fijo para esta distancia</span></div>'
       +'<textarea class="obs selec" placeholder="Altura de visor, libras, notas que se repiten a '+descMod(modU())+'..." '
@@ -5415,6 +5423,7 @@ function render(){
       +'<p class="stat" style="margin-top:4px">'
       +(rec?'Mejor media aquí: '+dec(media(rec))+' por flecha · '+total(rec)+' en '+formato(rec)+' · '+fecha(rec.fecha)
            :'Aún no hay marca en esta distancia y sitio.')+'</p></div>';
+    h+=tarjetaCrono();
     h+=tarjetaObs;
   }
 
