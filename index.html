@@ -1103,7 +1103,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=94;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=95;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1412,7 +1412,13 @@ function reparaDatos(){
   D.rec3dDist=def3.map(function(x,i){ return (d3&&i<d3.length)?(Number(d3[i])>0?Number(d3[i]):0):x; });   /* 0 = puesto en blanco: no se usa */
   var p3=(aLista(D.rec3dProp)||[]).slice(0,30).map(function(x){ return Number(x)>0?Number(x):0; });
   while(p3.length<6) p3.push(0);
-  D.rec3dProp=p3; D.rec3dModo=(D.rec3dModo==='propio')?'propio':'fijo';
+  D.rec3dProp=p3;
+  [['rec3dD4',4,[10,30,9,13]],['rec3dD3',3,[10,30,9]]].forEach(function(c){
+    var l=aLista(D[c[0]]);
+    D[c[0]]=c[2].map(function(x,i){ return (l&&i<l.length)?(Number(l[i])>0?Number(l[i]):0):x; });
+  });
+  var mo=D.rec3dModo; if(mo==='fijo') mo='5'; else if(mo==='propio') mo='o';
+  D.rec3dModo=(['5','4','3','o'].indexOf(mo)>=0)?mo:'5';
   if(!D.pend) D.pend={trabajos:[],compras:[]};
   D.pend.trabajos=(aLista(D.pend.trabajos)||[]).filter(Boolean);
   D.pend.compras=(aLista(D.pend.compras)||[]).filter(Boolean);
@@ -1442,7 +1448,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   pend:{trabajos:[],compras:[]},
-  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],ligasSala:[],rec3d:[],rec3dDist:[10,30,9,13,16],rec3dProp:[0,0,0,0,0,0],rec3dModo:'fijo',gim:{items:[],hechos:{}},
+  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],ligasSala:[],rec3d:[],rec3dDist:[10,30,9,13,16],rec3dProp:[0,0,0,0,0,0],rec3dD4:[10,30,9,13],rec3dD3:[10,30,9],rec3dModo:'5',gim:{items:[],hechos:{}},
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -1470,6 +1476,8 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.rec3d) D.rec3d=p.rec3d;
   if(p.rec3dDist) D.rec3dDist=p.rec3dDist;
   if(p.rec3dProp) D.rec3dProp=p.rec3dProp;
+  if(p.rec3dD4) D.rec3dD4=p.rec3dD4;
+  if(p.rec3dD3) D.rec3dD3=p.rec3dD3;
   if(p.rec3dModo) D.rec3dModo=p.rec3dModo;
   if(p.puntosCol) D.puntosCol=p.puntosCol;
   if(p.gim) D.gim=p.gim;
@@ -1684,7 +1692,7 @@ function aplicaNube(rem){
    del último cambio (ts). Solo se sube lo que cambia, y los demás móviles se enteran escuchando «ts». */
 var NO_SYNC={sync:1,ts:1,modo:1,pin:1,campos:1};
 var NOMBRES_PARTES={arqueros:'arqueros',sessions:'tiradas de sala',recorridos:'recorridos',drafts:'tarjetas en curso',
-  tecnicas:'técnicas',material:'fichas de material',mat:'Material Otero',matCampo:'Material Campo',matDeva:'Material Deva',pend:'pendientes',ligas:'ligas de campo',ligasSala:'ligas de sala',rec3d:'recorridos 3D de sala',rec3dDist:'distancias del recorrido 3D',rec3dProp:'distancias propias del 3D',rec3dModo:'opción de distancias del 3D',
+  tecnicas:'técnicas',material:'fichas de material',mat:'Material Otero',matCampo:'Material Campo',matDeva:'Material Deva',pend:'pendientes',ligas:'ligas de campo',ligasSala:'ligas de sala',rec3d:'recorridos 3D de sala',rec3dDist:'distancias del recorrido 3D',rec3dProp:'distancias propias del 3D',rec3dD4:'distancias de 4 puestos del 3D',rec3dD3:'distancias de 3 puestos del 3D',rec3dModo:'opción de distancias del 3D',
   notas:'reglajes',notasCampo:'notas de campo',sites:'sitios',formato:'formato',estim:'telémetro'};
 function nombreParte(k){ var m=k.match(/^campo(\d)$/); if(m) return 'campo '+(Number(m[1])+1); return NOMBRES_PARTES[k]||k; }
 function cyrb53(str){
@@ -2595,7 +2603,7 @@ function aplicaCopia(c){
   D.notasCampo=d.notasCampo||{};
   D.pend=d.pend?{trabajos:(d.pend.trabajos||[]),compras:(d.pend.compras||[])}:{trabajos:[],compras:[]};
   D.ligas=d.ligas||[]; D.ligasSala=d.ligasSala||[];
-  D.rec3d=d.rec3d||[]; D.rec3dDist=d.rec3dDist||[10,30,9,13,16]; D.rec3dProp=d.rec3dProp||[0,0,0,0,0,0]; D.rec3dModo=d.rec3dModo||'fijo';
+  D.rec3d=d.rec3d||[]; D.rec3dDist=d.rec3dDist||[10,30,9,13,16]; D.rec3dProp=d.rec3dProp||[0,0,0,0,0,0]; D.rec3dD4=d.rec3dD4||[10,30,9,13]; D.rec3dD3=d.rec3dD3||[10,30,9]; D.rec3dModo=d.rec3dModo||'5';
   if(d.puntosCol) D.puntosCol=d.puntosCol;
   if(d.gim) D.gim=d.gim;
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
@@ -5200,9 +5208,9 @@ function r3Mejor(arq,max,salvoId){      /* mejor total de los recorridos cerrado
   return m;
 }
 /* distancias que se van a usar: solo las rellenas (un puesto en blanco no cuenta ni aparece) */
+function r3Set(m){ return m==='5'?D.rec3dDist:m==='4'?D.rec3dD4:m==='3'?D.rec3dD3:D.rec3dProp; }
 function r3Plantilla(){
-  var l=(D.rec3dModo==='propio')?(D.rec3dProp||[]):(D.rec3dDist||[]);
-  return l.map(Number).filter(function(x){ return x>0; });
+  return (r3Set(D.rec3dModo)||[]).map(Number).filter(function(x){ return x>0; });
 }
 function r3Refresca(){
   var e=document.getElementById('r3resu'); if(e) e.textContent=r3Resu();
@@ -5218,14 +5226,20 @@ function r3Resu(){
   var n=r3Plantilla().length;
   return n?('Se harán '+n+' puesto'+(n>1?'s':'')+': '+r3Dists()+'.'):'Pon la distancia de al menos un puesto.';
 }
+/* elección de puestos, como la de dianas en Sala: 5, 4, 3 u otros */
+function r3SegPuestos(){
+  var m=D.rec3dModo;
+  return '<p class="stat" style="margin:10px 0 4px">Puestos</p><div class="seg segmod">'
+    +['5','4','3'].map(function(k){ return '<button data-act="r3modo" data-v="'+k+'" data-on="'+(m===k?1:0)+'"><b>'+k+'</b><small>puestos</small></button>'; }).join('')
+    +'<button data-act="r3modo" data-v="o" data-on="'+(m==='o'?1:0)+'"><b>Otros</b><small>puestos</small></button></div>';
+}
 function r3DistEditor(){
-  var propio=D.rec3dModo==='propio', d=propio?D.rec3dProp:D.rec3dDist, at=propio?'data-r3prop':'data-r3dist';
-  return '<div class="seg" style="margin:6px 0 10px">'
-    +'<button data-act="r3modo" data-v="fijo" data-on="'+(propio?0:1)+'">5 puestos</button>'
-    +'<button data-act="r3modo" data-v="propio" data-on="'+(propio?1:0)+'">Mis distancias</button></div>'
-    +(propio?'<div class="fmt" style="margin:0 0 8px"><div class="step"><span class="lb">Puestos<br>del recorrido</span>'
+  var m=D.rec3dModo, d=r3Set(m);
+  return r3SegPuestos()
+    +(m==='o'?'<div class="fmt" style="margin:10px 0 0"><div class="step"><span class="lb">Número de<br>puestos</span>'
       +'<button data-act="r3pn" data-v="-1">−</button><b>'+d.length+'</b><button data-act="r3pn" data-v="1">+</button></div></div>':'')
-    +'<div class="r3dist">'+d.map(function(x,i){ return '<label>Puesto '+(i+1)+'<input type="number" inputmode="decimal" '+at+'="'+i+'" placeholder="m" value="'+(x>0?x:'')+'"></label>'; }).join('')+'</div>'
+    +'<p class="stat" style="margin:10px 0 4px">Distancia de cada puesto (m)</p>'
+    +'<div class="r3dist" style="grid-template-columns:repeat('+Math.min(5,d.length)+',1fr)">'+d.map(function(x,i){ return '<label>Puesto '+(i+1)+'<input type="number" inputmode="decimal" data-r3set="'+m+'" data-r3i="'+i+'" placeholder="m" value="'+(x>0?x:'')+'"></label>'; }).join('')+'</div>'
     +'<p class="stat" style="margin:8px 0 2px">Un puesto sin distancia no aparece en el recorrido.</p>'
     +'<p class="stat" id="r3resu" style="margin:0 0 6px;color:var(--gold);font-weight:600">'+r3Resu()+'</p>';
 }
@@ -5284,10 +5298,10 @@ function r3Resumen(r){
 function r3Nuevo(){
   var f=U.r3f||(U.r3f=r3fDef());
   var h='<div class="card"><div class="chead"><h2>Nuevo recorrido 3D</h2><span id="r3cnt">'+r3Plantilla().length+' puestos</span></div>'
-    +'<p class="stat">Puntuación 3D: 11, 10, 8, 5 o fallo.</p>'
-    +'<p class="stat" style="margin:8px 0 0">Distancias de los puestos</p>'+r3DistEditor()
-    +'<div class="field"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
     +selSitioGrande('data-r3f="site"',Number(f.site)||0)
+    +r3DistEditor()
+    +'<div class="field" style="margin-top:12px"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
+    +'<p class="stat" style="margin:6px 0 0">Puntuación 3D: 11, 10, 8, 5 o fallo.</p>'
     +'<div class="fmt" style="margin:10px 0 4px"><div class="step"><span class="lb">Tandas<br>(vueltas)</span>'
     +'<button data-act="r3tandas" data-v="-1">−</button><b>'+(Math.min(10,Math.max(1,Number(f.tandas)||1)))+'</b><button data-act="r3tandas" data-v="1">+</button></div></div>'
     +'<p class="stat" style="margin:0 0 6px">Cada tanda es una vuelta completa por los puestos con distancia.</p>'
@@ -5886,8 +5900,8 @@ document.getElementById('app').addEventListener('click',function(ev){
     var f3=U.r3f||(U.r3f=r3fDef()), ar3=arqActual(), dd3=r3Plantilla(), fp3=Number(f3.fp)||2;
     if(!dd3.length){ toast('Pon la distancia de al menos un puesto'); return; }
     var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
-  else if(a==='r3modo'){ D.rec3dModo=(v==='propio')?'propio':'fijo'; save(); render(); }
-  else if(a==='r3pn'){ var pp=D.rec3dProp, nn=Math.min(30,Math.max(1,pp.length+Number(v))); while(pp.length<nn) pp.push(0); pp.length=nn; save(); render(); }
+  else if(a==='r3modo'){ D.rec3dModo=(['5','4','3','o'].indexOf(v)>=0)?v:'5'; save(); render(); }
+  else if(a==='r3pn'){ var pp=D.rec3dProp; if(D.rec3dModo!=='o') return; var nn=Math.min(30,Math.max(1,pp.length+Number(v))); while(pp.length<nn) pp.push(0); pp.length=nn; save(); render(); }
   else if(a==='r3abre'){ U.tab='rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; U.r3u=[]; render(); window.scrollTo(0,0); }
   else if(a==='r3ir'){ U.r3i=Number(v); U.r3s=0; render(); }
   else if(a==='r3slot'){ U.r3s=Number(v); render(); }
@@ -6246,12 +6260,9 @@ document.getElementById('app').addEventListener('input',function(ev){
   var t=ev.target, i=t.dataset.site, q=t.dataset.arq;
   if(i!=null){ D.sites[Number(i)]=t.value; save(); }
   else if(t.dataset.tf!=null){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } }
-  else if(t.dataset&&t.dataset.r3dist!=null){
-    var i3d=Number(t.dataset.r3dist), v3d=parseFloat(String(t.value).replace(',','.'));
-    if(!D.rec3dDist) D.rec3dDist=[10,30,9,13,16]; D.rec3dDist[i3d]=v3d>0?v3d:0; save(); r3Refresca(); }
-  else if(t.dataset&&t.dataset.r3prop!=null){
-    var i3q=Number(t.dataset.r3prop), v3q=parseFloat(String(t.value).replace(',','.'));
-    if(!D.rec3dProp) D.rec3dProp=[0,0,0,0,0,0]; D.rec3dProp[i3q]=v3q>0?v3q:0; save(); r3Refresca(); }
+  else if(t.dataset&&t.dataset.r3set!=null){
+    var l3=r3Set(t.dataset.r3set), i3=Number(t.dataset.r3i), v3=parseFloat(String(t.value).replace(',','.'));
+    if(l3){ l3[i3]=v3>0?v3:0; save(); r3Refresca(); } }
   else if(t.dataset&&t.dataset.r3pdist!=null){
     var r3p=r3Actual(), i3p=Number(t.dataset.r3pdist), v3p=parseFloat(String(t.value).replace(',','.'));
     if(r3p&&!r3p.cerrado&&v3p>0){ r3p.dist[i3p]=v3p; save(); } }
