@@ -1271,7 +1271,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=103;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=104;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -5342,7 +5342,7 @@ function renderCampo(){
   else if(C.tab==='sitios'){ h+=pantallaSitios(); }
   else if(C.tab==='gimnasia'){ h+=pantallaGim(); }
   else if(C.tab==='tecnicas'){ h+=fichasTec(); }
-  else if(C.tab==='material'){ h+=pantallaMateriales(); }
+  else if(C.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
   else if(C.tab==='pendientes'){ h+=pantallaPendientes(); }
   else if(C.tab==='progreso'){ h+=segPHC()+pantallaProgresoCampo(); }
   else if(C.tab==='histcampo'){ h+=segPHC()+pantallaHistorialCampo(); }
@@ -5406,7 +5406,7 @@ function pendHechos(){ return ((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.
 function subGrupo(id){
   return id==='arqueros'?['🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C']
    :id==='objetivos'?['🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C']
-   :id==='material'?['🎒','Material','listas de Otero y Deva','#E8833A']
+   :id==='material'?['🎒','Material','listas de Otero y Deva, fichas y fotos','#E8833A']
    :id==='tecnicas'?['📝','Técnicas y Formación',fSub(),'#E8833A']
    :id==='pendientes'?['✅','Pendientes',pendHechos()?pendHechos()+' por hacer':'nada pendiente','#A98BE0']
    :['💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0'];
@@ -6123,7 +6123,7 @@ function render(){
 
   if(U.tab==='gimnasia'){ h+=pantallaGim(); }
   if(U.tab==='tecnicas'){ h+=fichasTec(); }
-  if(U.tab==='material'){ h+=pantallaMateriales(); }
+  if(U.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
   if(U.tab==='pendientes'){ h+=pantallaPendientes(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
