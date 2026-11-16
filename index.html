@@ -1269,7 +1269,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=98;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=99;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1406,7 +1406,7 @@ function pantallaMejores(){
       hay=true;
       filas+='<div class="hrow mej" data-act="hver" data-mod="'+md.id+'" data-site="'+si+'">'
         +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+total(c)+'</span></div>'
-        +'<div class="l2">'+formato(c)+' · '+dec(media(c))+' por flecha · '+fecha(c.fecha)
+        +'<div class="l2">'+formato(c)+noctTxt(c)+' · '+dec(media(c))+' por flecha · '+fecha(c.fecha)
         +(sel===''?' · '+esc(nombreArq(arqPorId(c.arquero))):'')+'</div></div>';
     });
     var propias=D.sessions.filter(function(x){ return modDe(x)===md.id&&(sel===''||x.arquero===sel); });
@@ -1436,7 +1436,7 @@ function pantallaMejores(){
       var c3=r3MejorSitio(sel===''?null:sel,si); if(!c3) return; hay=true;
       f3+='<div class="hrow mej" data-act="hver" data-mod="'+kk+'d" data-site="'+si+'">'
         +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+r3Total(c3)+'</span></div>'
-        +'<div class="l2">'+r3Formato(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
+        +'<div class="l2">'+r3Formato(c3)+noctTxt(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
     });
     if(f3) h+='<div class="card"><div class="chead"><h2>Recorrido '+r3N()+'</h2><span>mejor recorrido</span></div>'+f3+'</div>';
     R3K=antes;
@@ -2359,6 +2359,7 @@ function arqPorId(id){ return D.arqueros.filter(function(a){ return a.id===id; }
 function nombreArq(a){ return a.nombre||'Arquero sin nombre'; }
 function sitio(i){ return D.sites[i]||('Sitio '+(i+1)); }
 function claveDraft(){ return arqActual().id+'|'+modU()+'|'+U.site; }
+function noctTxt(x){ return x&&x.noct?' · 🌙 nocturno':''; }
 function draft(){
   var k=claveDraft();
   if(!D.drafts[k]) D.drafts[k]={id:uid(),arquero:arqActual().id,fecha:new Date().toISOString(),
@@ -4783,7 +4784,7 @@ function pantallaRecorrido(r){
       +'<p class="stat"><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
       +'Estacas '+estaca(r.estacas).nombre.toLowerCase()+' · '+esc(D.campos[r.campo].nombre)+' · '+r.puestos
       +' puestos · salida en el puesto '+r.inicio+' · '+r.patrulla.length+' arqueros'
-      +(r.comp?'<br><i>Competición</i>':'')
+      +(r.comp?'<br><i>Competición</i>':'')+(r.noct?'<br><i>🌙 Recorrido nocturno</i>':'')
       +'<br>Llevas <i>'+puestosHechos(r)+'</i> puestos completos.</p>'
       +'<button class="act" data-act="cerrarrec">Cerrar el recorrido</button>'
       +'<button class="ghost" data-act="borrarrec">Descartar este recorrido</button></div>';
@@ -4826,6 +4827,7 @@ function pantallaRecorrido(r){
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
       +'<div class="ctxt">Es una competición<small>Lo marca en la clasificación y en la imagen</small></div></div>';
   }
+  h+='<div class="seg" style="margin:10px 0 0"><button data-act="nrnoct" data-v="0" data-on="'+(C.nNoct?0:1)+'">☀️ Diurno</button><button data-act="nrnoct" data-v="1" data-on="'+(C.nNoct?1:0)+'">🌙 Nocturno</button></div>';
   h+=gimBotonPat((C.patrulla||[]).slice(0,C.nuevos||0))
     +'<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
 
@@ -4871,7 +4873,7 @@ function pantallaResumen(r){
   if(!r) return h+'<div class="card"><p class="empty">Elige un recorrido.</p></div>';
   h+='<div class="card"><div class="chead"><h2>'+(r.comp?'Competición':'Clasificación')+'</h2>'
     +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
-    +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+'</span></div>';
+    +esc(D.campos[r.campo].nombre)+' · '+fecha(r.fecha)+(r.noct?' · 🌙 nocturno':'')+'</span></div>';
   clasifRec(r).forEach(function(a,i){
     h+='<div class="hrow"><div class="l1">'
       +'<span class="pos" data-p="'+(i+1)+'" style="display:inline-flex;vertical-align:middle;margin-right:8px">'+(i+1)+'</span>'
@@ -5071,7 +5073,7 @@ function pantallaHistorialCampo(){
     var cl=clasifRec(x), yo=cl[0], enCurso=abierto&&abierto.id===x.id&&!x.cerrado;
     h+='<div class="hrow">'
       +'<div class="l1"><b>'+esc(D.campos[x.campo].nombre)+'</b>'+(enCurso?' · en curso':'')
-      +(x.comp?' · competición':'')+'<span class="hdcha">'+(yo?totalArq(x,yo.id):0)+'</span></div>'
+      +(x.comp?' · competición':'')+noctTxt(x)+'<span class="hdcha">'+(yo?totalArq(x,yo.id):0)+'</span></div>'
       +'<div class="l2">'+fecha(x.fecha)+' · '+x.puestos+' puestos · '
       +(yo?esc(yo.nombre)+(cl.length>1?' y '+(cl.length-1)+' más':''):'sin arqueros')
       +' · <span class="bolita" style="background:'+estaca(x.estacas).color+'"></span>estacas '
@@ -5525,7 +5527,7 @@ function progreso3D(A){
 }
 function filaR3(x){
   var a=arqPorId(x.arq), n=r3Flechas(x), inc=!r3Completo(x);
-  return '<div class="hrow"><div class="l1"><b>Recorrido '+r3Nom(x)+'</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+(x.comp?' · competición':'')+'</div>'
+  return '<div class="hrow"><div class="l1"><b>Recorrido '+r3Nom(x)+'</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+(x.comp?' · competición':'')+noctTxt(x)+'</div>'
     +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(x.fecha)+'</div>'
     +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.tiros.length*x.fp)+' flechas</span>':'')
     +(n?' · '+dec(r3Media(x))+' por flecha':'')+r3ObjMini(x)+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
@@ -5586,7 +5588,7 @@ function r3VozAplica(texto){
 function r3Nuevo3(arq,f,dist,fp,tandas){
   dist=dist.filter(function(x){ return x>0; });
   var r={id:uid(),fecha:isoDia(f.fecha),arq:arq.id,site:Number(f.site)||0,dist:dist.slice(),fp:fp,
-    tandas:tandas||1,comp:!!f.comp,
+    tandas:tandas||1,comp:!!f.comp,noct:!!f.noct,
     tiros:(function(){ var t=[],i,j; for(i=0;i<dist.length*(tandas||1);i++){ var o=[]; for(j=0;j<fp;j++) o.push(null); t.push(o); } return t; })(),cerrado:false};
   if(R3K==='2') r.k='2';
   r3Lista().unshift(r); return r;
@@ -5658,7 +5660,7 @@ function r3Puesto(r){
   var pn=i%n, tn=Math.floor(i/n)+1;
   var h='<div class="card"><div class="chead"><h2>Puesto '+(pn+1)+' · '+fmtN(r3Dist(r,i))+' m</h2>'
     +'<span>'+(T>1?'Tanda '+tn+' de '+T+' · ':'')+(pn+1)+' de '+n+(r.cerrado?' · cerrado':'')+'</span></div>'
-    +'<p class="stat">'+esc(nombreArq(a))+' · '+fecha(r.fecha)+' · '+esc(sitio(r.site))+(r.comp?' · competición':'')+'</p>';
+    +'<p class="stat">'+esc(nombreArq(a))+' · '+fecha(r.fecha)+' · '+esc(sitio(r.site))+(r.comp?' · competición':'')+noctTxt(r)+'</p>';
   var an=an3(r,pn);
   h+='<div class="animal">'
     +(an.foto?'<img src="data:image/jpeg;base64,'+an.foto.data+'" alt="Foto del puesto" data-act="fotoanimal3" data-pn="'+pn+'">'
@@ -5719,6 +5721,7 @@ function r3Nuevo(){
     +r3DistEditor()
     +'<div class="field" style="margin-top:12px"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
     +'<p class="stat" style="margin:6px 0 0">Puntuación '+r3N()+': 11, 10, 8, 5 o fallo.</p>'
+    +'<div class="seg" style="margin:10px 0 0"><button data-act="r3noct" data-v="0" data-on="'+(f.noct?0:1)+'">☀️ Diurno</button><button data-act="r3noct" data-v="1" data-on="'+(f.noct?1:0)+'">🌙 Nocturno</button></div>'
     +(D.arqueros.length>1?'<div class="chk compfila" data-act="r3comp" style="margin-top:10px"><span class="tick" data-on="'+(f.comp?1:0)+'">'+(f.comp?'✓':'')+'</span>'
       +'<div class="ctxt">¿Es una competición?<small>'+(f.comp?'Saldrá marcada como competición en la clasificación':'Se marcará en la clasificación del día')+'</small></div></div>':'')
     +'<div class="fmt" style="margin:10px 0 4px"><div class="step"><span class="lb">Tandas<br>(vueltas)</span>'
@@ -5751,7 +5754,7 @@ function clasifR3HTML(gr){
   var h='';
   gr.slice(0,25).forEach(function(gp){
     h+='<div class="card"><p class="gtit">'+(gp.comp?'<b>Competición</b> · ':'')+'<b>'+fecha(gp.fecha)+'</b> · Recorrido '+(gp.k==='2'?'2D':'3D')+' · '
-      +esc(sitio(gp.site))+' · '+gp.np+' puestos'+(gp.T>1?' · '+gp.T+' tandas':'')+' · '+gp.fp+(gp.fp===1?' flecha':' flechas')+' por puesto</p>';
+      +esc(sitio(gp.site))+' · '+gp.np+' puestos'+(gp.T>1?' · '+gp.T+' tandas':'')+' · '+gp.fp+(gp.fp===1?' flecha':' flechas')+' por puesto'+(gp.filas.some(function(x){ return x.noct; })?' · 🌙 nocturno':'')+'</p>';
     gp.filas.forEach(function(r,i){
       var a=arqPorId(r.arq);
       h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
@@ -5897,6 +5900,7 @@ function render(){
         +'<label>M<input class="cinp" value="0" disabled aria-label="M vale cero"></label>'
         +'</div></div>';
     }
+    h+='<div class="seg" style="margin:10px 0 0"><button data-act="noctsala" data-v="0" data-on="'+(s.noct?0:1)+'">☀️ Diurno</button><button data-act="noctsala" data-v="1" data-on="'+(s.noct?1:0)+'">🌙 Nocturno</button></div>';
     if(D.arqueros.length>1){
       h+='<div class="chk compfila" data-act="compsala">'
         +'<span class="tick" data-on="'+(s.comp?1:0)+'">'+(s.comp?'✓':'')+'</span>'
@@ -5976,7 +5980,7 @@ function render(){
     gs.slice(0,25).forEach(function(gp){
       h+='<div class="card"><p class="gtit">'+(gp.comp?'<b>Competición</b> · ':'')
         +'<b>'+fecha(gp.fecha)+'</b> · '+descDist(gp)+' · '
-        +esc(sitio(gp.site))+' · '+gp.ne+'×'+gp.na+'</p>';
+        +esc(sitio(gp.site))+' · '+gp.ne+'×'+gp.na+(gp.filas.some(function(x){ return x.noct; })?' · 🌙 nocturno':'')+'</p>';
       gp.filas.forEach(function(s,i){
         var a=arqPorId(s.arquero);
         h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
@@ -6064,7 +6068,7 @@ function render(){
       var s=it.x;
       var a=arqPorId(s.arquero), b=best(s.arquero,modDe(s),s.site), pr=pctObj(a,s);
       h+='<div class="hrow">'
-        +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+'</div>'
+        +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+noctTxt(s)+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
         +'<div class="l3">'+formato(s)+(esTotal(s)?' <span class="inc2">solo el total</span>':'')+(complete(s)?'':' <span class="inc">incompleta: '+shots(s)+' de '+(nE(s)*nA(s))+' flechas</span>')+' · '+dec(media(s))+' por flecha'
           +(pr!=null?' · <b class="'+(pr>=100?'pctok':'')+'">'+Math.round(pr)+' %</b> del objetivo':'')+' · <b>'+total(s)+'</b></div>'
@@ -6360,13 +6364,14 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
+  else if(a==='r3noct'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.noct=v==='1'; render(); }
   else if(a==='r3comp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.comp=!U.r3f.comp; render(); }
   else if(a==='r3tandas'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.tandas=Math.min(10,Math.max(1,(Number(U.r3f.tandas)||1)+Number(v))); render(); }
   else if(a==='r3fp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.fp=Number(v); render(); }
   else if(a==='r3nuevo'){
     var f3=U.r3f||(U.r3f=r3fDef()), ar3=arqActual(), dd3=r3Plantilla(), fp3=Number(f3.fp)||2;
     if(!dd3.length){ toast('Pon la distancia de al menos un puesto'); return; }
-    var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); f3.comp=false; U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
+    var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); f3.comp=false; f3.noct=false; U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
   else if(a==='r3modo'){ r3PonModo((['5','4','3','o'].indexOf(v)>=0)?v:'5'); save(); render(); }
   else if(a==='r3pn'){ var pp=r3Set('o'); if(r3Modo()!=='o') return; var nn=Math.min(30,Math.max(1,pp.length+Number(v))); while(pp.length<nn) pp.push(0); pp.length=nn; save(); render(); }
   else if(a==='r3abre'){ var xk=r3Lista().filter(function(y){ return y.id===b.dataset.id; })[0]; R3K=r3Kd(xk); U.tab=(R3K==='2')?'rec2d':'rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; U.r3u=[]; render(); window.scrollTo(0,0); }
@@ -6429,7 +6434,9 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='detrec'){ C.detRec=C.detRec===b.dataset.id?null:b.dataset.id; render(); }
   else if(a==='nrcampo'){ C.nCampo=Number(v); render(); }
   else if(a==='nrestaca'){ C.nEstaca=v; render(); }
+  else if(a==='nrnoct'){ C.nNoct=v==='1'; render(); }
   else if(a==='nrcomp'){ C.nComp=!C.nComp; render(); }
+  else if(a==='noctsala'){ var dn=draft(); dn.noct=v==='1'; save(); render(); }
   else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render();
     if(ds.comp&&D.arqueros.length>1) toast('Al cerrar cada tanda pasará al arquero siguiente.'); }
   else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
@@ -6456,7 +6463,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     var gf=gimFaltan(pat);
     if(gf.length){ C.gimPanel=true; toast('Falta la gimnasia de '+gf.map(function(x){ return nombreArq(x); }).join(', ')+'. Márcala y empieza.'); render(); return; }
     var rn=nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
-    rn.comp=!!(C.nuevos>1&&C.nComp); save();
+    rn.comp=!!(C.nuevos>1&&C.nComp); rn.noct=!!C.nNoct; C.nNoct=false; save();
     render(); toast('Recorrido empezado en el puesto '+C.nInicio);
   }
   else if(a==='cerrarrec'){ var r4=recActual(); if(r4){ r4.cerrado=true; D.recorridoId=null; C.tab='clasif'; save(); render(); toast('Recorrido cerrado'); } }
