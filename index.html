@@ -1269,7 +1269,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=99;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=101;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4929,8 +4929,8 @@ function fichas(lista,titulo,ayuda,ph,sug){
   return h;
 }
 /* ---- tres listas de material, iguales entre sí: Otero (la de siempre), Campo y Deva ---- */
-var MATS=[{id:'otero',n:'Material Otero',c:'Otero',k:'mat'},{id:'campo',n:'Material Campo',c:'Campo',k:'matCampo'},{id:'deva',n:'Material Deva',c:'Deva',k:'matDeva'}];
-function matSel(){ var v=''; try{ v=localStorage.getItem('arqueria:matsel')||''; }catch(e){} return (v==='campo'||v==='deva')?v:'otero'; }
+var MATS=[{id:'otero',n:'Material Otero',c:'Otero',k:'mat'},{id:'deva',n:'Material Deva',c:'Deva',k:'matDeva'}];
+function matSel(){ var v=''; try{ v=localStorage.getItem('arqueria:matsel')||''; }catch(e){} return (v==='deva')?v:'otero'; }
 function matInfo(id){ var i; for(i=0;i<MATS.length;i++) if(MATS[i].id===id) return MATS[i]; return MATS[0]; }
 function plantillaMat(){   /* el listado de fábrica, sin ninguna marca */
   return LISTA.map(function(b){
@@ -5046,6 +5046,38 @@ function mejoresDe(a){
     R3K=antes;
   });
   return h+(hay?'':'<p class="stat">Aún no hay tiradas completas guardadas.</p>');
+}
+function segPHC(){ return '<div class="seg" style="margin:0 0 10px">'
+  +'<button data-act="ctab" data-v="progreso" data-on="'+(C.tab==='progreso'?1:0)+'">📈 Progreso</button>'
+  +'<button data-act="ctab" data-v="histcampo" data-on="'+(C.tab==='histcampo'?1:0)+'">🕘 Historial</button></div>'; }
+function pantallaProgresoCampo(){
+  var A=arqActual(), cs=C.pCampo;
+  var recs=D.recorridos.filter(function(x){ return (cs===''||cs==null||Number(cs)===x.campo)&&flechasArq(x,A.id)>0; })
+    .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); });
+  var serie=recs.map(function(x){ return {fecha:x.fecha,media:mediaArq(x,A.id),total:totalArq(x,A.id)}; });
+  var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
+  var h='<div class="dosel"><select class="arq" data-selarq>'+D.arqueros.map(function(a,i){
+      return '<option value="'+i+'"'+(i===U.arq?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
+    +'</select><select class="arq" data-pcampo><option value=""'+(cs===''||cs==null?' selected':'')+'>Todos los campos</option>'
+    +D.campos.map(function(c,i){ return '<option value="'+i+'"'+(String(cs)===String(i)?' selected':'')+'>'+esc(c.nombre)+'</option>'; }).join('')
+    +'</select></div><div style="height:10px"></div>';
+  h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+(serie.length===1?' recorrido':' recorridos')+'</span></div>'
+    +chart(serie,11,'Sin recorridos guardados de '+esc(nombreArq(A))+'.')
+    +(serie.length?'<div class="legend"><div>Último<b>'+dec(ms[ms.length-1])+'</b></div>'
+      +'<div>Mejor<b>'+dec(Math.max.apply(null,ms))+'</b></div>'
+      +'<div>Media de 5<b>'+dec(u5.reduce(function(a,v){ return a+v; },0)/u5.length)+'</b></div></div>':'')+'</div>';
+  h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
+  var hay=false;
+  D.campos.forEach(function(c,ci){
+    var mj=null;
+    D.recorridos.forEach(function(x){ if(x.campo!==ci||!x.cerrado||flechasArq(x,A.id)<1) return;
+      var m=mediaArq(x,A.id); if(!mj||m>mj.m) mj={m:m,x:x}; });
+    if(!mj) return; hay=true;
+    h+='<div class="rec r3rec"><div class="lbl">'+esc(c.nombre)+'</div><div class="v"><b>'+dec(mj.m)+'</b><small>'+totalArq(mj.x,A.id)+' pts · '
+      +mj.x.puestos+' puestos · '+fecha(mj.x.fecha).replace(/ /g,'\u00a0')+noctTxt(mj.x)+'</small></div></div>';
+  });
+  if(!hay) h+='<p class="empty">Aún no hay recorridos cerrados.</p>';
+  return h+'</div>';
 }
 function pantallaHistorialCampo(){
   var lista=D.recorridos.filter(function(x){
@@ -5282,7 +5314,7 @@ function fichasMat(){
 }
 function pantallaTecnicas(){ return fichasTec()+'<div style="height:14px"></div>'+fichasMat(); }
 function renderCampo(){
-  if(['inicio','recorrido','puesto','mapa','clasif','histcampo','ligas','distancia','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
+  if(['inicio','recorrido','puesto','mapa','clasif','progreso','histcampo','ligas','distancia','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
     C.tab='inicio';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
@@ -5307,9 +5339,10 @@ function renderCampo(){
   else if(C.tab==='sitios'){ h+=pantallaSitios(); }
   else if(C.tab==='gimnasia'){ h+=pantallaGim(); }
   else if(C.tab==='tecnicas'){ h+=fichasTec(); }
-  else if(C.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
+  else if(C.tab==='material'){ h+=pantallaMateriales(); }
   else if(C.tab==='pendientes'){ h+=pantallaPendientes(); }
-  else if(C.tab==='histcampo'){ h+=pantallaHistorialCampo(); }
+  else if(C.tab==='progreso'){ h+=segPHC()+pantallaProgresoCampo(); }
+  else if(C.tab==='histcampo'){ h+=segPHC()+pantallaHistorialCampo(); }
   else if(C.tab==='copia'){ h+=tarjetaCopia(); }
   else if(C.tab==='distancia'){ h+=pantallaDistancia(); }
   else if(C.tab==='ligas'){ h+=pantallaLigas(); }
@@ -5385,7 +5418,7 @@ function pantallaInicio(){
     ['objetivos','🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C',''],
     ['prohis','📈','Progreso e Historial','cómo mejoras · '+ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':'')+(n2?' · '+n2+' en 2D':''),'#3D7CC9',''],
     ['tecnicas','📝','Técnicas y Formación',fSub(),'#E8833A',''],
-    ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
+    ['material','🎒','Material','listas de Otero y Deva','#E8833A',''],
     ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
@@ -5399,7 +5432,7 @@ function menuInicio(M,acto){
   }).join('')+'</div>';
 }
 /* ---- menú de inicio de Campo ---- */
-var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',objetivos:'Objetivos',histcampo:'Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
+var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',objetivos:'Objetivos',histcampo:'Progreso e Historial',progreso:'Progreso e Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function navTopC(t){
   return '<div class="navtop"><button class="volver" data-act="ctab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
@@ -5416,15 +5449,15 @@ function pantallaInicioCampo(){
     ['recorrido','🥾','Recorrido',abierto?'en marcha · puesto '+(C.idx+1)+' de '+r.puestos:'empezar un recorrido nuevo','#F2C11B','',true],
     ['puesto','🎯','Puesto',abierto?'anota los tiros del puesto '+(C.idx+1):'abre antes un recorrido','#F2C11B',''],
     ['clasif','🏆','Clasificación',nrec?'resumen y quién va ganando':'aún sin recorridos','#3D7CC9',''],
-    ['histcampo','🕘','Historial',nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
     ['arqueros','🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C',''],
     ['objetivos','🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C',''],
+    ['prohis','📈','Progreso e Historial','cómo mejoras · '+nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
+    ['tecnicas','📝','Técnicas y Formación',fSub(),'#E8833A',''],
+    ['material','🎒','Material','listas de Otero y Deva','#E8833A',''],
+    ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
     ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
-    ['tecnicas','📝','Técnicas y Formación',fSub(),'#E8833A',''],
-    ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
-    ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
   return avisoCopia()+menuInicio(M,'ctab');
@@ -6084,7 +6117,7 @@ function render(){
 
   if(U.tab==='gimnasia'){ h+=pantallaGim(); }
   if(U.tab==='tecnicas'){ h+=fichasTec(); }
-  if(U.tab==='material'){ h+=pantallaMateriales()+'<div style="height:14px"></div>'+fichasMat(); }
+  if(U.tab==='material'){ h+=pantallaMateriales(); }
   if(U.tab==='pendientes'){ h+=pantallaPendientes(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
@@ -6363,7 +6396,7 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='cambiamodo'){ eligiendo=true; render(); }
   else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
-  else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
+  else if(a==='ctab'){ if(v==='prohis') v=(C.ph==='histcampo')?'histcampo':'progreso'; if(v==='progreso'||v==='histcampo') C.ph=v; C.tab=v; C.abierto=null; render(); }
   else if(a==='r3noct'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.noct=v==='1'; render(); }
   else if(a==='r3comp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.comp=!U.r3f.comp; render(); }
   else if(a==='r3tandas'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.tandas=Math.min(10,Math.max(1,(Number(U.r3f.tandas)||1)+Number(v))); render(); }
@@ -6855,6 +6888,7 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-selnrcampo')){ C.nCampo=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-selmapacampo')){ C.mapaCampo=Number(t.value); C.destino=null; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-seldistcampo')){ C.distCampo=Number(t.value); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-pcampo')){ C.pCampo=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hcampo')){ C.hCampo=t.value; C.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hest')){ C.hEst=t.value; C.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-verrec')){ C.verRec=t.value; render(); }
