@@ -395,6 +395,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 #visor.cap img{border-radius:0;}
 .modolin{max-width:360px;margin:0 auto;padding-top:6vh;text-align:center;}
 .modolin h2{font-size:22px;font-weight:600;margin:16px 0 8px;}
+.comunes{margin:6px 0 14px;text-align:left;}
+.comunes .ibtn small{font-size:11.5px;}
 .modolin p{font-size:14px;color:var(--dim);margin:0 0 26px;line-height:1.5;}
 .modobtn{width:100%;padding:20px;border-radius:14px;background:var(--panel);margin-bottom:12px;
   box-shadow:inset 0 0 0 1px var(--line);text-align:left;}
@@ -1269,7 +1271,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=102;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=103;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4220,6 +4222,7 @@ function pantallaModo(){
     +'<button class="modobtn" data-act="modo" data-v="campo" data-on="'+(D.modo==='campo'?1:0)+'">'
     +'<b>Tiro en campo</b><span>Recorrido de figuras 3D, 12 o 24 puestos, dos flechas por puesto '
     +'con 11, 10, 8, 5 y cero. Patrulla con varios arqueros y clasificación en directo.</span></button>'
+    +'<div class="comunes">'+menuInicio(['arqueros','objetivos','material','tecnicas','pendientes','copia'].map(function(id){ var s=subGrupo(id); return [id,s[0],s[1],s[2],s[3],'']; }),'comun').replace('class="inicio"','class="inicio apretado"')+'</div>'
     +'<button class="nubelin" data-act="irnube">'
     +'<span class="bolita" style="background:'+estadoNube().c+'"></span>'+esc(estadoNube().largo)+'</button>'
     +'</div></div>';
@@ -5314,7 +5317,7 @@ function fichasMat(){
 }
 function pantallaTecnicas(){ return fichasTec()+'<div style="height:14px"></div>'+fichasMat(); }
 function renderCampo(){
-  if(['inicio','equipo','mas','recorrido','puesto','mapa','clasif','progreso','histcampo','ligas','distancia','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
+  if(['inicio','recorrido','puesto','mapa','clasif','progreso','histcampo','ligas','distancia','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
     C.tab='inicio';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
@@ -5335,7 +5338,6 @@ function renderCampo(){
   else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
   else if(C.tab==='arqueros'){ h+=pantallaArqueros(); }
-  else if(C.tab==='equipo'||C.tab==='mas'){ h+=hubGrupo(C.tab,'ctab'); }
   else if(C.tab==='objetivos'){ h+=pantallaObjetivos(); }
   else if(C.tab==='sitios'){ h+=pantallaSitios(); }
   else if(C.tab==='gimnasia'){ h+=pantallaGim(); }
@@ -5397,8 +5399,9 @@ function selArq(){
 var TITULOS={equipo:'Mi equipo',mas:'Más',tirada:'Tirada',rec3d:'Recorrido 3D',rec2d:'Recorrido 2D',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso e Historial',historial:'Progreso e Historial',objetivos:'Objetivos',ligas:'Ligas',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function botonNuevaLiga(t){ return t==='ligas'?'<button class="navnuevo" data-act="ligaadd">+ Nueva liga</button>':''; }
-var GRUPOS={equipo:['arqueros','objetivos','material'],mas:['tecnicas','pendientes','copia']};
-function padreDe(t){ var k; for(k in GRUPOS) if(GRUPOS[k].indexOf(t)>=0) return k; return 'inicio'; }
+var COMUNES=['arqueros','objetivos','material','tecnicas','pendientes','copia'], desdeMenu=false;
+function padreDe(t){ return 'inicio'; }
+function volverAttr(t,acto){ return (desdeMenu&&COMUNES.indexOf(t)>=0)?'data-act="ini0"':'data-act="'+acto+'" data-v="inicio"'; }
 function pendHechos(){ return ((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length; }
 function subGrupo(id){
   return id==='arqueros'?['🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C']
@@ -5412,7 +5415,7 @@ function hubGrupo(g,acto){
   return menuInicio(GRUPOS[g].map(function(id){ var s=subGrupo(id); return [id,s[0],s[1],s[2],s[3],'']; }),acto);
 }
 function navTop(t){
-  return '<div class="navtop"><button class="volver" data-act="tab" data-v="'+padreDe(t)+'">◀ '+(padreDe(t)==='inicio'?'Inicio':TITULOS[padreDe(t)])+'</button><span class="ttl">'+(TITULOS[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
+  return '<div class="navtop"><button class="volver" '+volverAttr(t,'tab')+'>◀ Inicio</button><span class="ttl">'+(TITULOS[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
 }
 function pantallaInicio(){
   var a=arqActual(), tot=gimItems().length, hs=gimHechas(a), okg=gimOk(a), nom=nombreArq(a);
@@ -5430,9 +5433,7 @@ function pantallaInicio(){
     ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
     ['prohis','📈','Progreso e Historial','cómo mejoras · '+ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':'')+(n2?' · '+n2+' en 2D':''),'#3D7CC9',''],
-    ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
-    ['equipo','👥','Mi equipo','Arqueros, Objetivos y Material','#6FC38C',''],
-    ['mas','⋯','Más','Técnicas, Pendientes y Copias','#A98BE0','']];
+    ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C','']];
   return avisoCopia()+menuInicio(M,'tab');
 }
 /* un botón por línea, de ancho completo; el que lleva el séptimo dato (true) es el grande */
@@ -5446,7 +5447,7 @@ function menuInicio(M,acto){
 var TITULOSC={equipo:'Mi equipo',mas:'Más',recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',objetivos:'Objetivos',histcampo:'Progreso e Historial',progreso:'Progreso e Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function navTopC(t){
-  return '<div class="navtop"><button class="volver" data-act="ctab" data-v="'+padreDe(t)+'">◀ '+(padreDe(t)==='inicio'?'Inicio':TITULOS[padreDe(t)])+'</button><span class="ttl">'+(TITULOSC[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
+  return '<div class="navtop"><button class="volver" '+volverAttr(t,'ctab')+'>◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
 }
 function pantallaInicioCampo(){
   var r=recActual(), abierto=!!(r&&!r.cerrado), nrec=D.recorridos.length, nlig=(D.ligas||[]).length;
@@ -5464,9 +5465,7 @@ function pantallaInicioCampo(){
     ['prohis','📈','Progreso e Historial','cómo mejoras · '+nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
     ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
-    ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
-    ['equipo','👥','Mi equipo','Arqueros, Objetivos y Material','#6FC38C',''],
-    ['mas','⋯','Más','Técnicas, Pendientes y Copias','#A98BE0','']];
+    ['distancia','📏','Distancia','medir con la cámara','#6FC38C','']];
   return avisoCopia()+menuInicio(M,'ctab');
 }
 
@@ -5893,7 +5892,7 @@ function pantallaSitios(){
 
 function render(){
   if(VOZ.activa&&!(D.modo!=='campo'&&(U.tab==='tirada'||U.tab==='rec3d'||U.tab==='rec2d'))) vozStop();
-  if(['inicio','equipo','mas','tirada','rec3d','rec2d','clasif','progreso','historial','ligas','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
+  if(['inicio','tirada','rec3d','rec2d','clasif','progreso','historial','ligas','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
   if(U.tab==='rec2d') R3K='2'; else if(U.tab==='rec3d') R3K='3'; else if(U.tab==='progreso') R3K=(U.pVista==='2d')?'2':'3';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
@@ -6131,7 +6130,6 @@ function render(){
   if(U.tab==='rec3d'||U.tab==='rec2d'){ h+=pantallaRec3d(); }
   if(U.tab==='ligas'){ h+=pantallaLigas(); }
   if(U.tab==='arqueros'){ h+=pantallaArqueros(); }
-  if(U.tab==='equipo'||U.tab==='mas'){ h+=hubGrupo(U.tab,'tab'); }
   if(U.tab==='objetivos'){ h+=pantallaObjetivos(); }
   if(U.tab==='sitios'){ h+=pantallaSitios(); }
 
@@ -6401,8 +6399,10 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='ponpin'){ abreLock('nuevo'); }
   else if(a==='cambiapin'){ abreLock('nuevo'); }
   else if(a==='quitapin'){ abreLock('quitar'); }
-  else if(a==='cambiamodo'){ eligiendo=true; render(); }
-  else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
+  else if(a==='cambiamodo'){ desdeMenu=false; eligiendo=true; render(); }
+  else if(a==='comun'){ if(!D.modo) D.modo='sala'; U.tab=v; C.tab=v; C.abierto=null; desdeMenu=true; eligiendo=false; SES.pon('elegido',1); render(); window.scrollTo(0,0); }
+  else if(a==='ini0'){ desdeMenu=false; U.tab='inicio'; C.tab='inicio'; eligiendo=true; render(); window.scrollTo(0,0); }
+  else if(a==='modo'){ desdeMenu=false; D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ if(v==='prohis') v=(C.ph==='histcampo')?'histcampo':'progreso'; if(v==='progreso'||v==='histcampo') C.ph=v; C.tab=v; C.abierto=null; render(); }
   else if(a==='r3noct'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.noct=v==='1'; render(); }
