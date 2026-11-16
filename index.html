@@ -41,6 +41,18 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .seg button[data-on="1"]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
 .segrow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-bottom:10px;}
 
+.obper{display:flex;align-items:center;gap:8px;margin:0 0 10px;}
+.obper b{flex:1;text-align:center;font-size:15px;}
+.obper button{width:44px;height:40px;border-radius:10px;background:var(--panel);font-size:18px;font-weight:700;color:var(--ink);}
+.obt2{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 4px;}
+.obt2 td{padding:4px 0;border-top:1px solid var(--line);}
+.obt2 td:nth-child(2){text-align:right;color:var(--dim);}
+.obt2 td:nth-child(3){text-align:right;width:56px;}
+.obt2 b.pctok{color:var(--gold);}
+.obbloq{padding:10px 0 4px;border-top:1px solid var(--line);}
+.obbloq:first-of-type{border-top:none;}
+.obbloq .obn{font-size:15px;font-weight:700;margin:0 0 4px;}
+.objin{grid-template-columns:1fr 74px 138px;margin:4px 0 6px;}
 .compfila{background:var(--panel);border-radius:11px;padding:11px 12px;margin-bottom:10px;border-bottom:none;}
 .selrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
 select.arq{flex:1;min-width:0;background:var(--panel);color:var(--ink);border:none;
@@ -587,6 +599,8 @@ textarea.obs{width:100%;min-height:74px;background:#151C24;border:1px solid var(
 .teclado .txt{font-size:14px;font-weight:500;color:var(--dim);background:none;box-shadow:none;}
 #lock .aviso{color:var(--red);font-size:14px;min-height:20px;margin:16px 0 0;}
 #lock .pie{margin-top:26px;}
+.trazo{display:block;margin:6px auto 10px;touch-action:none;user-select:none;-webkit-user-select:none;}
+#lock .cancela{margin-top:6px;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 <script>
@@ -970,6 +984,137 @@ function objetivos3DArq(a,i){
     +'<input class="cinp" type="number" inputmode="numeric" min="0" step="1" placeholder="—" aria-label="Máximo de M del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="m" value="'+esc(o.m==null?'':String(o.m))+'">'
     +'<input class="cinp" type="date" aria-label="Fecha límite del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="f" value="'+esc(o.f||'')+'"></div>';
 }
+/* ---- ficha de Objetivos: definición por arquero y tandas conseguidas en el trimestre y en el año ---- */
+var OB={y:null,q:null};
+function obHoy(){ var d=new Date(); return {y:d.getFullYear(),q:Math.floor(d.getMonth()/3)}; }
+function obPer(){ if(OB.y==null){ var h=obHoy(); OB.y=h.y; OB.q=h.q; } return OB; }
+function obEn(f,y,q){ var d=new Date(f); if(isNaN(d.getTime())) return {a:false,t:false}; var ay=d.getFullYear()===y;
+  return {a:ay,t:ay&&Math.floor(d.getMonth()/3)===q}; }
+function obNomT(p){ return (p.q+1)+'.º trimestre de '+p.y; }
+function obAcum(it){
+  var p=obPer(), r={t:{ok:0,tot:0},a:{ok:0,tot:0}};
+  it.forEach(function(x){ var e=obEn(x.f,p.y,p.q);
+    if(e.a){ r.a.tot++; if(x.ok) r.a.ok++; }
+    if(e.t){ r.t.tot++; if(x.ok) r.t.ok++; } });
+  return r;
+}
+function obPct(c){ return c.tot?Math.round(c.ok/c.tot*100)+' %':'–'; }
+function obTabla(it,unid){
+  var p=obPer(), r=obAcum(it);
+  function fila(n,c){ return '<tr><td>'+n+'</td><td><b>'+c.ok+'</b> de '+c.tot+' '+(c.tot===1?unid[0]:unid[1])+'</td>'
+    +'<td><b class="'+(c.tot&&c.ok/c.tot>=1?'pctok':'')+'">'+obPct(c)+'</b></td></tr>'; }
+  return '<table class="obt2">'+fila(obNomT(p),r.t)+fila('Año '+p.y,r.a)+'</table>';
+}
+function obItemsDiana(a,mod){
+  var o=objDe(a,mod), it=[]; if(!o) return it;
+  D.sessions.forEach(function(s){
+    if(s.arquero!==a.id||modDe(s)!==mod||esTotal(s)) return;
+    var na=nA(s); if(!na) return;
+    s.ends.forEach(function(row){
+      if(!row||row.filter(function(x){ return x!=null; }).length<na) return;
+      var pts=0; row.forEach(function(x){ pts+=valS(x,s); });
+      it.push({f:s.fecha,ok:pts*flObj(o)/na>=Number(o.p)}); });
+  });
+  return it;
+}
+function obItemsRec(a,k){
+  var it=[], antes=R3K; R3K=k;
+  r3Lista().forEach(function(r){
+    if(r.arq!==a.id||r3Kd(r)!==k) return;
+    var n=r.dist.length, T=r3T(r), v, e;
+    for(v=0;v<T;v++){ e=r3VueltaExito(r,v*n); if(e!==null) it.push({f:r.fecha,ok:e}); }
+  });
+  R3K=antes; return it;
+}
+function obItemsCampo(a,pu){
+  var it=[];
+  D.recorridos.forEach(function(r){
+    if(Number(r.puestos)!==pu) return;
+    (r.patrulla||[]).forEach(function(m){
+      if(m.arq!==a.id) return;
+      var e=objCEstado(r,m); if(e&&e.completo) it.push({f:r.fecha,ok:e.logrado}); });
+  });
+  return it;
+}
+function objetivosRecArq(a,i,k){
+  var antes=R3K; R3K=k;
+  var o=a[k==='2'?'obj2d':'obj3d']||{}, n=Math.max(1,r3Plantilla().length), mx=n*2*11, N=r3N();
+  R3K=antes;
+  return '<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>'
+    +'<div class="objrow objc4"><div class="lbl">'+n+' puestos</div>'
+    +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos del recorrido '+N+'" data-obj3arq="'+i+'" data-obj3k="'+k+'" data-obj3po="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+    +'<input class="cinp" type="number" inputmode="numeric" min="0" step="1" placeholder="—" aria-label="Máximo de M del recorrido '+N+'" data-obj3arq="'+i+'" data-obj3k="'+k+'" data-obj3po="m" value="'+esc(o.m==null?'':String(o.m))+'">'
+    +'<input class="cinp" type="date" aria-label="Fecha límite del recorrido '+N+'" data-obj3arq="'+i+'" data-obj3k="'+k+'" data-obj3po="f" value="'+esc(o.f||'')+'"></div>'
+    +'<p class="stat" style="margin:2px 0 4px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo), máximo de M por vuelta (0 = sin M; vacío = sin límite). Cada tanda es una vuelta completa.</p>';
+}
+function pantallaObjetivos(){
+  var A=arqActual(), i=D.arqueros.indexOf(A), p=obPer(), h='';
+  h+='<div class="selrow">'+selArq()+'</div>';
+  h+='<div class="obper"><button data-act="objper" data-v="-1" aria-label="Trimestre anterior">◀</button><b>'+obNomT(p)+'</b>'
+    +'<button data-act="objper" data-v="1" aria-label="Trimestre siguiente">▶</button></div>';
+  /* dianas de sala */
+  h+='<div class="card"><div class="chead"><h2>Dianas</h2><span>'+esc(nombreArq(A))+'</span></div>'
+    +'<p class="stat" style="margin:0 0 4px;font-size:12px">Puntos por tanda de '+(D.formato.arrows||6)+' flechas y fecha para conseguirlo. Se cuentan las tandas completas de tiradas anotadas flecha a flecha.</p>';
+  modsLista().forEach(function(md){
+    var o=(A.obj&&A.obj[md.id])||{}, ob=objDe(A,md.id);
+    h+='<div class="obbloq"><p class="obn">'+descMod(md.id)+'</p><div class="objrow" style="grid-template-columns:74px 1fr;margin:2px 0 4px">'
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por tanda, '+descMod(md.id)+'" '
+      +'data-objarq="'+i+'" data-objmod="'+md.id+'" data-objcampo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+      +'<input class="cinp" type="date" aria-label="Fecha límite, '+descMod(md.id)+'" '
+      +'data-objarq="'+i+'" data-objmod="'+md.id+'" data-objcampo="f" value="'+esc(o.f||'')+'"></div>'
+      +(ob?'<div class="objtxt" style="font-size:13px">'+objTexto(ob)+'</div>'+obTabla(obItemsDiana(A,md.id),['tanda','tandas'])
+          :'<p class="stat" style="margin:2px 0 4px">Sin objetivo a esta distancia.</p>')+'</div>';
+  });
+  h+='</div>';
+  /* recorridos 3D y 2D */
+  [['3','Recorrido 3D'],['2','Recorrido 2D']].forEach(function(kk){
+    var k=kk[0], o=A[k==='2'?'obj2d':'obj3d'], ob=(o&&Number(o.p)>0)?o:null;
+    h+='<div class="card"><div class="chead"><h2>'+kk[1]+'</h2><span>'+esc(nombreArq(A))+'</span></div>'
+      +objetivosRecArq(A,i,k)
+      +(ob?'<div class="objtxt" style="font-size:13px">'+objCTexto(ob)+'</div>'+obTabla(obItemsRec(A,k),['tanda','tandas'])
+          :'<p class="stat" style="margin:2px 0 4px">Sin objetivo en este recorrido.</p>')+'</div>';
+  });
+  /* recorridos de campo */
+  h+='<div class="card"><div class="chead"><h2>Campo</h2><span>'+esc(nombreArq(A))+'</span></div>'
+    +'<p class="stat" style="margin:0 0 4px;font-size:12px">Puntos de un recorrido completo, máximo de M permitidas (0 = sin M; vacío = sin límite) y fecha. Se cuentan los recorridos completos en los que vas en la patrulla.</p>'
+    +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px;text-align:center">Máx. M</div><div class="stat" style="font-size:11px">Fecha</div></div>';
+  [12,24].forEach(function(pu){
+    var o=(A.objC&&A.objC[String(pu)])||{}, ob=objCDe(A,pu);
+    h+='<div class="obbloq" style="border-top:none;padding:0"><div class="objrow objc4"><div class="lbl">'+pu+' puestos</div>'
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
+      +'<input class="cinp" type="number" inputmode="numeric" min="0" step="1" placeholder="—" aria-label="Máximo de M, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="m" value="'+esc(o.m==null?'':String(o.m))+'">'
+      +'<input class="cinp" type="date" aria-label="Fecha límite, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="f" value="'+esc(o.f||'')+'"></div>'
+      +(ob?'<div class="objtxt" style="font-size:13px;margin-bottom:2px">'+pu+' puestos: '+objCTexto(ob)+'</div>'+obTabla(obItemsCampo(A,pu),['recorrido','recorridos'])
+          :'')+'</div>';
+  });
+  return h+'</div>';
+}
+/* objetivo de la Tirada: se ve siempre (con su % del trimestre) y, si falta, se puede poner ahí mismo */
+function objTrim(A,mod,o){
+  var h0=obHoy(), ses=D.sessions.filter(function(s){ return s.arquero===A.id&&modDe(s)===mod&&obEn(s.fecha,h0.y,h0.q).t; });
+  var T=0,N=0; ses.forEach(function(s){ T+=total(s); N+=shots(s); });
+  var nom=obNomT(h0);
+  if(!N) return '<div class="objtxt" style="margin-top:6px">'+nom+': aún sin tiradas a esta distancia.</div>';
+  var pct=T/N*flObj(o)/Number(o.p)*100;
+  return '<div class="objtxt" style="margin-top:6px">'+nom+': <b class="'+(pct>=100?'pctok':'')+'">'+Math.round(pct)+' %</b> del objetivo '
+    +'<span class="dias">(media '+dec(T/N)+' por flecha en '+ses.length+(ses.length===1?' tirada':' tiradas')+')</span></div>';
+}
+function tarjetaObjSala(A,mod){
+  var o=objDe(A,mod), i=D.arqueros.indexOf(A), raw=(A.obj&&A.obj[mod])||{};
+  var h='<div class="card objcard"><div class="chead"><h2>🎯 Objetivo</h2><span>'+descMod(mod)+'</span></div>';
+  if(o) h+='<div class="objtxt">'+objTexto(o)+'</div>'+objTrim(A,mod,o);
+  else h+='<p class="stat" style="margin:0 0 6px">Sin objetivo a esta distancia. Escríbelo aquí: puntos por tanda de '+(D.formato.arrows||6)+' flechas y fecha.</p>'
+    +'<div class="objrow objin" style="grid-template-columns:74px 1fr">'
+    +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por tanda" data-objinline="1" '
+    +'data-objarq="'+i+'" data-objmod="'+mod+'" data-objcampo="p" value="'+esc(raw.p==null?'':String(raw.p))+'">'
+    +'<input class="cinp" type="date" aria-label="Fecha límite" data-objinline="1" '
+    +'data-objarq="'+i+'" data-objmod="'+mod+'" data-objcampo="f" value="'+esc(raw.f||'')+'"></div>'
+    +'<button class="mini" data-act="objok" style="width:100%">Poner este objetivo</button>';
+  return h+'</div>';
+}
 /* ---- gimnasia previa a la tirada ---- */
 var GM={abierta:null,edita:false};
 function gimItems(){ return (D.gim&&D.gim.items)||[]; }
@@ -1124,7 +1269,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=96;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=97;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1285,14 +1430,17 @@ function pantallaMejores(){
         +'<p class="nota">'+esc(nombreArq(arqPorId(sel)))+' no tiene tiradas en esta diana, pero otros arqueros sí. Elige «Todos los arqueros» arriba para verlas.</p></div>';
     }
   });
-  var f3='';
-  D.sites.forEach(function(sn,si){
-    var c3=r3MejorSitio(sel===''?null:sel,si); if(!c3) return; hay=true;
-    f3+='<div class="hrow mej" data-act="hver" data-mod="3d" data-site="'+si+'">'
-      +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+r3Total(c3)+'</span></div>'
-      +'<div class="l2">'+r3Formato(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
+  ['3','2'].forEach(function(kk){
+    var f3='', antes=R3K; R3K=kk;
+    D.sites.forEach(function(sn,si){
+      var c3=r3MejorSitio(sel===''?null:sel,si); if(!c3) return; hay=true;
+      f3+='<div class="hrow mej" data-act="hver" data-mod="'+kk+'d" data-site="'+si+'">'
+        +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+r3Total(c3)+'</span></div>'
+        +'<div class="l2">'+r3Formato(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
+    });
+    if(f3) h+='<div class="card"><div class="chead"><h2>Recorrido '+r3N()+'</h2><span>mejor recorrido</span></div>'+f3+'</div>';
+    R3K=antes;
   });
-  if(f3) h+='<div class="card"><div class="chead"><h2>Recorrido 3D</h2><span>mejor recorrido</span></div>'+f3+'</div>';
   if(!hay) h+='<div class="card"><p class="empty">Aún no hay tiradas completas'+(sel!==''&&arqs.length>1?' de este arquero':'')
     +'. Cuando guardes una, aquí saldrá la mejor de cada diana y de cada sitio.</p></div>';
   return h;
@@ -1440,6 +1588,13 @@ function reparaDatos(){
     var l=aLista(D[c[0]]);
     D[c[0]]=c[2].map(function(x,i){ return (l&&i<l.length)?(Number(l[i])>0?Number(l[i]):0):x; });
   });
+  var cf=(D.rec2dCfg&&typeof D.rec2dCfg==='object')?D.rec2dCfg:{};
+  function lis(v,def,min){ var l=aLista(v)||[]; var o=def.map(function(x,i){ return (i<l.length)?(Number(l[i])>0?Number(l[i]):0):x; }); return o; }
+  var pr2=(aLista(cf.Prop)||[]).slice(0,30).map(function(x){ return Number(x)>0?Number(x):0; }); while(pr2.length<6) pr2.push(0);
+  D.rec2dCfg={Dist:lis(cf.Dist,[10,30,9,13,16]),D4:lis(cf.D4,[10,30,9,13]),D3:lis(cf.D3,[10,30,9]),Prop:pr2,
+    Modo:(['5','4','3','o'].indexOf(cf.Modo)>=0)?cf.Modo:'5'};
+  if(!D.rec2dFotos||typeof D.rec2dFotos!=='object'||Array.isArray(D.rec2dFotos)) D.rec2dFotos={};
+  D.rec3d.forEach(function(r){ if(r.k!=='2') delete r.k; });
   var mo=D.rec3dModo; if(mo==='fijo') mo='5'; else if(mo==='propio') mo='o';
   D.rec3dModo=(['5','4','3','o'].indexOf(mo)>=0)?mo:'5';
   if(!D.pend) D.pend={trabajos:[],compras:[]};
@@ -1471,7 +1626,7 @@ var ESTACAS=[{id:'roja',nombre:'Roja',color:'#DF4A44'},
 var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],formato:{ends:10,arrows:6},
   drafts:{},sessions:[],tecnicas:[],material:[],notas:{},notasCampo:{},mat:[],check:null,extras:null,
   pend:{trabajos:[],compras:[]},
-  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],ligasSala:[],rec3d:[],rec3dDist:[10,30,9,13,16],rec3dProp:[0,0,0,0,0,0],rec3dD4:[10,30,9,13],rec3dD3:[10,30,9],rec3dModo:'5',formVistas:{},rec3dFotos:{},gim:{items:[],hechos:{}},
+  sync:{url:'',clave:'',auto:true,ultima:0,hs:{}},ts:0,ligas:[],ligasSala:[],rec3d:[],rec3dDist:[10,30,9,13,16],rec3dProp:[0,0,0,0,0,0],rec3dD4:[10,30,9,13],rec3dD3:[10,30,9],rec3dModo:'5',rec2dCfg:{Dist:[10,30,9,13,16],D4:[10,30,9,13],D3:[10,30,9],Prop:[0,0,0,0,0,0],Modo:'5'},rec2dFotos:{},formVistas:{},rec3dFotos:{},gim:{items:[],hechos:{}},
   alturaOjo:170,estim:[],
   campos:[{nombre:'Campo 1',animales:{}},{nombre:'Campo 2',animales:{}},
           {nombre:'Campo 3',animales:{}},{nombre:'Campo 4',animales:{}}],
@@ -1504,6 +1659,8 @@ var D={v:4,modo:'',arqueros:[],sites:['Sitio 1','Sitio 2','Sitio 3','Sitio 4'],f
   if(p.rec3dModo) D.rec3dModo=p.rec3dModo;
   if(p.formVistas) D.formVistas=p.formVistas;
   if(p.rec3dFotos) D.rec3dFotos=p.rec3dFotos;
+  if(p.rec2dCfg) D.rec2dCfg=p.rec2dCfg;
+  if(p.rec2dFotos) D.rec2dFotos=p.rec2dFotos;
   if(p.puntosCol) D.puntosCol=p.puntosCol;
   if(p.gim) D.gim=p.gim;
   if(p.alturaOjo) D.alturaOjo=p.alturaOjo;
@@ -1616,7 +1773,7 @@ function sinDatosEn(d){
   var L=function(x){ return aLista(x)||[]; }, k;
   if(L(d.sessions).length||L(d.recorridos).length||L(d.ligas).length||L(d.ligasSala).length||L(d.rec3d).length
      ||L(d.tecnicas).length||L(d.material).length||L(d.estim).length
-     ||Object.keys(d.formVistas||{}).length||Object.keys(d.rec3dFotos||{}).length) return false;
+     ||Object.keys(d.formVistas||{}).length||Object.keys(d.rec3dFotos||{}).length||Object.keys(d.rec2dFotos||{}).length) return false;
   var pe=d.pend||{};
   if(L(pe.trabajos).length||L(pe.compras).length) return false;
   if(d.gim&&L(d.gim.items).length) return false;
@@ -1718,7 +1875,7 @@ function aplicaNube(rem){
    del último cambio (ts). Solo se sube lo que cambia, y los demás móviles se enteran escuchando «ts». */
 var NO_SYNC={sync:1,ts:1,modo:1,pin:1,campos:1};
 var NOMBRES_PARTES={arqueros:'arqueros',sessions:'tiradas de sala',recorridos:'recorridos',drafts:'tarjetas en curso',
-  tecnicas:'técnicas',material:'fichas de material',mat:'Material Otero',matCampo:'Material Campo',matDeva:'Material Deva',pend:'pendientes',ligas:'ligas de campo',ligasSala:'ligas de sala',rec3d:'recorridos 3D de sala',rec3dDist:'distancias del recorrido 3D',formVistas:'lecciones vistas',rec3dFotos:'fotos de puestos 3D',rec3dProp:'distancias propias del 3D',rec3dD4:'distancias de 4 puestos del 3D',rec3dD3:'distancias de 3 puestos del 3D',rec3dModo:'opción de distancias del 3D',
+  tecnicas:'técnicas',material:'fichas de material',mat:'Material Otero',matCampo:'Material Campo',matDeva:'Material Deva',pend:'pendientes',ligas:'ligas de campo',ligasSala:'ligas de sala',rec3d:'recorridos 3D de sala',rec3dDist:'distancias del recorrido 3D',formVistas:'lecciones vistas',rec3dFotos:'fotos de puestos 3D',rec2dCfg:'distancias del recorrido 2D',rec2dFotos:'fotos de puestos 2D',rec3dProp:'distancias propias del 3D',rec3dD4:'distancias de 4 puestos del 3D',rec3dD3:'distancias de 3 puestos del 3D',rec3dModo:'opción de distancias del 3D',
   notas:'reglajes',notasCampo:'notas de campo',sites:'sitios',formato:'formato',estim:'telémetro'};
 function nombreParte(k){ var m=k.match(/^campo(\d)$/); if(m) return 'campo '+(Number(m[1])+1); return NOMBRES_PARTES[k]||k; }
 function cyrb53(str){
@@ -2491,13 +2648,14 @@ function exitoTandaSala(s,e){
   return pts*flObj(o)/nA(s)>=Number(o.p);
 }
 /* ¿la vuelta (tanda) recién completada del recorrido 3D alcanza el objetivo? */
-function exitoTanda3d(r,i){
-  var o=r3ObjDe(r.arq), n=r.dist.length; if(!o||!n) return false;
+function r3VueltaExito(r,i){      /* null si la vuelta no está completa o no hay objetivo; si no, true/false */
+  var o=r3ObjDe(r.arq,r3Kd(r)), n=r.dist.length; if(!o||!n) return null;
   var v=Math.floor(i/n), ini=v*n, ms=0, pts=0, j, k;
-  for(j=ini;j<ini+n;j++){ if(!r3Hecho(r,j)) return false; for(k=0;k<r.fp;k++){ pts+=pts3(r.tiros[j][k]); if(r.tiros[j][k]==='M') ms++; } }
+  for(j=ini;j<ini+n;j++){ if(!r.tiros[j]||!r3Hecho(r,j)) return null; for(k=0;k<r.fp;k++){ pts+=pts3(r.tiros[j][k]); if(r.tiros[j][k]==='M') ms++; } }
   var pct=pts/(n*r.fp)*(n*2)/Number(o.p)*100, lim=(o.m==null||o.m==='')?null:Number(o.m);
   return pct>=100&&(lim==null||r.fp!==2||ms<=lim);
 }
+function exitoTanda3d(r,i){ return r3VueltaExito(r,i)===true; }
 function mmss(sg){
   var m=Math.floor(sg/60), q=sg%60;
   return m+':'+(q<10?'0':'')+q;
@@ -2577,7 +2735,7 @@ function sinFotos(d){
   d.arqueros.forEach(function(a){ a.foto=null; });
   (d.tecnicas||[]).forEach(function(t){ t.fotos=[]; });
   (d.material||[]).forEach(function(t){ t.fotos=[]; });
-  Object.keys(d.rec3dFotos||{}).forEach(function(s){ Object.keys(d.rec3dFotos[s]||{}).forEach(function(p){ if(d.rec3dFotos[s][p]) d.rec3dFotos[s][p].foto=null; }); });
+  ['rec3dFotos','rec2dFotos'].forEach(function(kf){ Object.keys(d[kf]||{}).forEach(function(s){ Object.keys(d[kf][s]||{}).forEach(function(p){ if(d[kf][s][p]) d[kf][s][p].foto=null; }); }); });
   ['ligas','ligasSala'].forEach(function(k){ (d[k]||[]).forEach(function(L){ objetosConDoc(L).forEach(function(e){ delete e.o[e.c]; delete e.o[e.f]; }); }); });
   (d.campos||[]).forEach(function(c){
     Object.keys(c.animales||{}).forEach(function(k){ c.animales[k].foto=null; }); });
@@ -2608,7 +2766,7 @@ function resumenCopia(c){
     (((d.pend||{}).trabajos||[]).length+((d.pend||{}).compras||[]).length)+' pendientes',
     ((d.ligas||[]).length)+' ligas de campo',
     ((d.ligasSala||[]).length)+' ligas de sala',
-    ((d.rec3d||[]).length)+' recorridos 3D de sala',
+    ((d.rec3d||[]).length)+' recorridos 3D y 2D de sala',
     (function(){ var n=0;
       (d.mat||[]).forEach(function(b){ b.items.forEach(function(x){ if(x.ok) n++; }); });
       if(!(d.mat||[]).length && d.check){ for(var k in d.check) n++; }
@@ -2630,7 +2788,7 @@ function aplicaCopia(c){
   D.notasCampo=d.notasCampo||{};
   D.pend=d.pend?{trabajos:(d.pend.trabajos||[]),compras:(d.pend.compras||[])}:{trabajos:[],compras:[]};
   D.ligas=d.ligas||[]; D.ligasSala=d.ligasSala||[];
-  D.rec3d=d.rec3d||[]; D.rec3dDist=d.rec3dDist||[10,30,9,13,16]; D.rec3dProp=d.rec3dProp||[0,0,0,0,0,0]; D.rec3dD4=d.rec3dD4||[10,30,9,13]; D.rec3dD3=d.rec3dD3||[10,30,9]; D.rec3dModo=d.rec3dModo||'5'; D.formVistas=d.formVistas||{}; D.rec3dFotos=d.rec3dFotos||{};
+  D.rec3d=d.rec3d||[]; D.rec3dDist=d.rec3dDist||[10,30,9,13,16]; D.rec3dProp=d.rec3dProp||[0,0,0,0,0,0]; D.rec3dD4=d.rec3dD4||[10,30,9,13]; D.rec3dD3=d.rec3dD3||[10,30,9]; D.rec3dModo=d.rec3dModo||'5'; D.formVistas=d.formVistas||{}; D.rec3dFotos=d.rec3dFotos||{}; D.rec2dFotos=d.rec2dFotos||{}; D.rec2dCfg=d.rec2dCfg||{Dist:[10,30,9,13,16],D4:[10,30,9,13],D3:[10,30,9],Prop:[0,0,0,0,0,0],Modo:'5'};
   if(d.puntosCol) D.puntosCol=d.puntosCol;
   if(d.gim) D.gim=d.gim;
   D.alturaOjo=d.alturaOjo||170; D.estim=d.estim||[]; D.ocultarDist=!!d.ocultarDist;
@@ -2745,7 +2903,7 @@ function tarjetaCopia(){
         +'</select>'
         +'<button class="act act2" data-act="cambiapin">Cambiar la clave</button>'
         +'<button class="ghost" data-act="quitapin">Quitar el bloqueo</button>'
-      : '<p class="stat">Seis números para que nadie más entre. Es un cerrojo, no una caja fuerte: '
+      : '<p class="stat">Un trazo con el dedo (al menos 5 puntos) para que nadie más entre. Es un cerrojo, no una caja fuerte: '
         +'los datos siguen guardados sin cifrar en el móvil. Y no se puede recuperar si se olvida.</p>'
         +'<button class="act" data-act="ponpin">Activar clave</button>')
     +'</div>';
@@ -2861,16 +3019,59 @@ function pideAlArrancar(){
   return !(t>0&&(Date.now()-t)<3000);      /* solo una recarga accidental (menos de 3 s desde el último uso) no la pide */
 }
 function pideAlVolver(ms){ return modoPin()==='A'?ms>5000:ms>600000; }
-function hayPin(){ return !!(D.pin && D.pin.length===6); }
+function pinEsPatron(){ return !!(D.pin&&/^P[1-9]{5,9}$/.test(D.pin)); }
+function hayPin(){ return !!(D.pin && (/^\d{6}$/.test(D.pin)||pinEsPatron())); }
+/* con la clave antigua (seis números) se sigue entrando con el teclado; las claves nuevas son un trazo */
+function pinConTeclado(){ return !(PIN.modo==='nuevo'||PIN.modo==='repite') && !!D.pin && !pinEsPatron(); }
+function trazoPos(n){ return {x:45+((n-1)%3)*80, y:45+Math.floor((n-1)/3)*80}; }
+function trazoHTML(){
+  var s='<svg id="trazo" class="trazo" width="250" height="250" viewBox="0 0 250 250" aria-label="Dibuja tu trazo">'
+    +'<polyline id="trazoL" points="" fill="none" stroke="#F2C11B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>';
+  for(var n=1;n<=9;n++){ var c=trazoPos(n);
+    s+='<circle cx="'+c.x+'" cy="'+c.y+'" r="30" fill="rgba(255,255,255,.05)"/><circle id="tp'+n+'" cx="'+c.x+'" cy="'+c.y+'" r="13" fill="#5A6A7A"/>'; }
+  return s+'</svg>';
+}
+function trazoInicia(){
+  var sv=document.getElementById('trazo'); if(!sv) return;
+  var tr=[], pl=document.getElementById('trazoL'), vivo=false;
+  function pos(ev){ var r=sv.getBoundingClientRect(); return {x:(ev.clientX-r.left)*250/r.width, y:(ev.clientY-r.top)*250/r.height}; }
+  function pinta(p){
+    var pts=tr.map(function(n){ var c=trazoPos(n); return c.x+','+c.y; });
+    if(p&&tr.length) pts.push(Math.round(p.x)+','+Math.round(p.y));
+    pl.setAttribute('points',pts.join(' '));
+  }
+  function toca(p){
+    for(var n=1;n<=9;n++){
+      if(tr.indexOf(n)>=0) continue;
+      var c=trazoPos(n);
+      if(Math.sqrt((p.x-c.x)*(p.x-c.x)+(p.y-c.y)*(p.y-c.y))<32){ tr.push(n);
+        var d=document.getElementById('tp'+n); d.setAttribute('fill','#F2C11B'); d.setAttribute('r','16'); }
+    }
+  }
+  sv.addEventListener('pointerdown',function(ev){
+    ev.preventDefault(); try{ sv.setPointerCapture(ev.pointerId); }catch(e){}
+    tr=[]; vivo=true;
+    for(var n=1;n<=9;n++){ var d=document.getElementById('tp'+n); d.setAttribute('fill','#5A6A7A'); d.setAttribute('r','13'); }
+    var p=pos(ev); toca(p); pinta(p);
+  });
+  sv.addEventListener('pointermove',function(ev){ if(!vivo) return; ev.preventDefault(); var p=pos(ev); toca(p); pinta(p); });
+  function fin(){
+    if(!vivo) return; vivo=false; pinta(null);
+    if(tr.length<5){ PIN.aviso='Une al menos 5 puntos.'; pintaLock(); return; }
+    procesaPin('P'+tr.join(''));
+  }
+  sv.addEventListener('pointerup',fin); sv.addEventListener('pointercancel',fin);
+}
 function pintaLock(){
   var L=document.getElementById('lock');
   if(!L.dataset.on){ L.style.display='none'; return; }
   var tit,txt;
-  if(PIN.modo==='nuevo'){ tit='Crea tu clave'; txt='Seis números. Apúntala en algún sitio: si se te olvida, '
-    +'no hay forma de recuperarla y habría que borrar los datos.'; }
-  else if(PIN.modo==='repite'){ tit='Repite la clave'; txt='Vuelve a marcar los mismos seis números.'; }
-  else if(PIN.modo==='quitar'){ tit='Marca tu clave'; txt='Confírmala para poder quitar el bloqueo.'; }
-  else { tit='Introduce tu clave'; txt='Seis números para entrar.'; }
+  var tecl=pinConTeclado();
+  if(PIN.modo==='nuevo'){ tit='Crea tu clave'; txt='Dibuja con el dedo un trazo que una al menos 5 puntos, sin levantarlo. Acuérdate del dibujo: '
+    +'si se te olvida, no hay forma de recuperarlo y habría que borrar los datos.'; }
+  else if(PIN.modo==='repite'){ tit='Repite el trazo'; txt='Dibuja el mismo trazo otra vez.'; }
+  else if(PIN.modo==='quitar'){ tit=tecl?'Marca tu clave':'Dibuja tu trazo'; txt='Confírmala para poder quitar el bloqueo.'; }
+  else { tit=tecl?'Introduce tu clave':'Dibuja tu trazo'; txt=tecl?'Seis números para entrar.':'Une los puntos con el dedo para entrar.'; }
   var pts='';
   for(var i=0;i<6;i++) pts+='<div class="punto" data-on="'+(i<PIN.buf.length?1:0)+'"></div>';
   var tec='';
@@ -2884,10 +3085,11 @@ function pintaLock(){
     +'<circle cx="50" cy="50" r="30" fill="#3D7CC9"/><circle cx="50" cy="50" r="20" fill="#DF4A44"/>'
     +'<circle cx="50" cy="50" r="10" fill="#F2C11B"/></svg>'
     +'<h2>'+tit+'</h2><p>'+txt+'</p>'
-    +'<div class="puntos">'+pts+'</div>'
-    +'<div class="teclado">'+tec+'</div>'
+    +(tecl?'<div class="puntos">'+pts+'</div><div class="teclado">'+tec+'</div>'
+          :trazoHTML()+(PIN.modo?'<button class="mini cancela" data-pin="salir">Cancelar</button>':''))
     +'<p class="aviso">'+(PIN.aviso||'')+'</p></div>';
   L.style.display='block';
+  if(!tecl) trazoInicia();
 }
 function abreLock(modo){
   vozStop();
@@ -2909,7 +3111,9 @@ function teclaPin(k){
   if(PIN.buf.length>=6) return;
   PIN.buf+=k; PIN.aviso='';
   if(PIN.buf.length<6){ pintaLock(); return; }
-  var v=PIN.buf;
+  procesaPin(PIN.buf);
+}
+function procesaPin(v){
   if(PIN.modo==='nuevo'){ PIN.primero=v; PIN.buf=''; PIN.modo='repite'; pintaLock(); return; }
   if(PIN.modo==='repite'){
     if(v===PIN.primero){ D.pin=v; save(); cierraLock(); render(); toast('Clave activada'); }
@@ -2918,14 +3122,14 @@ function teclaPin(k){
   }
   if(PIN.modo==='quitar'){
     if(v===D.pin){ delete D.pin; save(); cierraLock(); render(); toast('Clave quitada'); }
-    else { PIN.buf=''; PIN.aviso='Clave incorrecta.'; pintaLock(); }
+    else { PIN.buf=''; PIN.aviso=pinEsPatron()?'Trazo incorrecto.':'Clave incorrecta.'; pintaLock(); }
     return;
   }
   /* entrada normal */
   if(v===D.pin){ PIN.fallos=0; marcaActividad(); cierraLock(); }
   else {
     PIN.fallos++; PIN.buf='';
-    PIN.aviso=PIN.fallos>=3?'Clave incorrecta. Llevas '+PIN.fallos+' intentos.':'Clave incorrecta.';
+    PIN.aviso=PIN.fallos>=3?(pinEsPatron()?'Trazo incorrecto. Llevas '+PIN.fallos+' intentos.':'Clave incorrecta. Llevas '+PIN.fallos+' intentos.'):(pinEsPatron()?'Trazo incorrecto.':'Clave incorrecta.');
     pintaLock();
   }
 }
@@ -3643,7 +3847,7 @@ function clasifJPG(gp,cb){
 /* ---- imagen de progreso: gráfica y mejores marcas ---- */
 function progresoJPG(cb){
   var A=arqActual(), CW=900, M=60;
-  var es3=(U.pVista==='3d');
+  var es3=(U.pVista==='3d'||U.pVista==='2d');
   var serie=es3?r3Cerrados(A.id,U.pSite).filter(function(x){ return r3Flechas(x); }).map(function(x){ return {fecha:x.fecha, media:r3Media(x), total:r3Total(x)}; })
     :D.sessions.filter(function(x){ return x.arquero===A.id && modDe(x)===modP() && x.site===U.pSite; })
     .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
@@ -3661,7 +3865,7 @@ function progresoJPG(cb){
   var L=lienzo(CW,CH), g=L.g, P=pintor(g);
   var nom=limpiaNombre(fechaCompacta(Date.now())+' progreso '+nombreArq(A))+'.jpg';
   encabezado(P,g,CW,M,'Progreso',nom,
-    nombreArq(A)+'  ·  '+(es3?'Recorrido 3D':descMod(modP()))+'  ·  '+sitio(U.pSite), serie.length+(es3?' recorridos':' tiradas'));
+    nombreArq(A)+'  ·  '+(es3?'Recorrido '+r3N():descMod(modP()))+'  ·  '+sitio(U.pSite), serie.length+(es3?' recorridos':' tiradas'));
 
   var gx=M, gy=210, gw=CW-2*M, gh=altoG;
   g.fillStyle='#F7F8F9'; g.fillRect(gx,gy,gw,gh);
@@ -3697,7 +3901,7 @@ function progresoJPG(cb){
       P.T(X,ty2+4,30,par[1],{b:1});
     });
   } else {
-    P.T(CW/2,gy+gh/2,20,(es3?'Todavía no hay recorridos 3D en este sitio.':'Todavía no hay tiradas a esta distancia y sitio.'),{a:'center',c:'#7A858F'});
+    P.T(CW/2,gy+gh/2,20,(es3?'Todavía no hay recorridos '+r3N()+' en este sitio.':'Todavía no hay tiradas a esta distancia y sitio.'),{a:'center',c:'#7A858F'});
   }
 
   var ty=gy+gh+100;
@@ -3705,7 +3909,7 @@ function progresoJPG(cb){
   ty+=16; P.LN(M,ty,CW-M,ty,'#12181F',1.5);
   filas.forEach(function(f){
     ty+=46;
-    P.T(M+2,ty-14,22,f.es3?'Recorrido 3D':descMod(f.d),{b:1});
+    P.T(M+2,ty-14,22,f.es3?'Recorrido '+r3N():descMod(f.d),{b:1});
     if(f.b){
       P.TF(M+215,ty-14,CW-M-235-(M+215),sitio(f.st)+'  ·  '+(f.es3?f.b.fp+' fl./puesto':formato(f.b))+'  ·  '+fecha(f.b.fecha),{s:19,c:'#5B6975'});
       P.T(CW-M-215,ty-14,24,f.es3?r3Total(f.b):total(f.b),{b:1,a:'right'});
@@ -4828,11 +5032,15 @@ function mejoresDe(a){
       +(mejor?'<b>'+total(mejor)+'</b><small>'+dec(media(mejor))+' por flecha</small>':'<small>Sin marca</small>')
       +'</div></div>';
   });
-  var m3=r3MejorSitio(a.id,null);
-  if(m3) hay=true;
-  h+='<div class="rec" style="padding:8px 0"><div class="lbl">Recorrido 3D'
-    +(m3?'<small>'+esc(sitio(m3.site))+' · '+r3Formato(m3)+' · '+fecha(m3.fecha)+'</small>':'')+'</div><div class="v">'
-    +(m3?'<b>'+r3Total(m3)+'</b><small>'+dec(r3Media(m3))+' por flecha</small>':'<small>Sin marca</small>')+'</div></div>';
+  ['3','2'].forEach(function(kk){
+    var antes=R3K; R3K=kk;
+    var m3=r3MejorSitio(a.id,null);
+    if(m3) hay=true;
+    h+='<div class="rec" style="padding:8px 0"><div class="lbl">Recorrido '+r3N()
+      +(m3?'<small>'+esc(sitio(m3.site))+' · '+r3Formato(m3)+' · '+fecha(m3.fecha)+'</small>':'')+'</div><div class="v">'
+      +(m3?'<b>'+r3Total(m3)+'</b><small>'+dec(r3Media(m3))+' por flecha</small>':'<small>Sin marca</small>')+'</div></div>';
+    R3K=antes;
+  });
   return h+(hay?'':'<p class="stat">Aún no hay tiradas completas guardadas.</p>');
 }
 function pantallaHistorialCampo(){
@@ -5070,7 +5278,7 @@ function fichasMat(){
 }
 function pantallaTecnicas(){ return fichasTec()+'<div style="height:14px"></div>'+fichasMat(); }
 function renderCampo(){
-  if(['inicio','recorrido','puesto','mapa','clasif','histcampo','ligas','distancia','arqueros','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
+  if(['inicio','recorrido','puesto','mapa','clasif','histcampo','ligas','distancia','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(C.tab)<0)
     C.tab='inicio';
   MD.vista=(C.tab==='distancia'); escuchaSensor(MD.vista);
   if(C.tab==='mapa') geoOn(); else if(!GEO.guardando) geoOff();
@@ -5091,6 +5299,7 @@ function renderCampo(){
   else if(C.tab==='clasif'){ h+=pantallaResumen(recVista()); }
   else if(C.tab==='recorrido'){ h+=pantallaRecorrido(r); }
   else if(C.tab==='arqueros'){ h+=pantallaArqueros(); }
+  else if(C.tab==='objetivos'){ h+=pantallaObjetivos(); }
   else if(C.tab==='sitios'){ h+=pantallaSitios(); }
   else if(C.tab==='gimnasia'){ h+=pantallaGim(); }
   else if(C.tab==='tecnicas'){ h+=fichasTec(); }
@@ -5147,7 +5356,7 @@ function selArq(){
 }
 
 /* ---- pantalla de inicio: un botón por apartado ---- */
-var TITULOS={tirada:'Tirada',rec3d:'Recorrido 3D',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso',historial:'Historial',ligas:'Ligas',sitios:'Sitios',
+var TITULOS={tirada:'Tirada',rec3d:'Recorrido 3D',rec2d:'Recorrido 2D',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso e Historial',historial:'Progreso e Historial',objetivos:'Objetivos',ligas:'Ligas',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function botonNuevaLiga(t){ return t==='ligas'?'<button class="navnuevo" data-act="ligaadd">+ Nueva liga</button>':''; }
 function navTop(t){
@@ -5156,21 +5365,24 @@ function navTop(t){
 function pantallaInicio(){
   var a=arqActual(), tot=gimItems().length, hs=gimHechas(a), okg=gimOk(a), nom=nombreArq(a);
   var pend=((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length;
-  var ns=D.sessions.length, nlig=(D.ligasSala||[]).length, r3o=r3Actual(), n3=r3Lista().filter(function(x){ return x.cerrado; }).length;
-  var r3sub=(r3o&&!r3o.cerrado)?'en curso · '+(r3T(r3o)>1?'tanda '+(Math.floor(Math.min(r3Primero(r3o),r3o.tiros.length-1)/r3o.dist.length)+1)+' de '+r3T(r3o)+', ':'')+'puesto '+(Math.min(r3Primero(r3o),r3o.tiros.length-1)%r3o.dist.length+1)+' de '+r3o.dist.length:n3?n3+(n3===1?' recorrido guardado':' recorridos guardados'):r3Dists().replace(/ m$/,'')+' m';
+  var ns=D.sessions.length, nlig=(D.ligasSala||[]).length, n3=r3Lista().filter(function(x){ return x.cerrado&&r3Kd(x)==='3'; }).length, n2=r3Lista().filter(function(x){ return x.cerrado&&r3Kd(x)==='2'; }).length;
+  var r3subF=function(r3o,n3){ return (r3o&&!r3o.cerrado)?'en curso · '+(r3T(r3o)>1?'tanda '+(Math.floor(Math.min(r3Primero(r3o),r3o.tiros.length-1)/r3o.dist.length)+1)+' de '+r3T(r3o)+', ':'')+'puesto '+(Math.min(r3Primero(r3o),r3o.tiros.length-1)%r3o.dist.length+1)+' de '+r3o.dist.length:n3?n3+(n3===1?' recorrido guardado':' recorridos guardados'):r3Dists().replace(/ m$/,'')+' m'; };
+  function r3SubDe(k){ var antes=R3K; R3K=k; var o=r3Actual(), r=r3subF(o,k==='2'?n2:n3); R3K=antes; return r; }
+  var r3sub=r3SubDe('3'), r2sub=r3SubDe('2');
   var gsub=!tot?'sin ejercicios':!gimExige(a)?'no se exige a '+esc(nom):okg?'✓ completa':'✗ '+hs+' de '+tot+' hechos';
   var M=[
     ['gimnasia','🤸','Gimnasia',gsub,'#E8833A',(tot&&gimExige(a))?(okg?'bien':'mal'):''],
     ['tirada','🎯','Tirada','anota las flechas o solo el total','#F2C11B','',true],
     ['rec3d','🦌','Recorrido 3D',r3sub,'#F2C11B',''],
+    ['rec2d','🖼️','Recorrido 2D',r2sub,'#F2C11B',''],
     ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
-    ['progreso','📈','Progreso','cómo vas mejorando','#3D7CC9',''],
-    ['historial','🕘','Historial',ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':''),'#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
-    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
-    ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C',''],
+    ['objetivos','🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C',''],
+    ['prohis','📈','Progreso e Historial','cómo mejoras · '+ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':'')+(n2?' · '+n2+' en 2D':''),'#3D7CC9',''],
     ['tecnicas','📝','Técnicas y Formación',fSub(),'#E8833A',''],
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
+    ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
   return avisoCopia()+menuInicio(M,'tab');
@@ -5183,7 +5395,7 @@ function menuInicio(M,acto){
   }).join('')+'</div>';
 }
 /* ---- menú de inicio de Campo ---- */
-var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',histcampo:'Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
+var TITULOSC={recorrido:'Recorrido',puesto:'Puesto',clasif:'Clasificación',arqueros:'Arqueros',objetivos:'Objetivos',histcampo:'Historial',ligas:'Ligas',mapa:'Mapa',distancia:'Distancia',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function navTopC(t){
   return '<div class="navtop"><button class="volver" data-act="ctab" data-v="inicio">◀ Inicio</button><span class="ttl">'+(TITULOSC[t]||'')+'</span>'+botonNuevaLiga(t)+'</div>';
@@ -5202,12 +5414,13 @@ function pantallaInicioCampo(){
     ['clasif','🏆','Clasificación',nrec?'resumen y quién va ganando':'aún sin recorridos','#3D7CC9',''],
     ['histcampo','🕘','Historial',nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
-    ['arqueros','🏹','Arqueros','arco y flechas, objetivos, mejores marcas','#6FC38C',''],
+    ['arqueros','🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C',''],
+    ['objetivos','🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
     ['distancia','📏','Distancia','medir con la cámara','#6FC38C',''],
-    ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['tecnicas','📝','Técnicas y Formación',fSub(),'#E8833A',''],
     ['material','🎒','Material','listas Otero, Campo, Deva y fichas','#E8833A',''],
+    ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['pendientes','✅','Pendientes',pend?pend+' por hacer':'nada pendiente','#A98BE0',''],
     ['copia','💾','Copias y claves','copia de seguridad, nube y clave','#A98BE0','']];
   return avisoCopia()+menuInicio(M,'ctab');
@@ -5263,35 +5476,46 @@ function guardaTotal(){
 }
 
 /* ---- Recorrido 3D de sala: 5 puestos con su distancia; 2 flechas por puesto (ajustable); puntuación 3D: 11, 10, 8, 5 y fallo ---- */
+/* Recorrido 3D y Recorrido 2D comparten código y lista (D.rec3d): cada recorrido lleva k='2' si es de 2D. R3K dice cuál se está viendo. */
+var R3K='3';
+function r3Kd(x){ return x&&x.k==='2'?'2':'3'; }
+function r3N(){ return R3K==='2'?'2D':'3D'; }
+function r3Nom(x){ return r3Kd(x)==='2'?'2D':'3D'; }
+function r3Modo(){ return R3K==='2'?D.rec2dCfg.Modo:D.rec3dModo; }
+function r3PonModo(v){ if(R3K==='2') D.rec2dCfg.Modo=v; else D.rec3dModo=v; }
 function r3Lista(){ return D.rec3d||(D.rec3d=[]); }
 function r3fDef(){ return {fecha:hoyISO(),site:0,fp:2,tandas:1}; }
-function r3Cerrados(arqId,site){ return r3Lista().filter(function(x){ return x.cerrado&&(arqId==null||x.arq===arqId)&&(site==null||x.site===site); })
+function r3Cerrados(arqId,site,todos){ return r3Lista().filter(function(x){ return x.cerrado&&(todos||r3Kd(x)===R3K)&&(arqId==null||x.arq===arqId)&&(site==null||x.site===site); })
   .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); }); }
 function r3Media(x){ var n=r3Flechas(x); return n?r3Total(x)/n:0; }
 function r3Formato(x){ var T=r3T(x); return x.dist.length+' puestos'+(T>1?' · '+T+' tandas':'')+' · '+x.fp+(x.fp===1?' flecha':' flechas')+' por puesto'; }
-function r3EsMejor(x){ var mx=r3Max(x), t=r3Total(x); return r3Completo(x)&&!r3Lista().some(function(y){ return y.cerrado&&r3Completo(y)&&y.arq===x.arq&&y.id!==x.id&&r3Max(y)===mx&&r3Total(y)>t; }); }
+function r3EsMejor(x){ var mx=r3Max(x), t=r3Total(x); return r3Completo(x)&&!r3Lista().some(function(y){ return y.cerrado&&r3Kd(y)===r3Kd(x)&&r3Completo(y)&&y.arq===x.arq&&y.id!==x.id&&r3Max(y)===mx&&r3Total(y)>t; }); }
 function r3MejorSitio(arqId,site){      /* el mejor por media por flecha (así se comparan recorridos de 1, 2 o 3 flechas por puesto) */
   var m=null;
   r3Cerrados(arqId,site).forEach(function(x){ if(!r3Completo(x)) return;
     if(!m||r3Media(x)>r3Media(m)||(r3Media(x)===r3Media(m)&&r3Total(x)>r3Total(m))) m=x; });
   return m;
 }
-function segProgreso(){ var v3=(U.pVista==='3d'); return '<div class="seg" style="margin-bottom:10px">'
-  +'<button data-act="pvista" data-v="dianas" data-on="'+(v3?0:1)+'">Dianas</button>'
-  +'<button data-act="pvista" data-v="3d" data-on="'+(v3?1:0)+'">Recorrido 3D</button></div>'; }
+function segPH(){ return '<div class="seg" style="margin:0 0 10px">'
+  +'<button data-act="tab" data-v="progreso" data-on="'+(U.tab==='progreso'?1:0)+'">📈 Progreso</button>'
+  +'<button data-act="tab" data-v="historial" data-on="'+(U.tab==='historial'?1:0)+'">🕘 Historial</button></div>'; }
+function segProgreso(){ var v=U.pVista; return '<div class="seg" style="margin-bottom:10px">'
+  +'<button data-act="pvista" data-v="dianas" data-on="'+((v==='3d'||v==='2d')?0:1)+'">Dianas</button>'
+  +'<button data-act="pvista" data-v="3d" data-on="'+(v==='3d'?1:0)+'">3D</button>'
+  +'<button data-act="pvista" data-v="2d" data-on="'+(v==='2d'?1:0)+'">2D</button></div>'; }
 function progreso3D(A){
   var serie=r3Cerrados(A.id,U.pSite).filter(function(x){ return r3Flechas(x); }).map(function(x){ return {fecha:x.fecha,media:r3Media(x),total:r3Total(x)}; });
   var ms=serie.map(function(p){ return p.media; }), u5=ms.slice(-5);
   var h=segProgreso()+'<div class="selrow">'+selArq()+'</div>'+selSitio('data-selpsite',U.pSite)+'<div style="height:12px"></div>';
   h+='<div class="card"><div class="chead"><h2>Media por flecha</h2><span>'+serie.length+(serie.length===1?' recorrido':' recorridos')+'</span></div>'
-    +chart(serie,11,'Sin recorridos 3D guardados en este sitio.')
+    +chart(serie,11,'Sin recorridos '+r3N()+' guardados en este sitio.')
     +(serie.length?'<div class="legend"><div>Última<b>'+dec(ms[ms.length-1])+'</b></div>'
       +'<div>Mejor<b>'+dec(Math.max.apply(null,ms))+'</b></div>'
       +'<div>Media de 5<b>'+dec(u5.reduce(function(a,v){ return a+v; },0)/u5.length)+'</b></div></div>':'')+'</div>';
   h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
   D.sites.forEach(function(sn,i){
     var b=r3MejorSitio(A.id,i);
-    h+='<div class="rec r3rec"><div class="lbl">Recorrido 3D<small>'+esc(sn)+'</small></div><div class="v">'
+    h+='<div class="rec r3rec"><div class="lbl">Recorrido '+r3N()+'<small>'+esc(sn)+'</small></div><div class="v">'
       +(b?'<b>'+dec(r3Media(b))+'</b><small>'+r3Total(b)+' de '+r3Max(b)+' · '+(r3T(b)>1?r3T(b)+' tandas · ':'')+b.fp+(b.fp===1?' flecha':' flechas')+' por puesto · '+fecha(b.fecha).replace(/ /g,'\u00a0')+'</small>':'<small>Sin registro</small>')+'</div></div>';
   });
   h+='</div><div class="card"><div class="chead"><h2>Guardar</h2></div>'+dosBotones('prog')+'</div>';
@@ -5299,16 +5523,16 @@ function progreso3D(A){
 }
 function filaR3(x){
   var a=arqPorId(x.arq), n=r3Flechas(x), inc=!r3Completo(x);
-  return '<div class="hrow"><div class="l1"><b>Recorrido 3D</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+'</div>'
+  return '<div class="hrow"><div class="l1"><b>Recorrido '+r3Nom(x)+'</b> · '+esc(sitio(x.site))+(r3EsMejor(x)?' · mejor':'')+(x.comp?' · competición':'')+'</div>'
     +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(x.fecha)+'</div>'
     +'<div class="l3">'+r3Formato(x)+(inc?' <span class="inc">incompleta: '+n+' de '+(x.tiros.length*x.fp)+' flechas</span>':'')
     +(n?' · '+dec(r3Media(x))+' por flecha':'')+r3ObjMini(x)+' · <b>'+r3Total(x)+'</b> de '+r3Max(x)+'</div>'
     +'<div class="hbts" style="grid-template-columns:1fr 42px"><button class="mini" data-act="r3abre" data-id="'+x.id+'">Abrir</button>'
     +'<button class="mini" data-act="r3borrar" data-id="'+x.id+'">✕</button></div></div>';
 }
-function r3ObjDe(arqId){ var a=arqPorId(arqId), o=a&&a.obj3d; return (o&&Number(o.p)>0)?o:null; }
+function r3ObjDe(arqId,k){ var a=arqPorId(arqId), o=a&&a[(k||R3K)==='2'?'obj2d':'obj3d']; return (o&&Number(o.p)>0)?o:null; }
 function r3ObjEstado(x){      /* el objetivo se define para 2 flechas por puesto; con 1 o 3 se compara por media por flecha */
-  var o=r3ObjDe(x.arq); if(!o) return null;
+  var o=r3ObjDe(x.arq,r3Kd(x)); if(!o) return null;
   var fl=r3Flechas(x), tot=r3Total(x), todas=x.tiros.length*x.fp, base=x.dist.length*2, ms=0;
   x.tiros.forEach(function(t){ t.forEach(function(v){ if(v==='M') ms++; }); });
   var pct=fl?(tot/fl*base/Number(o.p)*100):null;
@@ -5354,14 +5578,15 @@ function r3VozAplica(texto){
     r3Anota(r,a.v); hechos.push(a.v);
   });
   VOZ.oido=dicho+(hechos.length?' → '+hechos.join(' · '):'');
-  VOZ.aviso=malos.length?'No vale en el 3D: '+malos.join(', ')+'. Di once, diez, ocho, cinco o fallo.':(llena?'Recorrido completo: ciérralo para guardarlo.':'');
+  VOZ.aviso=malos.length?'No vale en el '+r3N()+': '+malos.join(', ')+'. Di once, diez, ocho, cinco o fallo.':(llena?'Recorrido completo: ciérralo para guardarlo.':'');
   save(); render();
 }
 function r3Nuevo3(arq,f,dist,fp,tandas){
   dist=dist.filter(function(x){ return x>0; });
   var r={id:uid(),fecha:isoDia(f.fecha),arq:arq.id,site:Number(f.site)||0,dist:dist.slice(),fp:fp,
-    tandas:tandas||1,
+    tandas:tandas||1,comp:!!f.comp,
     tiros:(function(){ var t=[],i,j; for(i=0;i<dist.length*(tandas||1);i++){ var o=[]; for(j=0;j<fp;j++) o.push(null); t.push(o); } return t; })(),cerrado:false};
+  if(R3K==='2') r.k='2';
   r3Lista().unshift(r); return r;
 }
 function r3T(r){ var t=Math.floor(Number(r.tandas)); return (t>=1&&t<=10)?t:1; }                       /* tandas (vueltas al recorrido) */
@@ -5373,19 +5598,20 @@ function r3Completo(r){ return r3Flechas(r)===r.tiros.length*r.fp; }
 function r3Hecho(r,i){ return r.tiros[i].every(function(v){ return v!=null; }); }
 function r3Hechos(r){ var n=0,i; for(i=0;i<r.tiros.length;i++) if(r3Hecho(r,i)) n++; return n; }
 function r3Actual(){
-  var l=r3Lista(), a=arqActual(), r=l.filter(function(x){ return x.id===U.r3; })[0];
-  return r||l.filter(function(x){ return !x.cerrado&&x.arq===a.id; })[0]||null;
+  var l=r3Lista(), a=arqActual(), r=l.filter(function(x){ return x.id===U.r3&&r3Kd(x)===R3K; })[0];
+  return r||l.filter(function(x){ return !x.cerrado&&x.arq===a.id&&r3Kd(x)===R3K; })[0]||null;
 }
 function r3Primero(r){ var i; for(i=0;i<r.tiros.length;i++) if(!r3Hecho(r,i)) return i; return 0; }
 function r3Mejor(arq,max,salvoId){      /* mejor total de los recorridos cerrados del mismo arquero y la misma puntuación máxima */
   var m=null;
-  r3Lista().forEach(function(x){ if(x.cerrado&&r3Completo(x)&&x.arq===arq&&x.id!==salvoId&&r3Max(x)===max&&(m===null||r3Total(x)>m)) m=r3Total(x); });
+  r3Lista().forEach(function(x){ if(x.cerrado&&r3Kd(x)===R3K&&r3Completo(x)&&x.arq===arq&&x.id!==salvoId&&r3Max(x)===max&&(m===null||r3Total(x)>m)) m=r3Total(x); });
   return m;
 }
 /* distancias que se van a usar: solo las rellenas (un puesto en blanco no cuenta ni aparece) */
-function r3Set(m){ return m==='5'?D.rec3dDist:m==='4'?D.rec3dD4:m==='3'?D.rec3dD3:D.rec3dProp; }
+function r3Set(m){ var c=(R3K==='2')?D.rec2dCfg:null; if(c) return m==='5'?c.Dist:m==='4'?c.D4:m==='3'?c.D3:c.Prop;
+  return m==='5'?D.rec3dDist:m==='4'?D.rec3dD4:m==='3'?D.rec3dD3:D.rec3dProp; }
 function r3Plantilla(){
-  return (r3Set(D.rec3dModo)||[]).map(Number).filter(function(x){ return x>0; });
+  return (r3Set(r3Modo())||[]).map(Number).filter(function(x){ return x>0; });
 }
 function r3Refresca(){
   var e=document.getElementById('r3resu'); if(e) e.textContent=r3Resu();
@@ -5403,13 +5629,13 @@ function r3Resu(){
 }
 /* elección de puestos, como la de dianas en Sala: 5, 4, 3 u otros */
 function r3SegPuestos(){
-  var m=D.rec3dModo;
+  var m=r3Modo();
   return '<p class="stat" style="margin:10px 0 4px">Puestos</p><div class="seg segmod">'
     +['5','4','3'].map(function(k){ return '<button data-act="r3modo" data-v="'+k+'" data-on="'+(m===k?1:0)+'"><b>'+k+'</b><small>puestos</small></button>'; }).join('')
     +'<button data-act="r3modo" data-v="o" data-on="'+(m==='o'?1:0)+'"><b>Otros</b><small>puestos</small></button></div>';
 }
 function r3DistEditor(){
-  var m=D.rec3dModo, d=r3Set(m);
+  var m=r3Modo(), d=r3Set(m);
   return r3SegPuestos()
     +(m==='o'?'<div class="fmt" style="margin:10px 0 0"><div class="step"><span class="lb">Número de<br>puestos</span>'
       +'<button data-act="r3pn" data-v="-1">−</button><b>'+d.length+'</b><button data-act="r3pn" data-v="1">+</button></div></div>':'')
@@ -5419,10 +5645,10 @@ function r3DistEditor(){
     +'<p class="stat" id="r3resu" style="margin:0 0 6px;color:var(--gold);font-weight:600">'+r3Resu()+'</p>';
 }
 function an3(r,pn,crear){
-  var s='s'+(Number(r.site)||0), p='p'+(pn+1), o=D.rec3dFotos&&D.rec3dFotos[s]&&D.rec3dFotos[s][p];
+  var s='s'+(Number(r.site)||0), p='p'+(pn+1), kf=(r3Kd(r)==='2')?'rec2dFotos':'rec3dFotos', F=D[kf], o=F&&F[s]&&F[s][p];
   if(o) return o;
   var v={nombre:'',foto:null};
-  if(crear){ if(!D.rec3dFotos) D.rec3dFotos={}; if(!D.rec3dFotos[s]) D.rec3dFotos[s]={}; D.rec3dFotos[s][p]=v; }
+  if(crear){ if(!D[kf]) D[kf]={}; if(!D[kf][s]) D[kf][s]={}; D[kf][s][p]=v; }
   return v;
 }
 function r3Puesto(r){
@@ -5430,7 +5656,7 @@ function r3Puesto(r){
   var pn=i%n, tn=Math.floor(i/n)+1;
   var h='<div class="card"><div class="chead"><h2>Puesto '+(pn+1)+' · '+fmtN(r3Dist(r,i))+' m</h2>'
     +'<span>'+(T>1?'Tanda '+tn+' de '+T+' · ':'')+(pn+1)+' de '+n+(r.cerrado?' · cerrado':'')+'</span></div>'
-    +'<p class="stat">'+esc(nombreArq(a))+' · '+fecha(r.fecha)+' · '+esc(sitio(r.site))+'</p>';
+    +'<p class="stat">'+esc(nombreArq(a))+' · '+fecha(r.fecha)+' · '+esc(sitio(r.site))+(r.comp?' · competición':'')+'</p>';
   var an=an3(r,pn);
   h+='<div class="animal">'
     +(an.foto?'<img src="data:image/jpeg;base64,'+an.foto.data+'" alt="Foto del puesto" data-act="fotoanimal3" data-pn="'+pn+'">'
@@ -5474,7 +5700,7 @@ function r3Resumen(r){
   });
   h+='<div class="r3tot"><span>Total</span><b>'+tot+'</b><small>de '+mx+(n?' · media '+fmtN(Math.round(tot/n*10)/10)+' por flecha':'')+'</small></div>';
   var oe=r3ObjEstado(r);
-  if(oe) h+='<div class="objfila"><b>Objetivo</b> Recorrido 3D: '+objCTexto(oe.o)
+  if(oe) h+='<div class="objfila"><b>Objetivo</b> Recorrido '+r3N()+': '+objCTexto(oe.o)
     +(oe.pct!=null?'<br>Vas al <b class="'+(oe.pct>=100?'pctok':'')+'">'+Math.round(oe.pct)+' %</b>'
       +(oe.aplicaM?' · '+oe.ms+(oe.ms===1?' M':' M')+(oe.okM?'':' <b class="ko">✗ pasa del máximo</b>'):'')
       +(oe.logrado?' · <b class="pctok">✓ conseguido</b>':''):'')+'</div>';
@@ -5486,11 +5712,13 @@ function r3Resumen(r){
 }
 function r3Nuevo(){
   var f=U.r3f||(U.r3f=r3fDef());
-  var h='<div class="card"><div class="chead"><h2>Nuevo recorrido 3D</h2><span id="r3cnt">'+r3Plantilla().length+' puestos</span></div>'
+  var h='<div class="card"><div class="chead"><h2>Nuevo recorrido '+r3N()+'</h2><span id="r3cnt">'+r3Plantilla().length+' puestos</span></div>'
     +selSitioGrande('data-r3f="site"',Number(f.site)||0)
     +r3DistEditor()
     +'<div class="field" style="margin-top:12px"><label>Fecha</label><input type="date" data-r3f="fecha" value="'+esc(f.fecha)+'"></div>'
-    +'<p class="stat" style="margin:6px 0 0">Puntuación 3D: 11, 10, 8, 5 o fallo.</p>'
+    +'<p class="stat" style="margin:6px 0 0">Puntuación '+r3N()+': 11, 10, 8, 5 o fallo.</p>'
+    +(D.arqueros.length>1?'<div class="chk compfila" data-act="r3comp" style="margin-top:10px"><span class="tick" data-on="'+(f.comp?1:0)+'">'+(f.comp?'✓':'')+'</span>'
+      +'<div class="ctxt">¿Es una competición?<small>'+(f.comp?'Saldrá marcada como competición en la clasificación':'Se marcará en la clasificación del día')+'</small></div></div>':'')
     +'<div class="fmt" style="margin:10px 0 4px"><div class="step"><span class="lb">Tandas<br>(vueltas)</span>'
     +'<button data-act="r3tandas" data-v="-1">−</button><b>'+(Math.min(10,Math.max(1,Number(f.tandas)||1)))+'</b><button data-act="r3tandas" data-v="1">+</button></div></div>'
     +'<p class="stat" style="margin:0 0 6px">Cada tanda es una vuelta completa por los puestos con distancia.</p>'
@@ -5499,9 +5727,43 @@ function r3Nuevo(){
     +'<button class="act" data-act="r3nuevo">Empezar recorrido</button></div>';
   return h;
 }
+/* clasificación de los recorridos 3D y 2D: mismo día, mismo tipo, sitio y formato, con dos o más arqueros o marcados como competición */
+function gruposR3(){
+  var m={};
+  r3Cerrados(null,null,true).forEach(function(r){
+    if(!r3Flechas(r)) return;
+    var k=iso(r.fecha)+'|'+r3Kd(r)+'|'+r.site+'|'+r.dist.length+'x'+r.fp+'x'+r3T(r);
+    if(!m[k]) m[k]={clave:k,fecha:r.fecha,k:r3Kd(r),site:r.site,np:r.dist.length,fp:r.fp,T:r3T(r),filas:[]};
+    m[k].filas.push(r);
+  });
+  return Object.keys(m).map(function(k){
+    var gp=m[k], por={};
+    gp.filas.forEach(function(r){ if(!por[r.arq]||r3Total(r)>r3Total(por[r.arq])) por[r.arq]=r; });
+    gp.filas=Object.keys(por).map(function(a){ return por[a]; }).sort(function(x,y){ return r3Total(y)-r3Total(x); });
+    gp.comp=gp.filas.some(function(x){ return !!x.comp; });
+    return gp;
+  }).filter(function(gp){ return gp.filas.length>1||gp.comp; })
+    .sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+}
+function clasifR3HTML(gr){
+  var h='';
+  gr.slice(0,25).forEach(function(gp){
+    h+='<div class="card"><p class="gtit">'+(gp.comp?'<b>Competición</b> · ':'')+'<b>'+fecha(gp.fecha)+'</b> · Recorrido '+(gp.k==='2'?'2D':'3D')+' · '
+      +esc(sitio(gp.site))+' · '+gp.np+' puestos'+(gp.T>1?' · '+gp.T+' tandas':'')+' · '+gp.fp+(gp.fp===1?' flecha':' flechas')+' por puesto</p>';
+    gp.filas.forEach(function(r,i){
+      var a=arqPorId(r.arq);
+      h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
+        +(a.foto?'<img class="avatarmini" src="'+fotoURL(a)+'" alt="">':'')
+        +'<div class="lbl">'+esc(nombreArq(a))+'<small>'+dec(r3Media(r))+' por flecha · de '+r3Max(r)+(r3Completo(r)?'':' · incompleto')+'</small></div>'
+        +'<div class="v"><b>'+r3Total(r)+'</b></div></div>';
+    });
+    h+='</div>';
+  });
+  return h;
+}
 function r3Historial(){
-  var a=arqActual(), lista=r3Lista().filter(function(x){ return x.cerrado&&x.arq===a.id; }).sort(function(x,y){ return String(y.fecha).localeCompare(String(x.fecha)); });
-  var h='<div class="card"><div class="chead"><h2>Recorridos 3D guardados</h2><span>'+lista.length+'</span></div>';
+  var a=arqActual(), lista=r3Lista().filter(function(x){ return x.cerrado&&x.arq===a.id&&r3Kd(x)===R3K; }).sort(function(x,y){ return String(y.fecha).localeCompare(String(x.fecha)); });
+  var h='<div class="card"><div class="chead"><h2>Recorridos '+r3N()+' guardados</h2><span>'+lista.length+'</span></div>';
   if(!lista.length) return h+'<p class="stat">Aún no hay ninguno de '+esc(nombreArq(a))+'. Al cerrar un recorrido aparecerá aquí.</p></div>';
   lista.forEach(function(x){
     var tot=r3Total(x), mx=r3Max(x), n=r3Flechas(x), mej=r3Mejor(x.arq,mx,x.id), es=(mej===null||tot>mej);
@@ -5555,7 +5817,6 @@ function pantallaArqueros(){
       +'<div class="field"><label for="f'+i+'">Federación</label><input id="f'+i+'" data-arq="federacion" data-i="'+i+'" maxlength="40" value="'+esc(a.federacion)+'"></div>'
       +'<div class="field"><label for="l'+i+'">Licencia</label><input id="l'+i+'" data-arq="licencia" data-i="'+i+'" maxlength="24" value="'+esc(a.licencia)+'"></div>'
       +seccionArq(i,'arco','🏹 Arco y flechas','',equipoArq(a,i),abierto&&sec==='arco')
-      +seccionArq(i,'obj','🎯 Objetivos','dr',objetivosArq(a,i)+objetivos3DArq(a,i)+objetivosCampoArq(a,i),abierto&&sec==='obj')
       +seccionArq(i,'mej','🏅 Mejores marcas','vd',mejoresDe(a),abierto&&sec==='mej')
       +(D.arqueros.length>1?'<button class="mini acdel" data-act="borrararq" data-i="'+i+'">Borrar este arquero</button>':'')
       +'</div></div>';
@@ -5586,8 +5847,9 @@ function pantallaSitios(){
 }
 
 function render(){
-  if(VOZ.activa&&!(D.modo!=='campo'&&(U.tab==='tirada'||U.tab==='rec3d'))) vozStop();
-  if(['inicio','tirada','rec3d','clasif','progreso','historial','ligas','arqueros','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
+  if(VOZ.activa&&!(D.modo!=='campo'&&(U.tab==='tirada'||U.tab==='rec3d'||U.tab==='rec2d'))) vozStop();
+  if(['inicio','tirada','rec3d','rec2d','clasif','progreso','historial','ligas','arqueros','objetivos','sitios','gimnasia','tecnicas','material','pendientes','copia'].indexOf(U.tab)<0) U.tab='inicio';
+  if(U.tab==='rec2d') R3K='2'; else if(U.tab==='rec3d') R3K='3'; else if(U.tab==='progreso') R3K=(U.pVista==='2d')?'2':'3';
   SES.pon('utab',U.tab); SES.pon('ctab',C.tab);
   if(D.modo!=='campo'){ MD.vista=false; escuchaSensor(false); cierraCamara(); C.camOn=false; geoOff(); }
   if(eligiendo || !D.modo){ document.getElementById('app').innerHTML=pantallaModo(); return; }
@@ -5606,6 +5868,7 @@ function render(){
    +'<span>'+(A.nombre?esc(A.nombre):D.arqueros.length+' arquero'+(D.arqueros.length>1?'s':''))+'</span></div>'
    +'</div>';
   h+=(U.tab==='inicio')?pantallaInicio():navTop(U.tab);
+  if(U.tab==='progreso'||U.tab==='historial') h+=segPH();
 
   if(U.tab==='tirada'){
     var s=draft(), ne=nE(s), na=nA(s), e=Math.min(U.sel.end,ne-1), row=s.ends[e];
@@ -5639,9 +5902,7 @@ function render(){
         +'<small>'+(s.comp?'Al acabar cada tanda pasa al arquero siguiente'
                           :'Se marcará en la clasificación del día')+'</small></div></div>';
     }
-    var obj0=objDe(A,modU());
-    if(obj0) h+='<div class="card objcard"><div class="chead"><h2>🎯 Objetivo</h2><span>'+descMod(modU())+'</span></div>'
-      +'<div class="objtxt">'+objTexto(obj0)+'</div></div>';
+    h+=tarjetaObjSala(A,modU());
     h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>'+gimBoton(A);
 
     var slotSz=na<=6?19:na<=9?16:14;
@@ -5702,13 +5963,14 @@ function render(){
   }
 
   if(U.tab==='clasif'){
-    var gs=grupos();
-    if(!gs.length){
+    var gs=grupos(), gr3=gruposR3();
+    if(!gs.length&&!gr3.length){
       h+='<div class="card"><div class="chead"><h2>Clasificación</h2></div>'
         +'<p class="empty">Aún no hay ninguna competición.<br><br>Se crea sola: cuando dos o más arqueros '
         +'guarden una tirada el <i>mismo día</i>, a la <i>misma distancia</i>, en el <i>mismo sitio</i> y con el '
-        +'<i>mismo formato</i>, aparecerá aquí la clasificación ordenada.</p></div>';
+        +'<i>mismo formato</i>, aparecerá aquí la clasificación ordenada. Los recorridos 3D y 2D entran igual, o si los marcas como competición.</p></div>';
     }
+    h+=clasifR3HTML(gr3);
     gs.slice(0,25).forEach(function(gp){
       h+='<div class="card"><p class="gtit">'+(gp.comp?'<b>Competición</b> · ':'')
         +'<b>'+fecha(gp.fecha)+'</b> · '+descDist(gp)+' · '
@@ -5725,8 +5987,8 @@ function render(){
     });
   }
 
-  if(U.tab==='progreso'&&U.pVista==='3d'){ h+=progreso3D(A); }
-  if(U.tab==='progreso'&&U.pVista!=='3d'){
+  if(U.tab==='progreso'&&(U.pVista==='3d'||U.pVista==='2d')){ h+=progreso3D(A); }
+  if(U.tab==='progreso'&&U.pVista!=='3d'&&U.pVista!=='2d'){
     h+=segProgreso();
     var serie=D.sessions.filter(function(x){ return x.arquero===A.id && modDe(x)===modP() && x.site===U.pSite; })
       .sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })
@@ -5773,12 +6035,12 @@ function render(){
     }).sort(function(x,y){
       return (x.site-y.site) || (modIdx(x)-modIdx(y)) || (new Date(y.fecha)-new Date(x.fecha));
     });
-    var lista3=((U.hDist===''||U.hDist==null||U.hDist==='3d')?r3Cerrados(null,null):[]).filter(function(x){
-      return (U.hSite===''||U.hSite==null||Number(U.hSite)===x.site)&&(!U.hSoloInc||!r3Completo(x)); });
+    var lista3=r3Cerrados(null,null,true).filter(function(x){
+      return (U.hDist===''||U.hDist==null||U.hDist===(r3Kd(x)==='2'?'2d':'3d'))&&(U.hSite===''||U.hSite==null||Number(U.hSite)===x.site)&&(!U.hSoloInc||!r3Completo(x)); });
     var todos=lista.map(function(x){ return {t:'s',x:x,site:x.site,mi:modIdx(x),f:x.fecha}; })
       .concat(lista3.map(function(x){ return {t:'r',x:x,site:x.site,mi:MODS.length,f:x.fecha}; }))
       .sort(function(p,q){ return (p.site-q.site)||(p.mi-q.mi)||(new Date(q.f)-new Date(p.f)); });
-    var ntot=D.sessions.length+r3Cerrados(null,null).length;
+    var ntot=D.sessions.length+r3Cerrados(null,null,true).length;
     if(U.hSoloInc) h+='<p class="nota" style="margin:0 0 10px">Solo las <b>tiradas incompletas</b>. <button class="mini" data-act="hinc0">Ver todas</button></p>';
     h+='<div class="dosel"><select class="arq" data-hsite>'
       +'<option value=""'+(U.hSite?'':' selected')+'>Todos los sitios</option>'
@@ -5788,6 +6050,7 @@ function render(){
       +'<option value=""'+(U.hDist?'':' selected')+'>Todas las distancias</option>'
       +modsLista().map(function(md){ return '<option value="'+md.id+'"'+(String(U.hDist)===md.id?' selected':'')+'>'+descMod(md.id)+'</option>'; }).join('')
       +'<option value="3d"'+(U.hDist==='3d'?' selected':'')+'>Recorrido 3D</option>'
+      +'<option value="2d"'+(U.hDist==='2d'?' selected':'')+'>Recorrido 2D</option>'
       +'</select></div>';
     var tope=U.hTope||15, vistos=todos.slice(0,tope);
     h+='<div class="card"><div class="chead"><h2>Historial</h2>'
@@ -5819,9 +6082,10 @@ function render(){
   if(U.tab==='pendientes'){ h+=pantallaPendientes(); }
   if(U.tab==='copia'){ h+=tarjetaCopia(); }
 
-  if(U.tab==='rec3d'){ h+=pantallaRec3d(); }
+  if(U.tab==='rec3d'||U.tab==='rec2d'){ h+=pantallaRec3d(); }
   if(U.tab==='ligas'){ h+=pantallaLigas(); }
   if(U.tab==='arqueros'){ h+=pantallaArqueros(); }
+  if(U.tab==='objetivos'){ h+=pantallaObjetivos(); }
   if(U.tab==='sitios'){ h+=pantallaSitios(); }
 
   h+='</div>';       /* en sala ya no hay barra de pestañas abajo: se navega desde la pantalla de inicio */
@@ -5871,7 +6135,7 @@ function vozInterpreta(texto,es3){
   return acc;
 }
 function vozAplica(texto){
-  if(D.modo!=='campo'&&U.tab==='rec3d'){ r3VozAplica(texto); return; }
+  if(D.modo!=='campo'&&(U.tab==='rec3d'||U.tab==='rec2d')){ r3VozAplica(texto); return; }
   if(!(D.modo!=='campo'&&U.tab==='tirada')) return;
   var acc=vozInterpreta(texto), hechos=[], malos=[];
   if(!acc.length){ VOZ.oido='«'+String(texto).trim()+'»'; VOZ.aviso='No he entendido ninguna flecha.'; render(); return; }
@@ -6015,7 +6279,9 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='totalabre'){ abreTotal(v); render(); }
   else if(a==='totalcierra'){ U.tf=null; render(); }
   else if(a==='totalguarda'){ guardaTotal(); }
-  else if(a==='tab'){ U.tf=null; if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; render(); }
+  else if(a==='objok'){ var oq=arqActual(), om2=modU(); if(objDe(oq,om2)) render(); else toast('Escribe los puntos por tanda.'); }
+  else if(a==='objper'){ var pp2=obPer(), nq=pp2.y*4+pp2.q+Number(v); OB.y=Math.floor(nq/4); OB.q=((nq%4)+4)%4; render(); }
+  else if(a==='tab'){ U.tf=null; if(v==='prohis') v=(U.ph==='historial')?'historial':'progreso'; if(v==='progreso'||v==='historial') U.ph=v; if(v==='historial'&&U.tab!=='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; render(); }
   else if(a==='hvista'){ U.hVista=v; U.hSoloInc=false; if(v==='todas'){ U.hSite=''; U.hDist=''; U.hTope=15; } render(); }
   else if(a==='hrev'){ U.hVista='todas'; U.hDist=String(b.dataset.mod); U.hSite=''; U.hSoloInc=true; U.hTope=15; render(); }
   else if(a==='hinc0'){ U.hSoloInc=false; render(); }
@@ -6025,7 +6291,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(sc&&reparable(sc)){ sc.ends=sc.ends.slice(0,tandasLlenas(sc)); save(); render(); toast('Tirada completa: '+nE(sc)+' tandas'); }
   }
   else if(a==='hver'){ U.hSoloInc=false; U.hVista='todas'; U.hSite=String(b.dataset.site); U.hDist=String(b.dataset.mod); U.hTope=15; render(); }
-  else if(a==='pvista'){ U.pVista=(v==='3d')?'3d':'dianas'; render(); }
+  else if(a==='pvista'){ U.pVista=(v==='3d')?'3d':(v==='2d')?'2d':'dianas'; render(); }
   else if(a==='pdist'){ var mp=infoMod(v); U.pDist=mp.dist; U.pCol=mp.col; U.pTri=!!mp.tri; render(); }
   else if(a==='psite'){ U.pSite=Number(v); render(); }
   else if(a==='pdf'){ var s1=D.sessions.filter(function(x){ return x.id===b.dataset.id; })[0];
@@ -6092,15 +6358,16 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='modo'){ D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
   else if(a==='ctab'){ C.tab=v; C.abierto=null; render(); }
+  else if(a==='r3comp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.comp=!U.r3f.comp; render(); }
   else if(a==='r3tandas'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.tandas=Math.min(10,Math.max(1,(Number(U.r3f.tandas)||1)+Number(v))); render(); }
   else if(a==='r3fp'){ if(!U.r3f) U.r3f=r3fDef(); U.r3f.fp=Number(v); render(); }
   else if(a==='r3nuevo'){
     var f3=U.r3f||(U.r3f=r3fDef()), ar3=arqActual(), dd3=r3Plantilla(), fp3=Number(f3.fp)||2;
     if(!dd3.length){ toast('Pon la distancia de al menos un puesto'); return; }
-    var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
-  else if(a==='r3modo'){ D.rec3dModo=(['5','4','3','o'].indexOf(v)>=0)?v:'5'; save(); render(); }
-  else if(a==='r3pn'){ var pp=D.rec3dProp; if(D.rec3dModo!=='o') return; var nn=Math.min(30,Math.max(1,pp.length+Number(v))); while(pp.length<nn) pp.push(0); pp.length=nn; save(); render(); }
-  else if(a==='r3abre'){ U.tab='rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; U.r3u=[]; render(); window.scrollTo(0,0); }
+    var n3=r3Nuevo3(ar3,f3,dd3,fp3,Math.min(10,Math.max(1,Number(f3.tandas)||1))); f3.comp=false; U.r3=n3.id; U.r3i=0; U.r3s=0; U.r3u=[]; save(); render(); window.scrollTo(0,0); }
+  else if(a==='r3modo'){ r3PonModo((['5','4','3','o'].indexOf(v)>=0)?v:'5'); save(); render(); }
+  else if(a==='r3pn'){ var pp=r3Set('o'); if(r3Modo()!=='o') return; var nn=Math.min(30,Math.max(1,pp.length+Number(v))); while(pp.length<nn) pp.push(0); pp.length=nn; save(); render(); }
+  else if(a==='r3abre'){ var xk=r3Lista().filter(function(y){ return y.id===b.dataset.id; })[0]; R3K=r3Kd(xk); U.tab=(R3K==='2')?'rec2d':'rec3d'; U.r3=b.dataset.id; var x3=r3Actual(); U.r3i=x3?r3Primero(x3):0; U.r3s=0; U.r3u=[]; render(); window.scrollTo(0,0); }
   else if(a==='r3ir'){ U.r3i=Number(v); U.r3s=0; render(); }
   else if(a==='r3slot'){ U.r3s=Number(v); render(); }
   else if(a==='r3key'){
@@ -6488,12 +6755,12 @@ document.getElementById('app').addEventListener('input',function(ev){
       else co.f=t.value;
       save(); } }
   else if(t.dataset.obj3arq!=null){
-    var oa3=D.arqueros[Number(t.dataset.obj3arq)], ok3=t.dataset.obj3po;
-    if(oa3){ if(!oa3.obj3d) oa3.obj3d={};
+    var oa3=D.arqueros[Number(t.dataset.obj3arq)], ok3=t.dataset.obj3po, kk3=(t.dataset.obj3k==='2')?'obj2d':'obj3d';
+    if(oa3){ if(!oa3[kk3]) oa3[kk3]={};
       var ov3=String(t.value).trim(), on3=parseFloat(ov3.replace(',','.'));
-      if(ok3==='p'){ if(isNaN(on3)||on3<=0) delete oa3.obj3d.p; else oa3.obj3d.p=on3; }
-      else if(ok3==='m'){ if(ov3===''||isNaN(on3)||on3<0) delete oa3.obj3d.m; else oa3.obj3d.m=Math.floor(on3); }
-      else oa3.obj3d.f=t.value;
+      if(ok3==='p'){ if(isNaN(on3)||on3<=0) delete oa3[kk3].p; else oa3[kk3].p=on3; }
+      else if(ok3==='m'){ if(ov3===''||isNaN(on3)||on3<0) delete oa3[kk3].m; else oa3[kk3].m=Math.floor(on3); }
+      else oa3[kk3].f=t.value;
       save(); } }
   else if(t.dataset.objarq!=null){
     var oa=D.arqueros[Number(t.dataset.objarq)], om=t.dataset.objmod, oc=t.dataset.objcampo;
