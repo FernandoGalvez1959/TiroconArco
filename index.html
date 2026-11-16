@@ -1269,7 +1269,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=97;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=98;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -3126,7 +3126,9 @@ function procesaPin(v){
     return;
   }
   /* entrada normal */
-  if(v===D.pin){ PIN.fallos=0; marcaActividad(); cierraLock(); }
+  if(v===D.pin){ PIN.fallos=0; marcaActividad();
+    if(pinEsPatron()) cierraLock();
+    else { abreLock('nuevo'); PIN.aviso='Clave correcta. Ahora dibuja tu trazo nuevo (o pulsa Cancelar para seguir con los números).'; pintaLock(); } }
   else {
     PIN.fallos++; PIN.buf='';
     PIN.aviso=PIN.fallos>=3?(pinEsPatron()?'Trazo incorrecto. Llevas '+PIN.fallos+' intentos.':'Clave incorrecta. Llevas '+PIN.fallos+' intentos.'):(pinEsPatron()?'Trazo incorrecto.':'Clave incorrecta.');
