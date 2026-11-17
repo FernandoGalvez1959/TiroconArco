@@ -44,6 +44,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .obper{display:flex;align-items:center;gap:8px;margin:0 0 10px;}
 .obper b{flex:1;text-align:center;font-size:15px;}
 .obper button{width:44px;height:40px;border-radius:10px;background:var(--panel);font-size:18px;font-weight:700;color:var(--ink);}
+.objper{margin:6px 0 2px;}.objpl{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;margin-bottom:3px;}
+.objpl span:first-child{color:var(--dim);}
+.objbar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;}
+.objbar i{display:block;height:100%;background:#3D7CC9;border-radius:5px;}
 .obt2{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 4px;}
 .obt2 td{padding:4px 0;border-top:1px solid var(--line);}
 .obt2 td:nth-child(2){text-align:right;color:var(--dim);}
@@ -1096,13 +1100,18 @@ function pantallaObjetivos(){
 }
 /* objetivo de la Tirada: se ve siempre (con su % del trimestre) y, si falta, se puede poner ahí mismo */
 function objTrim(A,mod,o){
-  var h0=obHoy(), ses=D.sessions.filter(function(s){ return s.arquero===A.id&&modDe(s)===mod&&obEn(s.fecha,h0.y,h0.q).t; });
-  var T=0,N=0; ses.forEach(function(s){ T+=total(s); N+=shots(s); });
-  var nom=obNomT(h0);
-  if(!N) return '<div class="objtxt" style="margin-top:6px">'+nom+': aún sin tiradas a esta distancia.</div>';
-  var pct=T/N*flObj(o)/Number(o.p)*100;
-  return '<div class="objtxt" style="margin-top:6px">'+nom+': <b class="'+(pct>=100?'pctok':'')+'">'+Math.round(pct)+' %</b> del objetivo '
-    +'<span class="dias">(media '+dec(T/N)+' por flecha en '+ses.length+(ses.length===1?' tirada':' tiradas')+')</span></div>';
+  var h0=obHoy(), it=obItemsDiana(A,mod), t={ok:0,tot:0}, an={ok:0,tot:0};
+  it.forEach(function(x){ var e=obEn(x.f,h0.y,h0.q);
+    if(e.a){ an.tot++; if(x.ok) an.ok++; }
+    if(e.t){ t.tot++; if(x.ok) t.ok++; } });
+  function fila(n,c){
+    var p=c.tot?Math.round(c.ok/c.tot*100):0;
+    return '<div class="objper"><div class="objpl"><span>'+n+'</span><span><b>'+c.ok+'</b> de '+c.tot+(c.tot===1?' tanda':' tandas')
+      +' · <b class="'+(c.tot&&c.ok===c.tot?'pctok':'')+'">'+(c.tot?p+' %':'–')+'</b></span></div>'
+      +'<div class="objbar"><i style="width:'+p+'%"></i></div></div>';
+  }
+  return '<div style="margin-top:8px"><div class="objtxt dias" style="margin-bottom:4px">Tandas en las que conseguiste el objetivo</div>'
+    +fila(obNomT(h0),t)+fila('Año '+h0.y,an)+'</div>';
 }
 function tarjetaObjSala(A,mod){
   var o=objDe(A,mod), i=D.arqueros.indexOf(A), raw=(A.obj&&A.obj[mod])||{};
@@ -1271,7 +1280,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=104;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=105;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
