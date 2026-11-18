@@ -254,6 +254,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .objrow .lbl{font-size:13px;color:var(--ink);}
 .objrow.objc4{grid-template-columns:76px 70px 1fr;gap:6px;}
 .objrow.objc4 .lbl{white-space:nowrap;}
+.objrow.objc5{grid-template-columns:64px 1fr 1fr;gap:6px;}
+.objrow.objc5 .lbl{white-space:nowrap;}
 .objc{font-size:12.5px;color:var(--dim);line-height:1.45;margin:-2px 0 10px;padding:7px 10px;border-left:3px solid var(--gold);background:var(--panel);border-radius:0 8px 8px 0;}
 .objc b{color:var(--ink);}
 .objc .pctok,.pctok{color:#6FC38C;}
@@ -953,6 +955,40 @@ function objCLinea(r,a){
   }
   return h+'</div>';
 }
+function objCPP(ar,pu){ var o=ar&&ar.objC&&ar.objC[String(pu)]; return (o&&Number(o.pp)>0)?Number(o.pp):null; }
+function obItemsCampoPP(a,pu){
+  var pp=objCPP(a,pu), it=[]; if(!pp) return it;
+  D.recorridos.forEach(function(r){ if(Number(r.puestos)!==pu) return;
+    (r.patrulla||[]).forEach(function(m){ if(m.arq!==a.id) return;
+      secuencia(r).forEach(function(p){ var t=r.tiros[m.id+'|'+p]; if(!t||t[0]==null||t[1]==null) return;
+        it.push({f:r.fecha,ok:pts3(t[0])+pts3(t[1])>=pp}); }); }); });
+  return it;
+}
+function tarjetaObjPuesto(r){
+  var h='', hay=false;
+  r.patrulla.forEach(function(m){
+    var ar=arqPorId(m.arq), pp=ar?objCPP(ar,r.puestos):null; if(!pp) return; hay=true;
+    var cur={ok:0,tot:0};
+    secuencia(r).forEach(function(p){ var t=r.tiros[m.id+'|'+p]; if(t&&t[0]!=null&&t[1]!=null){ cur.tot++; if(pts3(t[0])+pts3(t[1])>=pp) cur.ok++; } });
+    h+='<div style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px"><div class="objtxt"><b>'+esc(m.nombre)+'</b> · '+pp+' pts por puesto</div>'
+      +'<div class="objtxt dias">Este recorrido: <b>'+cur.ok+'</b> de '+cur.tot+(cur.tot===1?' puesto':' puestos')+(cur.tot?' · '+Math.round(cur.ok/cur.tot*100)+' %':'')+'</div>'
+      +obBloque(obItemsCampoPP(ar,r.puestos),['puesto','puestos'],obHoy(),'Primer puesto')+'</div>';
+  });
+  if(!hay) return r.cerrado?'':'<div class="card objcard"><div class="chead"><h2>🎯 Objetivo por puesto</h2><span>'+r.puestos+' puestos</span></div><p class="stat" style="margin:0">Sin objetivo por puesto. Escríbelo en Objetivos, apartado Campo (puntos por puesto).</p></div>';
+  return '<div class="card objcard"><div class="chead"><h2>🎯 Objetivo por puesto</h2><span>'+r.puestos+' puestos</span></div>'+h+'</div>';
+}
+function tarjetaObjCampoForm(){
+  var h='', pu=C.nPuestos, vistos={};
+  patForm().forEach(function(q){
+    var ar=D.arqueros.filter(function(x){ return x.id===q.arq; })[0]; if(!ar||vistos[ar.id]) return; vistos[ar.id]=1;
+    var o=objCDe(ar,pu), pp=objCPP(ar,pu); if(!o&&!pp) return;
+    h+='<div style="margin-top:8px"><div class="objtxt"><b>'+esc(nombreArq(ar))+'</b>'+(o?' · '+objCTexto(o):'')+(pp?' · '+pp+' pts por puesto':'')+'</div>'
+      +(o?'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(ar,pu),['recorrido','recorridos'],obHoy(),'Primer recorrido'):'')
+      +(pp?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampoPP(ar,pu),['puesto','puestos'],obHoy(),'Primer puesto'):'')+'</div>';
+  });
+  if(!h) return '';
+  return '<div class="card objcard" style="margin:12px 0 0"><div class="chead"><h2>🎯 Objetivo</h2><span>'+pu+' puestos</span></div>'+h+'</div>';
+}
 function objCResumen(r){
   var partes=[];
   r.patrulla.forEach(function(a){
@@ -964,14 +1000,16 @@ function objCResumen(r){
 }
 function objetivosCampoArq(a,i){
   var h='<p class="subapt">Objetivo en campo</p>'
-    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido completo y fecha. Cuenta cuando este arquero va en la patrulla.</p>'
-    +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px">Fecha</div></div>';
+    +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido completo, puntos por puesto (las 2 flechas de un puesto) y fecha. Cuenta cuando este arquero va en la patrulla.</p>'
+    +'<div class="objrow objc5"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Pts recorrido</div><div class="stat" style="font-size:11px;text-align:center">Pts por puesto</div></div>';
   [12,24].forEach(function(pu){
     var o=(a.objC&&a.objC[String(pu)])||{};
-    h+='<div class="objrow objc4"><div class="lbl">'+pu+' puestos</div>'
+    h+='<div class="objrow objc5"><div class="lbl">'+pu+' puestos</div>'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
-      +'<input class="cinp" type="date" aria-label="Fecha límite, '+pu+' puestos" '
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por puesto, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="pp" value="'+esc(o.pp==null?'':String(o.pp))+'">'
+      +'<input class="cinp" style="grid-column:1/-1" type="date" aria-label="Fecha límite, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="f" value="'+esc(o.f||'')+'"></div>';
   });
   return h;
@@ -1007,7 +1045,7 @@ function obFila(n,c){
     +' · <b class="'+(c.tot&&c.ok===c.tot?'pctok':'')+'">'+(c.tot?p+' %':'–')+'</b></span></div>'
     +'<div class="objbar"><i style="width:'+p+'%"></i></div></div>';
 }
-function obBloque(it,unid,tri){
+function obBloque(it,unid,tri,lab){
   var h0=obHoy(), t={ok:0,tot:0,u:unid}, ys={}, prim=null, y0=h0.y, y;
   it.forEach(function(x){ var d=new Date(x.f); if(isNaN(d.getTime())) return;
     y=d.getFullYear(); if(!ys[y]) ys[y]={ok:0,tot:0,u:unid}; ys[y].tot++; if(x.ok) ys[y].ok++;
@@ -1016,7 +1054,7 @@ function obBloque(it,unid,tri){
     if(!prim||x.f<prim) prim=x.f; });
   var h='<div style="margin-top:6px">'+obFila(obNomT(tri),t);
   for(y=y0;y<=h0.y;y++) h+=obFila('Año '+y,ys[y]||{ok:0,tot:0,u:unid});
-  if(prim) h+='<div class="objtxt dias" style="margin-top:4px">Primera tanda: '+fecha(prim)+'</div>';
+  if(prim) h+='<div class="objtxt dias" style="margin-top:4px">'+(lab||'Primera tanda')+': '+fecha(prim)+'</div>';
   return h+'</div>';
 }
 function obTabla(it,unid){ return obBloque(it,unid,obPer()); }
@@ -1090,16 +1128,18 @@ function pantallaObjetivos(){
   });
   /* recorridos de campo */
   h+='<div class="card"><div class="chead"><h2>Campo</h2><span>'+esc(nombreArq(A))+'</span></div>'
-    +'<p class="stat" style="margin:0 0 4px;font-size:12px">Puntos de un recorrido completo y fecha. Se cuentan los recorridos completos en los que vas en la patrulla.</p>'
-    +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px">Fecha</div></div>';
+    +'<p class="stat" style="margin:0 0 4px;font-size:12px">Puntos de un recorrido completo, puntos por puesto (las 2 flechas de un puesto) y fecha. Se cuentan los recorridos completos en los que vas en la patrulla.</p>'
+    +'<div class="objrow objc5"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Pts recorrido</div><div class="stat" style="font-size:11px;text-align:center">Pts por puesto</div></div>';
   [12,24].forEach(function(pu){
     var o=(A.objC&&A.objC[String(pu)])||{}, ob=objCDe(A,pu);
-    h+='<div class="obbloq" style="border-top:none;padding:0"><div class="objrow objc4"><div class="lbl">'+pu+' puestos</div>'
+    h+='<div class="obbloq" style="border-top:none;padding:0"><div class="objrow objc5"><div class="lbl">'+pu+' puestos</div>'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
-      +'<input class="cinp" type="date" aria-label="Fecha límite, '+pu+' puestos" '
+      +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por puesto, '+pu+' puestos" '
+      +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="pp" value="'+esc(o.pp==null?'':String(o.pp))+'">'
+      +'<input class="cinp" style="grid-column:1/-1" type="date" aria-label="Fecha límite, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="f" value="'+esc(o.f||'')+'"></div>'
-      +(ob?'<div class="objtxt" style="font-size:13px;margin-bottom:2px">'+pu+' puestos: '+objCTexto(ob)+'</div>'+obTabla(obItemsCampo(A,pu),['recorrido','recorridos'])
+      +(ob?'<div class="objtxt" style="font-size:13px;margin-bottom:2px">'+pu+' puestos: '+objCTexto(ob)+'</div>'+'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(A,pu),['recorrido','recorridos'],obPer(),'Primer recorrido')+(objCPP(A,pu)?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo ('+objCPP(A,pu)+' pts por puesto)</div>'+obBloque(obItemsCampoPP(A,pu),['puesto','puestos'],obPer(),'Primer puesto'):'')
           :'')+'</div>';
   });
   return h+'</div>';
@@ -1159,7 +1199,7 @@ function gimFaltan(pat){ return gimMiembros(pat).filter(function(a){ return !gim
 function gimOkPat(pat){ return gimFaltan(pat).length===0; }
 function patActual(){
   var r=recActual();
-  return (C.tab==='puesto'&&r&&!r.cerrado)?r.patrulla:(C.patrulla||[]).slice(0,C.nuevos||0);
+  return (C.tab==='puesto'&&r&&!r.cerrado)?r.patrulla:patForm();
 }
 function gimBotonPat(pat){
   var n=gimItems().length, req=gimMiembros(pat).filter(gimExige);
@@ -1275,7 +1315,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=106;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=107;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1619,7 +1659,8 @@ function reparaDatos(){
 }
 
 /* ---- estado, con conversión de la versión anterior ---- */
-var ARCOS=['Instintivo','Tradicional','Desnudo','Compuesto','Longbow'];
+var ARCOS=['Tradicional','Desnudo','Compuesto','Longbow'];
+function arcoOk(x){ return ARCOS.indexOf(x)>=0?x:ARCOS[0]; }
 var PRESETS=['Club de campo','Monte Alto','La Dehesa','El Encinar','Pinar del Río',
   'Sierra Norte','Coto Bajo','Las Navas','El Robledal','Valle Verde'];
 var KEYS3D=['11','10','8','5','M'];
@@ -3160,6 +3201,29 @@ function recVista(){
   }
   return recActual()||D.recorridos[0]||null;
 }
+function PX(p){
+  if(!p) return {
+    get inicio(){ return C.nInicio; }, set inicio(v){ C.nInicio=v; },
+    get nuevos(){ return C.nuevos; }, set nuevos(v){ C.nuevos=v; },
+    get patrulla(){ return C.patrulla; }, set patrulla(v){ C.patrulla=v; } };
+  if(!C.extra) C.extra=[];
+  if(!C.extra[p-1]) C.extra[p-1]={inicio:1,nuevos:2,patrulla:[{arq:'',nombre:'',arco:ARCOS[0]},{arq:'',nombre:'',arco:ARCOS[0]}]};
+  return C.extra[p-1];
+}
+function patForm(){
+  var out=[], n=C.nPat||1, p, X;
+  for(p=0;p<n;p++){ X=PX(p); out=out.concat((X.patrulla||[]).slice(0,X.nuevos||0)); }
+  return out;
+}
+function hermanos(r){
+  if(!r||!r.grupo) return r?[r]:[];
+  return D.recorridos.filter(function(x){ return x.grupo===r.grupo; }).sort(function(a,b){ return (a.pat||0)-(b.pat||0); });
+}
+function chipsPat(r){
+  var hs=hermanos(r); if(hs.length<2) return '';
+  return '<div class="seg" style="margin:0 0 10px">'+hs.map(function(x){
+    return '<button data-act="verpat" data-id="'+x.id+'" data-on="'+(x.id===r.id?1:0)+'">Patrulla '+(x.pat||1)+(x.cerrado?' ✓':'')+'</button>'; }).join('')+'</div>';
+}
 function recActual(){
   if(!D.recorridoId) return null;
   return D.recorridos.filter(function(r){ return r.id===D.recorridoId; })[0]||null;
@@ -4226,7 +4290,7 @@ function pantallaModo(){
     +'<button class="modobtn" data-act="modo" data-v="campo" data-on="'+(D.modo==='campo'?1:0)+'">'
     +'<b>Tiro en campo</b><span>Recorrido de figuras 3D, 12 o 24 puestos, dos flechas por puesto '
     +'con 11, 10, 8, 5 y cero. Patrulla con varios arqueros y clasificación en directo.</span></button>'
-    +'<div class="comunes">'+menuInicio(['arqueros','objetivos','material','tecnicas','pendientes','copia'].map(function(id){ var s=subGrupo(id); return [id,s[0],s[1],s[2],s[3],'']; }),'comun').replace('class="inicio"','class="inicio apretado"')+'</div>'
+    +'<div class="comunes">'+menuInicio(['arqueros','objetivos','prohisS','prohisC','material','tecnicas','pendientes','copia'].map(function(id){ var s=subGrupo(id); return [id,s[0],s[1],s[2],s[3],'']; }),'comun').replace('class="inicio"','class="inicio apretado"')+'</div>'
     +'<button class="nubelin" data-act="irnube">'
     +'<span class="bolita" style="background:'+estadoNube().c+'"></span>'+esc(estadoNube().largo)+'</button>'
     +'</div></div>';
@@ -4693,9 +4757,10 @@ function pantallaPuesto(r){
   var cerrado=!!r.cerrado;
   var seq=secuencia(r), pu=seq[Math.min(C.idx,seq.length-1)], an=animal(r,pu);
   var est=estaca(r.estacas), dd=distDe3(r.campo,pu,r.estacas);
+  var hPat=chipsPat(r);
   var clave=r.id+'|'+pu, oculta=D.ocultarDist && dd!=null && !(C.revelado||{})[clave];
   var tituloDist = dd==null ? '' : (oculta ? ' · ¿? m' : ' · '+mDist(dd));
-  var h='<div class="card"><div class="chead"><h2>Puesto '+pu+tituloDist+'</h2>'
+  var h=hPat+'<div class="card"><div class="chead"><h2>Puesto '+pu+tituloDist+'</h2>'
     +'<span><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
     +(C.idx+1)+' de '+r.puestos+' · '+esc(D.campos[r.campo].nombre)
     +(cerrado?' · cerrado':'')+'</span></div>'
@@ -4743,6 +4808,19 @@ function pantallaPuesto(r){
     +'<button data-act="puestosig"'+(C.idx>=r.puestos-1?' disabled':'')+'>Siguiente ▶</button></div>';
   h+='</div>';
 
+  h+='<div class="card"><div class="chead"><h2>Resumen de la patrulla'+(r.grupo?' '+(r.pat||1):'')+'</h2>'
+    +'<span>'+puestosHechos(r)+' de '+r.puestos+' puestos</span></div>';
+  clasifRec(r).forEach(function(a,i){
+    h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
+      +'<div class="lbl" data-act="detalle" data-id="'+a.id+'">'+esc(a.nombre)
+      +'<small>'+esc(a.arco)+' · toca para ver puesto a puesto</small></div>'
+      +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>'+cuenta(r,a.id,'11')+' onces</small></div></div>';
+    h+=objCLinea(r,a);
+    if(C.abierto===a.id) h+=detallePorPuesto(r,a);
+  });
+  h+='</div>';
+  h+=tarjetaObjPuesto(r);
+
   if(!cerrado) h+=tarjetaCrono();
 
   h+='<button class="act act2" data-act="irmapa" style="margin:-2px 0 12px">'
@@ -4757,17 +4835,6 @@ function pantallaPuesto(r){
     +'<textarea class="obs selec" placeholder="Accesos, estacas difíciles, distancias que engañan..." '
     +'data-notacampo="'+r.campo+'">'+esc((D.notasCampo||{})[r.campo]||'')+'</textarea></div>';
 
-  h+='<div class="card"><div class="chead"><h2>Resumen de la patrulla</h2>'
-    +'<span>'+puestosHechos(r)+' de '+r.puestos+' puestos</span></div>';
-  clasifRec(r).forEach(function(a,i){
-    h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div>'
-      +'<div class="lbl" data-act="detalle" data-id="'+a.id+'">'+esc(a.nombre)
-      +'<small>'+esc(a.arco)+' · toca para ver puesto a puesto</small></div>'
-      +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>'+cuenta(r,a.id,'11')+' onces</small></div></div>';
-    h+=objCLinea(r,a);
-    if(C.abierto===a.id) h+=detallePorPuesto(r,a);
-  });
-  h+='</div>';
   return h;
 }
 function detallePorPuesto(r,a){
@@ -4786,14 +4853,15 @@ function detallePorPuesto(r,a){
 function pantallaRecorrido(r){
   var h='';
   if(r && !r.cerrado){
-    h+='<div class="card"><div class="chead"><h2>Recorrido en curso</h2>'
+    h+='<div class="card">'+chipsPat(r)+'<div class="chead"><h2>Recorrido en curso'+(r.grupo?' · patrulla '+(r.pat||1):'')+'</h2>'
       +'<span>'+fecha(r.fecha)+'</span></div>'
       +'<p class="stat"><span class="bolita" style="background:'+estaca(r.estacas).color+'"></span>'
       +'Estacas '+estaca(r.estacas).nombre.toLowerCase()+' · '+esc(D.campos[r.campo].nombre)+' · '+r.puestos
       +' puestos · salida en el puesto '+r.inicio+' · '+r.patrulla.length+' arqueros'
       +(r.comp?'<br><i>Competición</i>':'')+(r.noct?'<br><i>🌙 Recorrido nocturno</i>':'')
       +'<br>Llevas <i>'+puestosHechos(r)+'</i> puestos completos.</p>'
-      +'<button class="act" data-act="cerrarrec">Cerrar el recorrido</button>'
+      +'<button class="act" data-act="ctab" data-v="puesto">▶ Continuar el recorrido</button>'
+      +'<button class="act act2" data-act="cerrarrec">Cerrar el recorrido</button>'
       +'<button class="ghost" data-act="borrarrec">Descartar este recorrido</button></div>';
   }
 
@@ -4804,38 +4872,50 @@ function pantallaRecorrido(r){
       return '<button data-act="nrestaca" data-v="'+e.id+'" data-on="'+(C.nEstaca===e.id?1:0)+'">'
         +'<span class="bolita" style="background:'+e.color+'"></span>'+e.nombre+'</button>'; }).join('')
     +'</div>'
-    +'<p class="stat">Puestos</p><div class="seg" style="margin-bottom:10px">'
+    +'<p class="stat">Puestos</p><div class="seg" style="margin-bottom:8px">'
     +'<button data-act="nrpuestos" data-v="12" data-on="'+(C.nPuestos===12?1:0)+'">12</button>'
     +'<button data-act="nrpuestos" data-v="24" data-on="'+(C.nPuestos===24?1:0)+'">24</button></div>'
-    +'<div class="dosel">'
-    +'<select class="arq" data-nrinicio>';
-  for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(C.nInicio===i?' selected':'')+'>Salida: puesto '+i+'</option>';
-  h+='</select><select class="arq" data-nrn>';
-  for(var n=1;n<=8;n++) h+='<option value="'+n+'"'+(C.nuevos===n?' selected':'')+'>'+n+' arquero'+(n>1?'s':'')+'</option>';
-  h+='</select></div>';
-  for(var k=0;k<C.nuevos;k++){
-    var pa=C.patrulla[k]||{arq:'',nombre:'',arco:ARCOS[0]};
-    h+='<div class="dosel"><select class="arq" data-parq="'+k+'">'
-      +'<option value="">Arquero '+(k+1)+'…</option>'
-      +D.arqueros.map(function(a){
-        return '<option value="'+a.id+'"'+(pa.arq===a.id?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
-      +'<option value="__nuevo"'+(pa.arq==='__nuevo'?' selected':'')+'>+ Arquero nuevo</option>'
-      +'</select>'
-      +'<select class="arq" data-parco="'+k+'">'
-      +ARCOS.map(function(x){ return '<option'+(pa.arco===x?' selected':'')+'>'+x+'</option>'; }).join('')
-      +'</select></div>';
-    if(pa.arq==='__nuevo'){
-      h+='<input class="cinp" style="margin-bottom:9px" placeholder="Nombre del arquero nuevo" '
-        +'maxlength="28" data-pnombre="'+k+'" value="'+esc(pa.nombre)+'">';
+    +'<div class="objrow" style="grid-template-columns:1fr auto;gap:8px;margin-bottom:10px">'
+    +'<input class="cinp" type="number" inputmode="numeric" min="1" max="60" placeholder="Otro número de puestos" aria-label="Otro número de puestos" data-nrlibre value="'+((C.nPuestos===12||C.nPuestos===24)?'':C.nPuestos)+'">'
+    +'<button class="mini" data-act="nrpuestosok">Poner</button></div>'
+    +'<p class="stat">Número de patrullas</p><div class="seg" style="margin-bottom:10px">'
+    +[1,2,3,4,5,6].map(function(n){ return '<button data-act="nrnpat" data-v="'+n+'" data-on="'+((C.nPat||1)===n?1:0)+'">'+n+'</button>'; }).join('')+'</div>';
+  var npat=C.nPat||1, elegidos={}, pp0, kk0;
+  for(pp0=0;pp0<npat;pp0++){ var X0=PX(pp0); for(kk0=0;kk0<X0.nuevos;kk0++){ var q0=X0.patrulla[kk0]; if(q0&&q0.arq&&q0.arq!=='__nuevo') elegidos[q0.arq]=pp0+'-'+kk0; } }
+  for(var pp=0;pp<npat;pp++){
+    var X=PX(pp);
+    if(X.inicio>C.nPuestos) X.inicio=1;
+    h+=(npat>1?'<p class="subapt" style="margin-top:12px">Patrulla '+(pp+1)+'</p>':'')
+      +'<div class="dosel"><select class="arq" data-nrinicio data-pp="'+pp+'">';
+    for(var i=1;i<=C.nPuestos;i++) h+='<option value="'+i+'"'+(X.inicio===i?' selected':'')+'>Salida: puesto '+i+'</option>';
+    h+='</select><select class="arq" data-nrn data-pp="'+pp+'">';
+    for(var n=1;n<=8;n++) h+='<option value="'+n+'"'+(X.nuevos===n?' selected':'')+'>'+n+' arquero'+(n>1?'s':'')+'</option>';
+    h+='</select></div>';
+    for(var k=0;k<X.nuevos;k++){
+      var pa=X.patrulla[k]||{arq:'',nombre:'',arco:ARCOS[0]};
+      h+='<div class="dosel"><select class="arq" data-parq="'+k+'" data-pp="'+pp+'">'
+        +'<option value="">Arquero '+(k+1)+'…</option>'
+        +D.arqueros.filter(function(a){ return !elegidos[a.id]||elegidos[a.id]===pp+'-'+k; }).map(function(a){
+          return '<option value="'+a.id+'"'+(pa.arq===a.id?' selected':'')+'>'+esc(nombreArq(a))+'</option>'; }).join('')
+        +'<option value="__nuevo"'+(pa.arq==='__nuevo'?' selected':'')+'>+ Arquero nuevo</option>'
+        +'</select>'
+        +'<select class="arq" data-parco="'+k+'" data-pp="'+pp+'">'
+        +ARCOS.map(function(x){ return '<option'+(arcoOk(pa.arco)===x?' selected':'')+'>'+x+'</option>'; }).join('')
+        +'</select></div>';
+      if(pa.arq==='__nuevo'){
+        h+='<input class="cinp" style="margin-bottom:9px" placeholder="Nombre del arquero nuevo" '
+          +'maxlength="28" data-pnombre="'+k+'" data-pp="'+pp+'" value="'+esc(pa.nombre)+'">';
+      }
     }
   }
-  if(C.nuevos>1){
+  h+=tarjetaObjCampoForm();
+  if(patForm().length>1){
     h+='<div class="chk" data-act="nrcomp" style="border-bottom:none;padding-top:4px">'
       +'<span class="tick" data-on="'+(C.nComp?1:0)+'">'+(C.nComp?'✓':'')+'</span>'
       +'<div class="ctxt">Es una competición<small>Lo marca en la clasificación y en la imagen</small></div></div>';
   }
   h+='<div class="seg" style="margin:10px 0 0"><button data-act="nrnoct" data-v="0" data-on="'+(C.nNoct?0:1)+'">☀️ Diurno</button><button data-act="nrnoct" data-v="1" data-on="'+(C.nNoct?1:0)+'">🌙 Nocturno</button></div>';
-  h+=gimBotonPat((C.patrulla||[]).slice(0,C.nuevos||0))
+  h+=gimBotonPat(patForm())
     +'<button class="act" data-act="crearrec">Empezar recorrido</button></div>';
 
   var dc=(C.distCampo==null?(r?r.campo:0):C.distCampo);
@@ -4896,6 +4976,16 @@ function pantallaResumen(r){
     if(C.detRec===a.id) h+=detallePorPuesto(r,a);
   });
   h+=tresBotones('rec')+'</div>';
+  var hs=hermanos(r);
+  if(hs.length>1){
+    var all=[]; hs.forEach(function(x){ clasifRec(x).forEach(function(a){ all.push({n:a.nombre,arco:a.arco,p:x.pat||1,t:totalArq(x,a.id),m:mediaArq(x,a.id)}); }); });
+    all.sort(function(a,b){ return b.t-a.t; });
+    h+='<div class="card"><div class="chead"><h2>Clasificación general</h2><span>'+hs.length+' patrullas</span></div>';
+    all.forEach(function(a,i){
+      h+='<div class="rec"><div class="pos" data-p="'+(i+1)+'">'+(i+1)+'</div><div class="lbl">'+esc(a.n)+'<small>Patrulla '+a.p+' · '+esc(a.arco)+' · '+dec(a.m)+' por flecha</small></div>'
+        +'<div class="v"><b>'+a.t+'</b></div></div>'; });
+    h+='</div>';
+  }
   return h;
 }
 var SUGMAT=['Arco','Flechas','Cuerda','Visor','Estabilizador','Botón','Reposaflechas','Clicker',
@@ -5403,13 +5493,15 @@ function selArq(){
 var TITULOS={equipo:'Mi equipo',mas:'Más',tirada:'Tirada',rec3d:'Recorrido 3D',rec2d:'Recorrido 2D',clasif:'Clasificación',arqueros:'Arqueros',progreso:'Progreso e Historial',historial:'Progreso e Historial',objetivos:'Objetivos',ligas:'Ligas',sitios:'Sitios',
   gimnasia:'Gimnasia',tecnicas:'Técnicas y Formación',material:'Material',pendientes:'Pendientes',copia:'Copias y claves'};
 function botonNuevaLiga(t){ return t==='ligas'?'<button class="navnuevo" data-act="ligaadd">+ Nueva liga</button>':''; }
-var COMUNES=['arqueros','objetivos','material','tecnicas','pendientes','copia'], desdeMenu=false;
+var COMUNES=['arqueros','objetivos','material','tecnicas','pendientes','copia','progreso','historial','histcampo'], desdeMenu=false;
 function padreDe(t){ return 'inicio'; }
 function volverAttr(t,acto){ return (desdeMenu&&COMUNES.indexOf(t)>=0)?'data-act="ini0"':'data-act="'+acto+'" data-v="inicio"'; }
 function pendHechos(){ return ((D.pend&&D.pend.trabajos)||[]).concat((D.pend&&D.pend.compras)||[]).filter(function(x){ return x&&!x.ok; }).length; }
 function subGrupo(id){
   return id==='arqueros'?['🏹','Arqueros','arco y flechas, mejores marcas','#6FC38C']
    :id==='objetivos'?['🎖️','Objetivos','por distancia y recorrido, trimestre y año','#6FC38C']
+   :id==='prohisS'?['📈','Progreso e Historial Sala','cómo mejoras · '+D.sessions.length+(D.sessions.length===1?' tirada':' tiradas'),'#3D7CC9']
+   :id==='prohisC'?['📈','Progreso e Historial Campo','cómo mejoras · '+D.recorridos.length+(D.recorridos.length===1?' recorrido':' recorridos'),'#3D7CC9']
    :id==='material'?['🎒','Material','listas de Otero y Deva, fichas y fotos','#E8833A']
    :id==='tecnicas'?['📝','Técnicas y Formación',fSub(),'#E8833A']
    :id==='pendientes'?['✅','Pendientes',pendHechos()?pendHechos()+' por hacer':'nada pendiente','#A98BE0']
@@ -5436,7 +5528,6 @@ function pantallaInicio(){
     ['rec2d','🖼️','Recorrido 2D',r2sub,'#F2C11B',''],
     ['clasif','🏆','Clasificación','quién va ganando','#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
-    ['prohis','📈','Progreso e Historial','cómo mejoras · '+ns+(ns===1?' tirada guardada':' tiradas guardadas')+(n3?' · '+n3+' en 3D':'')+(n2?' · '+n2+' en 2D':''),'#3D7CC9',''],
     ['sitios','📍','Sitios','los nombres de tus sitios','#6FC38C','']];
   return avisoCopia()+menuInicio(M,'tab');
 }
@@ -5455,7 +5546,7 @@ function navTopC(t){
 }
 function pantallaInicioCampo(){
   var r=recActual(), abierto=!!(r&&!r.cerrado), nrec=D.recorridos.length, nlig=(D.ligas||[]).length;
-  var pat=abierto?r.patrulla:(C.patrulla||[]).slice(0,C.nuevos||0), n=gimItems().length, miem=gimMiembros(pat);
+  var pat=abierto?r.patrulla:patForm(), n=gimItems().length, miem=gimMiembros(pat);
   var req=miem.filter(gimExige), falta=req.filter(function(a){ return !gimOk(a); });
   var gsub=!n?'sin ejercicios':!miem.length?'según la patrulla que elijas':!req.length?'no se exige a esta patrulla'
     :!falta.length?'✓ completa en la patrulla':'✗ falta: '+falta.map(function(a){ return esc(nombreArq(a)); }).join(', ');
@@ -5466,7 +5557,6 @@ function pantallaInicioCampo(){
     ['puesto','🎯','Puesto',abierto?'anota los tiros del puesto '+(C.idx+1):'abre antes un recorrido','#F2C11B',''],
     ['clasif','🏆','Clasificación',nrec?'resumen y quién va ganando':'aún sin recorridos','#3D7CC9',''],
     ['ligas','🏅','Ligas',nlig?nlig+(nlig===1?' liga':' ligas'):'jornadas y puntos','#3D7CC9',''],
-    ['prohis','📈','Progreso e Historial','cómo mejoras · '+nrec+(nrec===1?' recorrido guardado':' recorridos guardados'),'#3D7CC9',''],
     ['sitios','📍','Sitios','los nombres de tus campos','#6FC38C',''],
     ['mapa','🗺️','Mapa','tus puestos y cómo llegar','#6FC38C',''],
     ['distancia','📏','Distancia','medir con la cámara','#6FC38C','']];
@@ -5950,8 +6040,8 @@ function render(){
         +'<small>'+(s.comp?'Al acabar cada tanda pasa al arquero siguiente'
                           :'Se marcará en la clasificación del día')+'</small></div></div>';
     }
-    h+=tarjetaObjSala(A,modU());
-    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>'+gimBoton(A);
+    h+='<div class="selrow">'+selArq()+'<button class="addarq" data-act="nuevoarq" aria-label="Añadir arquero">+</button></div>'
+      +'<div class="selrow"><select class="arq" data-sarco aria-label="Arco">'+ARCOS.map(function(x){ return '<option'+(arcoOk(A.arco)===x?' selected':'')+'>'+x+'</option>'; }).join('')+'</select></div>'+gimBoton(A);
 
     var slotSz=na<=6?19:na<=9?16:14;
     h+='<div class="card"><div class="chead"><h2>Tanda '+(e+1)+' de '+ne+'</h2>'
@@ -6006,6 +6096,7 @@ function render(){
       +'<p class="stat" style="margin-top:4px">'
       +(rec?'Mejor media aquí: '+dec(media(rec))+' por flecha · '+total(rec)+' en '+formato(rec)+' · '+fecha(rec.fecha)
            :'Aún no hay marca en esta distancia y sitio.')+'</p></div>';
+    h+=tarjetaObjSala(A,modU());
     h+=tarjetaCrono();
     h+=tarjetaObs;
   }
@@ -6110,7 +6201,7 @@ function render(){
       var s=it.x;
       var a=arqPorId(s.arquero), b=best(s.arquero,modDe(s),s.site), pr=pctObj(a,s);
       h+='<div class="hrow">'
-        +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+noctTxt(s)+'</div>'
+        +'<div class="l1"><b>'+descDist(s)+'</b> · '+esc(sitio(s.site))+(b&&b.id===s.id?' · mejor':'')+noctTxt(s)+(s.arco?' · '+esc(s.arco):'')+'</div>'
         +'<div class="l2">'+esc(nombreArq(a))+' · '+fecha(s.fecha)+'</div>'
         +'<div class="l3">'+formato(s)+(esTotal(s)?' <span class="inc2">solo el total</span>':'')+(complete(s)?'':' <span class="inc">incompleta: '+shots(s)+' de '+(nE(s)*nA(s))+' flechas</span>')+' · '+dec(media(s))+' por flecha'
           +(pr!=null?' · <b class="'+(pr>=100?'pctok':'')+'">'+Math.round(pr)+' %</b> del objetivo':'')+' · <b>'+total(s)+'</b></div>'
@@ -6242,7 +6333,7 @@ function undo(){
 function guardar(){
   var s=draft(), t=total(s), rec=best(arqActual().id,modU(),U.site);
   var mejor=complete(s) && (!rec || media(s)>media(rec));
-  s.fecha=new Date().toISOString(); s.arquero=arqActual().id;
+  s.fecha=new Date().toISOString(); s.arquero=arqActual().id; s.arco=arcoOk(arqActual().arco);
   D.sessions.unshift(s); delete D.drafts[claveDraft()];
   U.sel={end:0,arrow:0}; save(); render();
   toast(mejor?'¡Mejor marca! '+t+' puntos':'Tirada guardada: '+t+' puntos');
@@ -6403,7 +6494,11 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='cambiapin'){ abreLock('nuevo'); }
   else if(a==='quitapin'){ abreLock('quitar'); }
   else if(a==='cambiamodo'){ desdeMenu=false; eligiendo=true; render(); }
-  else if(a==='comun'){ if(!D.modo) D.modo='sala'; U.tab=v; C.tab=v; C.abierto=null; desdeMenu=true; eligiendo=false; SES.pon('elegido',1); render(); window.scrollTo(0,0); }
+  else if(a==='comun'){ if(!D.modo) D.modo='sala';
+    if(v==='prohisS'){ D.modo='sala'; v=(U.ph==='historial')?'historial':'progreso'; U.ph=v; if(v==='historial'){ U.hVista='mejores'; U.hArq=null; U.hSoloInc=false; } U.tab=v; C.tab='inicio'; save(); }
+    else if(v==='prohisC'){ D.modo='campo'; v=(C.ph==='histcampo')?'histcampo':'progreso'; C.ph=v; C.tab=v; U.tab='inicio'; save(); }
+    else { U.tab=v; C.tab=v; }
+    C.abierto=null; desdeMenu=true; eligiendo=false; SES.pon('elegido',1); render(); window.scrollTo(0,0); }
   else if(a==='ini0'){ desdeMenu=false; U.tab='inicio'; C.tab='inicio'; eligiendo=true; render(); window.scrollTo(0,0); }
   else if(a==='modo'){ desdeMenu=false; D.modo=v; if(v==='campo') C.tab='inicio'; else U.tab='inicio'; eligiendo=false;
     SES.pon('elegido',1); save(); render(); }
@@ -6484,37 +6579,58 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='compsala'){ var ds=draft(); ds.comp=!ds.comp; save(); render();
     if(ds.comp&&D.arqueros.length>1) toast('Al cerrar cada tanda pasará al arquero siguiente.'); }
   else if(a==='nrpuestos'){ C.nPuestos=Number(v); if(C.nInicio>C.nPuestos) C.nInicio=1; render(); }
+  else if(a==='nrpuestosok'){ var li=document.querySelector('[data-nrlibre]'), nl=li?parseInt(li.value,10):NaN;
+    if(isNaN(nl)||nl<1||nl>60){ toast('Escribe un número de puestos entre 1 y 60.'); return; }
+    C.nPuestos=nl; render(); }
+  else if(a==='nrnpat'){ C.nPat=Number(v); render(); }
+  else if(a==='verpat'){ D.recorridoId=b.dataset.id; C.idx=0; C.sel={a:0,f:0}; C.abierto=null; save(); render(); }
   else if(a==='crearrec'){
-    var pat=[],i2,usados={},faltan=0;
-    for(i2=0;i2<C.nuevos;i2++){
-      var pa2=C.patrulla[i2]||{arq:'',nombre:'',arco:ARCOS[0]};
-      var arco2=pa2.arco||ARCOS[0], ar2=null;
-      if(pa2.arq==='__nuevo'){
-        var nom2=(pa2.nombre||'').trim();
-        if(!nom2){ faltan++; continue; }
-        ar2={id:uid(),nombre:nom2,federacion:'',licencia:'',foto:null,arco:arco2};
-        D.arqueros.push(ar2);
-        pa2.arq=ar2.id;
-      } else if(pa2.arq){
-        ar2=D.arqueros.filter(function(x){ return x.id===pa2.arq; })[0];
+    var np=C.nPat||1, lotes=[], usadosG={}, faltan=0, repetidos=0, p, i2, totalM=0;
+    for(p=0;p<np;p++){
+      var X=PX(p), pat=[];
+      for(i2=0;i2<X.nuevos;i2++){
+        var pa2=X.patrulla[i2]||{arq:'',nombre:'',arco:ARCOS[0]};
+        var arco2=arcoOk(pa2.arco), ar2=null;
+        if(pa2.arq==='__nuevo'){
+          var nom2=(pa2.nombre||'').trim();
+          if(!nom2){ faltan++; continue; }
+          ar2={id:uid(),nombre:nom2,federacion:'',licencia:'',foto:null,arco:arco2};
+          D.arqueros.push(ar2);
+          pa2.arq=ar2.id;
+        } else if(pa2.arq){
+          ar2=D.arqueros.filter(function(x){ return x.id===pa2.arq; })[0];
+        }
+        if(!ar2){ faltan++; continue; }
+        if(usadosG[ar2.id]){ repetidos++; continue; }
+        usadosG[ar2.id]=1; totalM++;
+        ar2.arco=arco2;                                  /* recuerda su arco para la próxima vez */
+        pat.push({id:ar2.id,arq:ar2.id,nombre:nombreArq(ar2),arco:arco2});
       }
-      if(!ar2){ faltan++; continue; }
-      ar2.arco=arco2;                                  /* recuerda su arco para la próxima vez */
-      var idp=usados[ar2.id]?uid():ar2.id; usados[ar2.id]=1;
-      pat.push({id:idp,arq:ar2.id,nombre:nombreArq(ar2),arco:arco2});
+      lotes.push({pat:pat,inicio:X.inicio});
     }
-    if(faltan){ toast('Elige un arquero en cada puesto de la patrulla.'); render(); return; }
-    var gf=gimFaltan(pat);
+    if(faltan){ toast('Elige un arquero en cada puesto de cada patrulla.'); render(); return; }
+    if(repetidos){ toast('Un arquero no puede estar dos veces en el recorrido.'); render(); return; }
+    var todos=[]; lotes.forEach(function(l){ todos=todos.concat(l.pat); });
+    var gf=gimFaltan(todos);
     if(gf.length){ C.gimPanel=true; toast('Falta la gimnasia de '+gf.map(function(x){ return nombreArq(x); }).join(', ')+'. Márcala y empieza.'); render(); return; }
-    var rn=nuevoRecorrido(C.nCampo,C.nPuestos,C.nInicio,pat,C.nEstaca);
-    rn.comp=!!(C.nuevos>1&&C.nComp); rn.noct=!!C.nNoct; C.nNoct=false; save();
-    render(); toast('Recorrido empezado en el puesto '+C.nInicio);
+    var gid=uid();
+    for(p=np-1;p>=0;p--){
+      var rn=nuevoRecorrido(C.nCampo,C.nPuestos,Math.min(lotes[p].inicio,C.nPuestos),lotes[p].pat,C.nEstaca);
+      rn.comp=!!(totalM>1&&C.nComp); rn.noct=!!C.nNoct;
+      if(np>1){ rn.grupo=gid; rn.pat=p+1; rn.npat=np; }
+    }
+    C.nNoct=false; save();
+    render(); toast(np>1?np+' patrullas creadas. Estás en la patrulla 1.':'Recorrido empezado en el puesto '+lotes[0].inicio);
   }
-  else if(a==='cerrarrec'){ var r4=recActual(); if(r4){ r4.cerrado=true; D.recorridoId=null; C.tab='clasif'; save(); render(); toast('Recorrido cerrado'); } }
+  else if(a==='cerrarrec'){ var r4=recActual(); if(r4){ r4.cerrado=true;
+      var sib=hermanos(r4).filter(function(x){ return !x.cerrado&&x.id!==r4.id; })[0];
+      if(sib){ D.recorridoId=sib.id; C.idx=0; C.sel={a:0,f:0}; C.tab='recorrido'; save(); render(); toast('Patrulla '+(r4.pat||1)+' cerrada. Sigues con la patrulla '+(sib.pat||1)); }
+      else { D.recorridoId=null; C.tab='clasif'; save(); render(); toast('Recorrido cerrado'); } } }
   else if(a==='borrarrec'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro? Se perderá'; return; }
+    var rb=recActual(), sib2=rb?hermanos(rb).filter(function(x){ return x.id!==rb.id&&!x.cerrado; })[0]:null;
     D.recorridos=D.recorridos.filter(function(x){ return x.id!==D.recorridoId; });
-    D.recorridoId=null; save(); render();
+    D.recorridoId=sib2?sib2.id:null; save(); render();
   }
   else if(a==='borrarrecid'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿?'; return; }
@@ -6804,6 +6920,7 @@ document.getElementById('app').addEventListener('input',function(ev){
     if(ca){ if(!ca.objC) ca.objC={}; if(!ca.objC[cpu]) ca.objC[cpu]={};
       var co=ca.objC[cpu], cv=String(t.value).trim(), cn=parseFloat(cv.replace(',','.'));
       if(cpo==='p'){ if(isNaN(cn)||cn<=0) delete co.p; else co.p=cn; }
+      else if(cpo==='pp'){ if(isNaN(cn)||cn<=0) delete co.pp; else co.pp=cn; }
       else if(cpo==='m'){ if(cv===''||isNaN(cn)||cn<0) delete co.m; else co.m=Math.floor(cn); }
       else co.f=t.value;
       save(); } }
@@ -6827,9 +6944,9 @@ document.getElementById('app').addEventListener('input',function(ev){
   else if(t.dataset.campo!=null){ D.campos[Number(t.dataset.campo)].nombre=t.value; save(); }
   else if(t.dataset.animal3!=null){ var r3a=r3Actual(); if(r3a){ an3(r3a,Number(t.dataset.animal3),true).nombre=t.value; save(); } }
   else if(t.dataset.animal!=null){ var rr=recActual(); if(rr){ animal(rr,t.dataset.animal).nombre=t.value; save(); } }
-  else if(t.dataset.pnombre!=null){ var k2=Number(t.dataset.pnombre);
-    if(!C.patrulla[k2]) C.patrulla[k2]={nombre:'',arco:ARCOS[0]};
-    C.patrulla[k2].nombre=t.value; }
+  else if(t.dataset.pnombre!=null){ var k2=Number(t.dataset.pnombre), X2=PX(Number(t.dataset.pp||0));
+    if(!X2.patrulla[k2]) X2.patrulla[k2]={nombre:'',arco:ARCOS[0]};
+    X2.patrulla[k2].nombre=t.value; }
   else if(t.dataset.fichatit!=null){ D[t.dataset.l][Number(t.dataset.fichatit)].titulo=t.value; save(); }
   else if(t.dataset.fichatxt!=null){ D[t.dataset.l][Number(t.dataset.fichatxt)].texto=t.value; save(); }
   else if(t.hasAttribute&&t.hasAttribute('data-obs')){ draft().obs=t.value; save(); }
@@ -6873,8 +6990,8 @@ document.getElementById('app').addEventListener('change',function(ev){
     clearTimeout(C.tEqTxt); (function(ix){ C.tEqTxt=setTimeout(function(){ eqRefrescaTextos(ix); },350); })(t.dataset.eqarq);
   }
   else if(t.hasAttribute&&t.hasAttribute('data-tf')){ if(U.tf){ U.tf[t.dataset.tf]=t.value; U.tf.msg=''; } render(); }
-  else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ C.nInicio=Number(t.value); }
-  else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ C.nuevos=Number(t.value); render(); }
+  else if(t.hasAttribute&&t.hasAttribute('data-nrinicio')){ PX(Number(t.dataset.pp||0)).inicio=Number(t.value); }
+  else if(t.hasAttribute&&t.hasAttribute('data-nrn')){ PX(Number(t.dataset.pp||0)).nuevos=Number(t.value); render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-recsel')){ C.recSel=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hsite')){ U.hSite=t.value; U.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-hdist')){ U.hDist=t.value; U.hTope=15; render(); }
@@ -6904,15 +7021,16 @@ document.getElementById('app').addEventListener('change',function(ev){
   else if(t.hasAttribute&&t.hasAttribute('data-hest')){ C.hEst=t.value; C.hTope=15; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-verrec')){ C.verRec=t.value; render(); }
   else if(t.hasAttribute&&t.hasAttribute('data-gpsk')){ C.gpsK=t.value; }
-  else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq);
-    if(!C.patrulla[k4]) C.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
-    C.patrulla[k4].arq=t.value;
+  else if(t.dataset&&t.dataset.parq!=null){ var k4=Number(t.dataset.parq), X4=PX(Number(t.dataset.pp||0));
+    if(!X4.patrulla[k4]) X4.patrulla[k4]={arq:'',nombre:'',arco:ARCOS[0]};
+    X4.patrulla[k4].arq=t.value;
     var elegido=D.arqueros.filter(function(x){ return x.id===t.value; })[0];
-    if(elegido&&elegido.arco) C.patrulla[k4].arco=elegido.arco;
+    if(elegido&&elegido.arco) X4.patrulla[k4].arco=arcoOk(elegido.arco);
     render(); }
-  else if(t.dataset&&t.dataset.parco!=null){ var k3=Number(t.dataset.parco);
-    if(!C.patrulla[k3]) C.patrulla[k3]={nombre:'',arco:ARCOS[0]};
-    C.patrulla[k3].arco=t.value; }
+  else if(t.dataset&&t.dataset.parco!=null){ var k3=Number(t.dataset.parco), X3=PX(Number(t.dataset.pp||0));
+    if(!X3.patrulla[k3]) X3.patrulla[k3]={nombre:'',arco:ARCOS[0]};
+    X3.patrulla[k3].arco=t.value; }
+  else if(t.hasAttribute&&t.hasAttribute('data-sarco')){ var Aar=arqActual(); Aar.arco=t.value; save(); }
 });
 
 document.getElementById('fotoinput').addEventListener('change',function(ev){
