@@ -964,6 +964,16 @@ function obItemsCampoPP(a,pu){
         it.push({f:r.fecha,ok:pts3(t[0])+pts3(t[1])>=pp}); }); }); });
   return it;
 }
+function objPPLinea(r,a){
+  var ar=arqPorId(a.arq), pp=ar?objCPP(ar,r.puestos):null; if(!pp) return '';
+  var o=ar.objC[String(r.puestos)], d=o&&o.f?diasHasta(o.f):null, cur={ok:0,tot:0};
+  secuencia(r).forEach(function(p){ var t=r.tiros[a.id+'|'+p]; if(t&&t[0]!=null&&t[1]!=null){ cur.tot++; if(pts3(t[0])+pts3(t[1])>=pp) cur.ok++; } });
+  var h='<div class="objc"><b>Objetivo por puesto:</b> '+pp+' pts';
+  if(o&&o.f&&d!=null) h+=' · '+fechaISO(o.f)+' <span class="'+(d<0?'vencido':'dias')+'">('
+    +(d>1?'faltan '+d+' días':d===1?'queda 1 día':d===0?'vence hoy':'vencido hace '+(-d)+' día'+(d===-1?'':'s'))+')</span>';
+  h+='<br>'+(cur.tot?'<b>'+cur.ok+'</b> de '+cur.tot+(cur.tot===1?' puesto':' puestos')+' · <b class="'+(cur.ok===cur.tot?'pctok':'')+'">'+Math.round(cur.ok/cur.tot*100)+' %</b> del objetivo':'Aún sin puestos completos.');
+  return h+'</div>';
+}
 function tarjetaObjPuesto(r){
   var h='', hay=false;
   r.patrulla.forEach(function(m){
@@ -1315,7 +1325,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=107;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=108;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -4815,12 +4825,10 @@ function pantallaPuesto(r){
       +'<div class="lbl" data-act="detalle" data-id="'+a.id+'">'+esc(a.nombre)
       +'<small>'+esc(a.arco)+' · toca para ver puesto a puesto</small></div>'
       +'<div class="v"><b>'+totalArq(r,a.id)+'</b><small>'+cuenta(r,a.id,'11')+' onces</small></div></div>';
-    h+=objCLinea(r,a);
+    h+=objCLinea(r,a)+objPPLinea(r,a);
     if(C.abierto===a.id) h+=detallePorPuesto(r,a);
   });
   h+='</div>';
-  h+=tarjetaObjPuesto(r);
-
   if(!cerrado) h+=tarjetaCrono();
 
   h+='<button class="act act2" data-act="irmapa" style="margin:-2px 0 12px">'
@@ -4967,7 +4975,7 @@ function pantallaResumen(r){
       +'<b>'+esc(a.nombre)+'</b> · '+esc(a.arco)+'</div>'
       +'<div class="l3"><b>'+totalArq(r,a.id)+'</b> de '+maxRec(r)+' · '+dec(mediaArq(r,a.id))+' por flecha · '
       +cuenta(r,a.id,'11')+' onces · '+cuenta(r,a.id,'10')+' dieces</div>'
-      +objCLinea(r,a)
+      +objCLinea(r,a)+objPPLinea(r,a)
       +'<div class="hbts" style="grid-template-columns:1fr 1fr 1.4fr">'
       +'<button class="mini" data-act="verimg" data-k="arq:'+a.id+'">Imagen</button>'
       +'<button class="mini" data-act="pdfimg" data-k="arq:'+a.id+'">PDF</button>'
