@@ -897,7 +897,7 @@ function equipoArq0(a,i){
   var pt=puntaTeorica(a);
   h+='<div class="field"><label>Potencia palas</label>'+campo('libras','35','Potencia de las palas en libras')+'<span class="un">lb</span></div>'
     +'<p class="consejo">La potencia suele venir marcada en las palas (libras a 28″). '
-    +(pt?'A tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+' son unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).'
+    +(pt?'Tus palas de <b>'+fmtN(Number(e.libras))+' lb</b> (marcadas a 28″) dan, con tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+', unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).'
       :'Escríbela y la app la ajusta a tu apertura.')+'</p>';
   h+=par('Talla palas','palasIn','palasCm','68','172.7','Talla de las palas')
     +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '
@@ -926,14 +926,14 @@ function equipoArq0(a,i){
   /* 6b. spine */
   var sp=spineTeorico(a);
   h+='<div class="field"><label>Spine</label>'+campo('spine','600','Spine de tus flechas')+'</div>'
-    +'<p class="consejo">'+(sp?'Con unas <b>'+fmtN(Math.round(sp.lb*10)/10)+' lb</b> a tu apertura y flechas de <b>'+pc(sp.L)+'</b>, el spine teórico es de unos <b>'+sp.p+'</b> (margen de '+sp.lo+' a '+sp.hi+'). '
+    +'<p class="consejo">'+(sp?'Con la potencia que das a tu apertura (<b>'+fmtN(Math.round(sp.lb*10)/10)+' lb</b>, no la apertura) y flechas de <b>'+pc(sp.L)+'</b>, el spine teórico es de unos <b>'+sp.p+'</b> (margen de '+sp.lo+' a '+sp.hi+'). '
       +'Cuanto <b>más bajo</b> es el número, más rígido es el tubo: si dudas entre dos, elige el más rígido cuando la flecha sea larga o la punta pesada.'
       +(e.spine>0?'<br>'+(e.spine>sp.hi?'<span class="avisoeq">⚠ Tus flechas ('+e.spine+') son más flexibles de lo recomendado.</span>':e.spine<sp.lo?'<span class="avisoeq">⚠ Tus flechas ('+e.spine+') son más rígidas de lo recomendado.</span>':'<b style="color:#6FC38C">✓</b> Tus flechas ('+e.spine+') están dentro del margen.'):'')
       +'<br>Es un cálculo para flechas de carbono y arco de recurvo; el arco desnudo o tradicional puede pedir otro. Confírmalo con la tabla del fabricante o en la tienda.'
       :'Escribe la potencia de las palas y la medida de las flechas para calcular el spine teórico.')+'</p>';
   /* 7. peso de las puntas */
   h+='<div class="field"><label>Peso puntas</label></div>'
-    +'<p class="consejo">'+(pt?'Con unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> a tu apertura'+(e.flechaIn>0?' y flechas de <b>'+pc(e.flechaIn)+'</b>':'')+', el peso adecuado de la punta (teórico) es de <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
+    +'<p class="consejo">'+(pt?'Con la potencia que das a tu apertura (<b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b>, no la apertura)'+(e.flechaIn>0?' y flechas de <b>'+pc(e.flechaIn)+'</b>':'')+', el peso adecuado de la punta (teórico) es de <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
       +'<br>Sale de una flecha completa de unos '+pt.total+' grains ('+grG(pt.total)+', a 9 grains por libra) con la punta en torno al 28 % de ese peso. Es solo un cálculo teórico: ajústalo con tu entrenador o tu tienda según tus flechas.'
       :'Escribe la potencia de las palas para calcular el peso teórico de las puntas en grains y en gramos.')+'</p>';
   return h;
@@ -1375,7 +1375,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=115;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=116;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
