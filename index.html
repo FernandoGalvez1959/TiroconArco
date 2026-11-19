@@ -851,6 +851,15 @@ function puntaTeorica(a){
   var r5=function(x){ return Math.round(x/5)*5; };
   return {real:real, ap:ap, total:Math.round(real*9), p:r5(real*9*0.28), lo:r5(real*8*0.28), hi:r5(real*10*0.28)};
 }
+/* Spine teórico (carbono, arco olímpico): ≈ 24000 ÷ libras a tu apertura, para flecha de 28″ y punta de 100 grains.
+   Más larga o con punta más pesada pide un tubo más rígido (número más bajo). Orientativo, no sustituye la tabla del fabricante. */
+function spineTeorico(a){
+  var e=a.eq||{}, c=consejosEq(a), pt=puntaTeorica(a); if(!pt) return null;
+  var L=e.flechaIn>0?Number(e.flechaIn):(c.fl||0); if(!(L>0)) return null;
+  var punta=pt.p||100, v=24000/pt.real*Math.pow(28/L,3)*(1-0.002*(punta-100));
+  var r50=function(x){ return Math.round(x/50)*50; };
+  return {v:v, p:r50(v), lo:r50(v*0.92), hi:r50(v*1.08), L:L, lb:pt.real};
+}
 function grG(gr){ return fmtN(Math.round(gr*0.06479891*10)/10)+' g'; }
 function equipoArq(a,i){
   return '<div class="eqblue">'+equipoArq0(a,i)+'</div>';
@@ -914,6 +923,14 @@ function equipoArq0(a,i){
     +(c.ap?'Con tu apertura de <b>'+pc(c.ap)+'</b>: entre <b>'+pc(c.ap+1)+'</b> y <b>'+pc(c.ap+2)+'</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
       +' Se calcula <b>'+pc(c.fl)+'</b>.'+(au.flecha?calc('flecha'):(Number(e.flechaIn)!==c.fl?poner('flecha',c.fl,'Usar el calculado ('+pc(c.fl)+')'):''))
       :'Suele ser la apertura más 1 a 2″.')+'</p>';
+  /* 6b. spine */
+  var sp=spineTeorico(a);
+  h+='<div class="field"><label>Spine</label>'+campo('spine','600','Spine de tus flechas')+'</div>'
+    +'<p class="consejo">'+(sp?'Con unas <b>'+fmtN(Math.round(sp.lb*10)/10)+' lb</b> a tu apertura y flechas de <b>'+pc(sp.L)+'</b>, el spine teórico es de unos <b>'+sp.p+'</b> (margen de '+sp.lo+' a '+sp.hi+'). '
+      +'Cuanto <b>más bajo</b> es el número, más rígido es el tubo: si dudas entre dos, elige el más rígido cuando la flecha sea larga o la punta pesada.'
+      +(e.spine>0?'<br>'+(e.spine>sp.hi?'<span class="avisoeq">⚠ Tus flechas ('+e.spine+') son más flexibles de lo recomendado.</span>':e.spine<sp.lo?'<span class="avisoeq">⚠ Tus flechas ('+e.spine+') son más rígidas de lo recomendado.</span>':'<b style="color:#6FC38C">✓</b> Tus flechas ('+e.spine+') están dentro del margen.'):'')
+      +'<br>Es un cálculo para flechas de carbono y arco de recurvo; el arco desnudo o tradicional puede pedir otro. Confírmalo con la tabla del fabricante o en la tienda.'
+      :'Escribe la potencia de las palas y la medida de las flechas para calcular el spine teórico.')+'</p>';
   /* 7. peso de las puntas */
   h+='<div class="field"><label>Peso puntas</label></div>'
     +'<p class="consejo">'+(pt?'Con unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> a tu apertura'+(e.flechaIn>0?' y flechas de <b>'+pc(e.flechaIn)+'</b>':'')+', el peso adecuado de la punta (teórico) es de <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
@@ -1358,7 +1375,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=114;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=115;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
