@@ -320,6 +320,8 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 
 .field{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
 .field label{font-size:14px;color:var(--dim);width:84px;flex:none;}
+.eqblue .field label{color:#5AA2F0;font-weight:700;}
+.verd{color:#6FC38C;font-weight:700;}
 .field input{flex:1;min-width:0;background:#151C24;border:1px solid var(--line);border-radius:9px;
   padding:10px;color:var(--ink);font-size:15px;}
 .fotorow{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
@@ -473,6 +475,13 @@ table.grid tr td:last-child{border-radius:0 6px 6px 0;}
 .detalle td:nth-child(2){color:var(--dim);}
 .detalle td:nth-last-child(-n+3){text-align:center;width:30px;}
 .tec{margin-bottom:12px;}
+.tecp{padding:0;}
+.tecp > :not(.tecrow){margin-left:14px;margin-right:14px;}
+.tecp > :last-child{margin-bottom:14px;}
+.tecrow{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:var(--tx,#E8EEF4);font-size:16px;font-weight:700;text-align:left;padding:14px;cursor:pointer;}
+.tecrow .fl{color:#5AA2F0;font-size:18px;width:18px;flex:none;}
+.tecrow .tt{flex:1;min-width:0;overflow-wrap:anywhere;}
+.tecrow .tt i{color:var(--dim);font-weight:400;}
 .tec input{width:100%;background:#151C24;border:1px solid var(--line);border-radius:9px;
   padding:11px;color:var(--ink);font-size:15px;font-weight:600;margin-bottom:7px;}
 .tec textarea{width:100%;min-height:96px;background:#151C24;border:1px solid var(--line);
@@ -833,7 +842,18 @@ function eqRefrescaTextos(i){
     for(k=0;k<bv.length&&k<bn.length;k++) bv[k].setAttribute('data-on',bn[k].getAttribute('data-on'));
   }catch(x){}
 }
+function puntaTeorica(a){
+  var e=a.eq||{}, c=consejosEq(a), lb=Number(e.libras); if(!(lb>0)) return null;
+  var ap=e.apIn>0?Number(e.apIn):(c.ap||0), real=ap>0?lb+2.5*(ap-28):lb;      /* ≈ 2,5 lb por pulgada de diferencia con 28″ */
+  if(real<10) real=10;
+  var r5=function(x){ return Math.round(x/5)*5; };
+  return {real:real, ap:ap, total:Math.round(real*9), p:r5(real*9*0.28), lo:r5(real*8*0.28), hi:r5(real*10*0.28)};
+}
+function grG(gr){ return fmtN(Math.round(gr*0.06479891*10)/10)+' g'; }
 function equipoArq(a,i){
+  return '<div class="eqblue">'+equipoArq0(a,i)+'</div>';
+}
+function equipoArq0(a,i){
   var e=a.eq||{}, au=e.auto||{}, V=function(k){ return e[k]==null?'':String(e[k]); }, c=consejosEq(a);
   var campo=function(k,ph,aria){ return '<input type="number" inputmode="decimal" min="0" step="any" placeholder="'+ph+'" aria-label="'+aria+'" data-eqarq="'+i+'" data-eqcampo="'+k+'" value="'+esc(V(k))+'">'; };
   var par=function(etq,k,kc,ph,phc,aria){ return '<div class="field"><label>'+etq+'</label>'+campo(k,ph,aria+' en pulgadas')+'<span class="un">pulg.</span>'
@@ -880,6 +900,14 @@ function equipoArq(a,i){
       +(!au.cuerda&&e.cuerdaIn>0&&Math.abs(Number(e.cuerdaIn)-c.cuerda)>1.5?'<br><span class="avisoeq">⚠ Tu cuerda es de '+pc(e.cuerdaIn)+': para un arco de '+pc(c.L)+' lo normal son unas '+pc(c.cuerda)+'.</span>':'')
       +(au.cuerda?calc('cuerda'):(Number(e.cuerdaIn)!==c.cuerda?poner('cuerda',c.cuerda,'Usar el calculado ('+pc(c.cuerda)+')'):''))
       :'Suele medir unas 4″ menos que el arco: '+pc(64)+' para uno de '+pc(68)+'.')+'</p>';
+  /* 5b. potencia y punta */
+  var pt=puntaTeorica(a);
+  h+='<div class="field"><label>Potencia</label>'+campo('libras','35','Potencia de las palas en libras')+'<span class="un">lb</span></div>'
+    +'<p class="consejo">La potencia suele venir marcada en las palas (libras a 28″). '
+    +(pt?'A tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+' son unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).<br>'
+      +'Peso adecuado de la punta (teórico): <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
+      +'<br>Sale de una flecha completa de unos '+pt.total+' grains (9 grains por libra) con la punta en torno al 28 %. Es solo un cálculo teórico: ajústalo con tu entrenador o tu tienda según tus flechas.'
+      :'Escríbela para calcular el peso teórico de la punta en grains y en gramos.')+'</p>';
   /* 6. flechas */
   h+=par('Flechas','flechaIn','flechaCm','28','71.1','Flecha')
     +'<p class="consejo">Se mide desde el <b>fondo de la muesca</b> (donde apoya la cuerda) hasta el <b>final del tubo</b>, sin contar la punta. '
@@ -1325,7 +1353,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=108;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=109;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1468,7 +1496,7 @@ function pantallaMejores(){
     var propias=D.sessions.filter(function(x){ return modDe(x)===md.id&&(sel===''||x.arquero===sel); });
     if(filas){
       var inc=propias.filter(function(x){ return !complete(x); }).length;
-      h+='<div class="card"><div class="chead"><h2>'+descMod(md.id)+'</h2><span>mejor tirada</span></div>'+filas
+      h+='<div class="card"><div class="chead"><h2><span class="verd">'+descMod(md.id)+'</span></h2><span>mejor tirada</span></div>'+filas
         +(inc?'<p class="nota" style="margin:10px 0 6px">Además hay '+inc+(inc===1?' tirada incompleta':' tiradas incompletas')+' que no cuenta'+(inc===1?'':'n')+'.</p>'
           +'<button class="mini" data-act="hrev" data-mod="'+md.id+'">Revisarla'+(inc===1?'':'s')+'</button>':'')+'</div>';
       return;
@@ -5000,13 +5028,18 @@ var SUGMAT=['Arco','Flechas','Cuerda','Visor','Estabilizador','Botón','Reposafl
   'Dragonera','Aljaba','Protector de dedos','Protector de brazo','Puntas','Plumas','Culatines','Disparador'];
 function maxFotosFicha(lista){ return lista==='material'?6:3; }      /* material: hasta 6 fotos por ficha; técnicas: 3 */
 function fichas(lista,titulo,ayuda,ph,sug){
-  var arr=D[lista]||[], mx=maxFotosFicha(lista);
+  var arr=D[lista]||[], mx=maxFotosFicha(lista), plega=(lista==='tecnicas');
   var h='<div class="card"><div class="chead"><h2>'+titulo+'</h2><span>'+arr.length+'</span></div>'
     +'<p class="stat">'+ayuda+'</p></div>';
   arr.forEach(function(t,i){
-    var fotos=t.fotos||[];
-    h+='<div class="card tec">'
-      +'<input placeholder="'+ph+'"'+(sug?' list="sugmat"':'')+' maxlength="60" '
+    var fotos=t.fotos||[], abre=!plega||TF.ab===i;
+    if(plega){
+      h+='<div class="card tec tecp"><button class="tecrow" data-act="fichatog" data-i="'+i+'" aria-expanded="'+(abre?'true':'false')+'">'
+        +'<span class="fl">'+(abre?'▾':'▸')+'</span><span class="tt">'+(t.titulo?esc(t.titulo):'<i>Sin título</i>')+'</span></button>';
+      if(!abre){ h+='</div>'; return; }
+      h+='<div style="height:10px"></div>';
+    } else h+='<div class="card tec">';
+    h+='<input placeholder="'+ph+'"'+(sug?' list="sugmat"':'')+' maxlength="60" '
       +'data-fichatit="'+i+'" data-l="'+lista+'" value="'+esc(t.titulo)+'">'
       +'<textarea class="selec" placeholder="Escribe aquí" data-fichatxt="'+i+'" data-l="'+lista+'">'
       +esc(t.texto)+'</textarea>';
@@ -5135,7 +5168,7 @@ function mejoresDe(a){
       if(b && (!mejor || media(b)>media(mejor))){ mejor=b; sitio2=i; }
     }
     if(mejor) hay=true;
-    h+='<div class="rec" style="padding:8px 0"><div class="lbl">'+descMod(d)+''
+    h+='<div class="rec" style="padding:8px 0"><div class="lbl"><span class="verd">'+descMod(d)+'</span>'
       +(mejor?'<small>'+esc(sitio(sitio2))+' · '+formato(mejor)+' · '+fecha(mejor.fecha)+'</small>':'')
       +'</div><div class="v">'
       +(mejor?'<b>'+total(mejor)+'</b><small>'+dec(media(mejor))+' por flecha</small>':'<small>Sin marca</small>')
@@ -5365,7 +5398,7 @@ var FORM=[[1,"Alineación de pies paralelos","Crear una base estable y repetible
 [99,"Disparos de calidad frente a cantidad","Aprender a terminar a tiempo.","Arco y hasta 20 flechas.","Define un criterio de buena técnica observable.","1) Dispara series de 4. 2) Decide continuar solo si conservas estabilidad y anclaje. 3) No es necesario utilizar las 20 flechas si aparece fatiga.","El objetivo no es agotar el volumen disponible.","Registra cuántos tiros de calidad completaste.","Mantén el arco orientado hacia la zona autorizada; recoge las flechas únicamente cuando se indique y detén el ejercicio si pierdes el control.","Enfoque en la calidad: estabilidad, anclaje, alineación, disparo limpio, seguimiento. Gráfico de calidad de ejecución por serie (series de 4 disparos): ejemplo 95 %, 92 %, 88 %, 74 % y 58 %. Umbral de fatiga: 70 %. Interpretación: mantén la calidad por encima del 70 %; si cae por debajo del umbral de fatiga, finaliza el ejercicio. Tabla de registro: fecha, series completadas, % de calidad (media), observaciones. Recuerda: la constancia inteligente crea progreso; la calidad siempre supera a la cantidad. Entrena con propósito, dispara con calidad."],
 [100,"Evaluación final de 12 disparos","Medir el progreso con una prueba repetible.","Arco, 12 flechas, diana y hoja de puntuación.","Repite la distancia y configuración utilizadas al inicio del programa.","Completa 3 series de 4 flechas con calentamiento previo y descansos adecuados. Registra agrupación, puntuación cuando proceda y cumplimiento de la rutina técnica.","Evalúa el proceso y practica siempre dentro de las normas del campo.","Compara los resultados con tu prueba inicial y define una prioridad futura.","Mantén el arco orientado hacia la zona autorizada; recoge las flechas únicamente cuando se indique y detén el ejercicio si pierdes el control.","Hoja final con tres dianas, métricas y próxima meta (ejemplo del libro). Serie 1: agrupación 4,2 cm, puntuación 40/40. Serie 2: agrupación 3,6 cm, puntuación 39/40. Serie 3: agrupación 3,1 cm, puntuación 40/40. Resumen general: agrupación promedio 3,6 cm; puntuación total 119/120; rutina técnica (cumplimiento) 96 %; total de flechas 12/12. Métricas explicadas: Agrupación (cm): mide el diámetro del círculo que contiene todos los impactos de la serie; menos centímetros = mejor precisión. Puntuación: suma de los puntos obtenidos en cada serie según el valor de los impactos. Rutina técnica, cumplimiento (%): porcentaje de ejecución correcta de los pasos técnicos clave en cada serie. Próxima meta: define tu prioridad futura basada en estos resultados. Ejemplo: reducir la agrupación a menos de 3,0 cm de promedio manteniendo 120/120 puntos y 100 % de rutina técnica. Recuerda: evalúa con honestidad, registra con precisión y entrena con propósito. Proceso + constancia + seguridad: mejorar es el resultado."]];
 var SEG_STD='Mantén el arco orientado hacia la zona autorizada; recoge las flechas únicamente cuando se indique y detén el ejercicio si pierdes el control.';
-var TF={sec:'form',area:0,ej:0};
+var TF={sec:'form',area:0,ej:0,ab:null};
 function fvisto(n){ return !!(D.formVistas&&D.formVistas['e'+n]); }
 function fAreaCuenta(a){ var v=0,i; for(i=(a-1)*10+1;i<=a*10;i++) if(fvisto(i)) v++; return v; }
 function fTotal(){ var v=0,i; for(i=1;i<=100;i++) if(fvisto(i)) v++; return v; }
@@ -6154,7 +6187,7 @@ function render(){
     h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
     modsLista().forEach(function(md){ var d=md.id; D.sites.forEach(function(sn,i){
       var b=best(A.id,d,i);
-      h+='<div class="rec"><div class="lbl">'+descMod(d)+'<small>'+esc(sn)+'</small></div><div class="v">'
+      h+='<div class="rec"><div class="lbl"><span class="verd">'+descMod(d)+'</span><small>'+esc(sn)+'</small></div><div class="v">'
         +(b?'<b>'+dec(media(b))+'</b><small>'+total(b)+' en '+formato(b)+' · '+fecha(b.fecha)+'</small>'
             :'<small>Sin registro</small>')+'</div></div>';
     }); });
@@ -6795,7 +6828,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     bb.items[ii].ok=!bb.items[ii].ok; save(); render(); }
   else if(a==='fichasube'||a==='fichabaja'){
     var la=b.dataset.l, ia=Number(b.dataset.i), ja=ia+(a==='fichasube'?-1:1), ar=D[la];
-    if(ja>=0&&ja<ar.length){ var tmp=ar[ia]; ar[ia]=ar[ja]; ar[ja]=tmp; save(); render(); }
+    if(ja>=0&&ja<ar.length){ var tmp=ar[ia]; ar[ia]=ar[ja]; ar[ja]=tmp; if(la==='tecnicas'){ if(TF.ab===ia) TF.ab=ja; else if(TF.ab===ja) TF.ab=ia; } save(); render(); }
   }
   else if(a==='matsube'||a==='matbaja'){
     var bl=MAT()[Number(b.dataset.b)], ib=Number(b.dataset.i), jb=ib+(a==='matsube'?-1:1);
@@ -6879,7 +6912,8 @@ document.getElementById('app').addEventListener('click',function(ev){
   else if(a==='pendlimpia'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
     D.pend[b.dataset.l]=D.pend[b.dataset.l].filter(function(x){ return !x.ok; }); save(); render(); }
-  else if(a==='nuevaficha'){ D[b.dataset.l].push({titulo:'',texto:'',fotos:[]}); save(); render(); }
+  else if(a==='nuevaficha'){ D[b.dataset.l].push({titulo:'',texto:'',fotos:[]}); if(b.dataset.l==='tecnicas') TF.ab=D.tecnicas.length-1; save(); render(); }
+  else if(a==='fichatog'){ var fi0=Number(b.dataset.i); TF.ab=(TF.ab===fi0)?null:fi0; render(); }
   else if(a==='copiarficha'){ var tf=D[b.dataset.l][Number(b.dataset.i)];
     copiar((tf.titulo?tf.titulo+'\n\n':'')+tf.texto,b.dataset.l==='material'?'Material':'Técnica'); }
   else if(a==='fotoficha'){ C.fotoDestino={tipo:'ficha',lista:b.dataset.l,i:Number(b.dataset.i)};
@@ -6892,7 +6926,7 @@ document.getElementById('app').addEventListener('click',function(ev){
       abreGaleria(conF,conF.indexOf(foF),(th.titulo||'Foto')+(b.dataset.l==='material'?' · material':' · técnica'),th.titulo||'foto'); } }
   else if(a==='borficha'){
     if(b.dataset.ok!=='1'){ b.dataset.ok='1'; b.textContent='¿Seguro?'; return; }
-    D[b.dataset.l].splice(Number(b.dataset.i),1); save(); render();
+    D[b.dataset.l].splice(Number(b.dataset.i),1); if(b.dataset.l==='tecnicas') TF.ab=null; save(); render();
   }
   else if(a==='instalar' && deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; }
 });
