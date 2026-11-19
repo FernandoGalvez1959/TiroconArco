@@ -1358,7 +1358,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=112;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=114;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1402,7 +1402,7 @@ function muestraAvisoAlm(){
 function avisoAlmacen(){
   if(!ALM.ok) return '<div class="avisoalm">⚠ Este móvil <b>no deja guardar datos</b> ('+esc(ALM.causa||'bloqueado')+'). Lo que anotes se perderá al cerrar la app. '
     +'Ábrela en Chrome sin modo privado o instálala (menú ⋮ → Instalar aplicación).</div>';
-  if(C.errGuardar) return '<div class="avisoalm">⚠ <b>No se ha podido guardar</b>: el espacio de este móvil está lleno. '
+  if(C.errGuardar) return '<div class="avisoalm">⚠ <b>No se ha podido guardar</b>: el espacio que el navegador da a la app está lleno (no es la memoria del móvil). '
     +'Descarga una copia en Copia/Claves y quita fotos pesadas.</div>';
   return '';
 }
@@ -1428,7 +1428,8 @@ function tarjetaMovil(){
       :'El navegador no permite consultar la protección contra borrados.')+'</p>';
   if(ALM.persist!==true&&navigator.storage&&navigator.storage.persist) h+='<button class="mini" data-act="pidepersist" style="margin-bottom:10px">Pedir protección</button>';
   h+='<div class="barra"><i style="width:'+pc+'%;'+(pc>=85?'background:var(--red)':'')+'"></i></div>'
-    +'<p class="nota" style="margin-top:6px">Espacio usado: <b>'+pc+' %</b>'+(pc>=85?' · <b style="color:var(--red)">casi lleno</b>: descarga una copia y quita fotos pesadas.':'.')+'</p>';
+    +'<p class="nota" style="margin-top:6px">Espacio de la app: <b>'+pc+' %</b> de los ~5 MB que el navegador permite a esta app (no es la memoria del móvil, que está bien)'+(pc>=85?' · <b style="color:var(--red)">casi lleno</b>: descarga una copia y quita fotos pesadas o muy grandes.':'.')+'</p>'
+  h+='<button class="act" data-act="reducirfotos" style="margin-top:6px">Reducir el peso de las fotos guardadas</button>';
   return h+'</div>';
 }
 function val(s){ return s==null?0:s==='M'?0:s==='X'?10:Number(s); }
@@ -2089,13 +2090,13 @@ function procesaFoto(f,cb){
     img.onerror=function(){ cb(null); };
     img.onload=function(){
       try{
-        var pasos=[[1600,0.62],[1400,0.5],[1200,0.45]], k=0, url, w, h, sc, cv, cx;
+        var pasos=[[1000,0.55],[900,0.45],[800,0.4]], k=0, url, w, h, sc, cv, cx;
         do{
           sc=Math.min(1,pasos[k][0]/Math.max(img.width,img.height)); w=Math.round(img.width*sc); h=Math.round(img.height*sc);
           cv=document.createElement('canvas'); cv.width=w; cv.height=h; cx=cv.getContext('2d');
           cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(img,0,0,w,h);
           url=cv.toDataURL('image/jpeg',pasos[k][1]); k++;
-        }while(url.length>330000&&k<pasos.length);
+        }while(url.length>110000&&k<pasos.length);
         var sm=Math.min(1,130/Math.max(img.width,img.height)), mw=Math.round(img.width*sm), mh=Math.round(img.height*sm);
         var cm=document.createElement('canvas'); cm.width=mw; cm.height=mh; var cc=cm.getContext('2d');
         cc.fillStyle='#fff'; cc.fillRect(0,0,mw,mh); cc.drawImage(img,0,0,mw,mh);
@@ -2436,6 +2437,37 @@ function pastillaNube(){
 }
 function usoMemoria(){
   try{ return JSON.stringify(D).length; }catch(e){ return 0; }
+}
+
+/* recomprime las fotos ya guardadas (objetos con data/w/h) a un tamaño menor; solo cambia la foto si queda más ligera */
+function reducirFotosGuardadas(){
+  var lista=[], vistos=[];
+  (function rec(o){
+    if(!o||typeof o!=='object'||vistos.indexOf(o)>=0) return; vistos.push(o);
+    if(typeof o.data==='string'&&o.data.length>70000&&o.w&&o.h&&!o._r) lista.push(o);
+    Object.keys(o).forEach(function(k){ rec(o[k]); });
+  })(D);
+  if(!lista.length){ toast('No hay fotos pesadas que reducir.'); return; }
+  var antes=usoMemoria(), i=0;
+  toast('Reduciendo '+lista.length+' fotos… espera un momento.');
+  (function sig(){
+    var o=lista[i++];
+    if(!o){ save(); render(); var d=Math.max(0,antes-usoMemoria());
+      toast('Hecho: has liberado unos '+(d/1048576).toFixed(1).replace('.',',')+' MB.'); return; }
+    var im=new Image();
+    im.onerror=function(){ sig(); };
+    im.onload=function(){
+      try{
+        var m=Math.max(im.width,im.height), sc=Math.min(1,1000/m), w=Math.round(im.width*sc), h=Math.round(im.height*sc);
+        var cv=document.createElement('canvas'); cv.width=w; cv.height=h; var cx=cv.getContext('2d');
+        cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(im,0,0,w,h);
+        var u=cv.toDataURL('image/jpeg',0.55).split(',')[1];
+        if(u.length<o.data.length*0.85){ o.data=u; o.w=w; o.h=h; }
+      }catch(e){}
+      setTimeout(sig,0);
+    };
+    im.src='data:image/jpeg;base64,'+o.data;
+  })();
 }
 function espacioLibre(){ return 4.6*1024*1024-usoMemoria(); }
 function claveNueva(){
@@ -6699,6 +6731,7 @@ document.getElementById('app').addEventListener('click',function(ev){
     var fi2=document.getElementById('fotoinput'); fi2.value=''; fi2.click();
   }
   else if(a==='copiafotos'){ C.conFotos=(v==='1'); render(); }
+  else if(a==='reducirfotos'){ reducirFotosGuardadas(); }
   else if(a==='bajarcopia'){ bajar(copiaJSON(C.conFotos!==false),
     nombreCopia(Date.now(),'json',C.conFotos===false),'application/json',function(){ marcaCopia(); render(); }); }
   else if(a==='copiaahora'){ var ncp=nombreCopia(Date.now(),'json',false);
