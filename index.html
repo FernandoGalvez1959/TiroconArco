@@ -47,6 +47,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .objper{margin:6px 0 2px;}.objpl{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;margin-bottom:3px;}
 .objpl span:first-child{color:var(--dim);}
 .objbar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;}
+.objbar.vd i{background:#6FC38C;}
+.azul{color:#5AA2F0;font-weight:700;}
 .objbar i{display:block;height:100%;background:#3D7CC9;border-radius:5px;}
 .obt2{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 4px;}
 .obt2 td{padding:4px 0;border-top:1px solid var(--line);}
@@ -1013,7 +1015,7 @@ function tarjetaObjPuesto(r){
     secuencia(r).forEach(function(p){ var t=r.tiros[m.id+'|'+p]; if(t&&t[0]!=null&&t[1]!=null){ cur.tot++; if(pts3(t[0])+pts3(t[1])>=pp) cur.ok++; } });
     h+='<div style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px"><div class="objtxt"><b>'+esc(m.nombre)+'</b> · '+pp+' pts por puesto</div>'
       +'<div class="objtxt dias">Este recorrido: <b>'+cur.ok+'</b> de '+cur.tot+(cur.tot===1?' puesto':' puestos')+(cur.tot?' · '+Math.round(cur.ok/cur.tot*100)+' %':'')+'</div>'
-      +obBloque(obItemsCampoPP(ar,r.puestos),['puesto','puestos'],obHoy(),'Primer puesto')+'</div>';
+      +obBloque(obItemsCampoPP(ar,r.puestos),['puesto','puestos','vd'],obHoy(),'Primer puesto')+'</div>';
   });
   if(!hay) return r.cerrado?'':'<div class="card objcard"><div class="chead"><h2>🎯 Objetivo por puesto</h2><span>'+r.puestos+' puestos</span></div><p class="stat" style="margin:0">Sin objetivo por puesto. Escríbelo en Objetivos, apartado Campo (puntos por puesto).</p></div>';
   return '<div class="card objcard"><div class="chead"><h2>🎯 Objetivo por puesto</h2><span>'+r.puestos+' puestos</span></div>'+h+'</div>';
@@ -1024,8 +1026,8 @@ function tarjetaObjCampoForm(){
     var ar=D.arqueros.filter(function(x){ return x.id===q.arq; })[0]; if(!ar||vistos[ar.id]) return; vistos[ar.id]=1;
     var o=objCDe(ar,pu), pp=objCPP(ar,pu); if(!o&&!pp) return;
     h+='<div style="margin-top:8px"><div class="objtxt"><b>'+esc(nombreArq(ar))+'</b>'+(o?' · '+objCTexto(o):'')+(pp?' · '+pp+' pts por puesto':'')+'</div>'
-      +(o?'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(ar,pu),['recorrido','recorridos'],obHoy(),'Primer recorrido'):'')
-      +(pp?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampoPP(ar,pu),['puesto','puestos'],obHoy(),'Primer puesto'):'')+'</div>';
+      +(o?'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(ar,pu),['recorrido','recorridos','vd'],obHoy(),'Primer recorrido'):'')
+      +(pp?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampoPP(ar,pu),['puesto','puestos','vd'],obHoy(),'Primer puesto'):'')+'</div>';
   });
   if(!h) return '';
   return '<div class="card objcard" style="margin:12px 0 0"><div class="chead"><h2>🎯 Objetivo</h2><span>'+pu+' puestos</span></div>'+h+'</div>';
@@ -1045,7 +1047,7 @@ function objetivosCampoArq(a,i){
     +'<div class="objrow objc5"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Pts recorrido</div><div class="stat" style="font-size:11px;text-align:center">Pts por puesto</div></div>';
   [12,24].forEach(function(pu){
     var o=(a.objC&&a.objC[String(pu)])||{};
-    h+='<div class="objrow objc5"><div class="lbl">'+pu+' puestos</div>'
+    h+='<div class="objrow objc5"><div class="lbl"><span class="verd">'+pu+' puestos</span></div>'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por puesto, '+pu+' puestos" '
@@ -1061,7 +1063,7 @@ function objetivos3DArq(a,i){
   return '<p class="subapt">Objetivo recorrido 3D</p>'
     +'<p class="stat" style="margin:0 0 6px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo) y fecha. Si das varias tandas, se compara por la media por flecha y el tope de M vale por vuelta.</p>'
     +'<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px">Fecha</div></div>'
-    +'<div class="objrow objc4"><div class="lbl">'+n+' puestos</div>'
+    +'<div class="objrow objc4"><div class="lbl"><span class="verd">'+n+' puestos</span></div>'
     +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="p" value="'+esc(o.p==null?'':String(o.p))+'">'
     +'<input class="cinp" type="date" aria-label="Fecha límite del recorrido 3D" data-obj3arq="'+i+'" data-obj3po="f" value="'+esc(o.f||'')+'"></div>';
 }
@@ -1084,7 +1086,7 @@ function obFila(n,c){
   var p=c.tot?Math.round(c.ok/c.tot*100):0;
   return '<div class="objper"><div class="objpl"><span>'+n+'</span><span><b>'+c.ok+'</b> de '+c.tot+' '+(c.tot===1?c.u[0]:c.u[1])
     +' · <b class="'+(c.tot&&c.ok===c.tot?'pctok':'')+'">'+(c.tot?p+' %':'–')+'</b></span></div>'
-    +'<div class="objbar"><i style="width:'+p+'%"></i></div></div>';
+    +'<div class="objbar'+(c.u[2]?' vd':'')+'"><i style="width:'+p+'%"></i></div></div>';
 }
 function obBloque(it,unid,tri,lab){
   var h0=obHoy(), t={ok:0,tot:0,u:unid}, ys={}, prim=null, y0=h0.y, y;
@@ -1135,7 +1137,7 @@ function objetivosRecArq(a,i,k){
   var o=a[k==='2'?'obj2d':'obj3d']||{}, n=Math.max(1,r3Plantilla().length), mx=n*2*11, N=r3N();
   R3K=antes;
   return '<div class="objrow objc4"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Puntos</div><div class="stat" style="font-size:11px">Fecha</div></div>'
-    +'<div class="objrow objc4"><div class="lbl">'+n+' puestos</div>'
+    +'<div class="objrow objc4"><div class="lbl"><span class="verd">'+n+' puestos</span></div>'
     +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos del recorrido '+N+'" data-obj3arq="'+i+'" data-obj3k="'+k+'" data-obj3po="p" value="'+esc(o.p==null?'':String(o.p))+'">'
     +'<input class="cinp" type="date" aria-label="Fecha límite del recorrido '+N+'" data-obj3arq="'+i+'" data-obj3k="'+k+'" data-obj3po="f" value="'+esc(o.f||'')+'"></div>'
     +'<p class="stat" style="margin:2px 0 4px;font-size:12px">Puntos de un recorrido de '+n+' puestos con 2 flechas por puesto ('+mx+' como máximo). Cada tanda es una vuelta completa.</p>';
@@ -1150,7 +1152,7 @@ function pantallaObjetivos(){
     +'<p class="stat" style="margin:0 0 4px;font-size:12px">Puntos por tanda de '+(D.formato.arrows||6)+' flechas y fecha para conseguirlo. Se cuentan las tandas completas de tiradas anotadas flecha a flecha.</p>';
   modsLista().forEach(function(md){
     var o=(A.obj&&A.obj[md.id])||{}, ob=objDe(A,md.id);
-    h+='<div class="obbloq"><p class="obn">'+descMod(md.id)+'</p><div class="objrow" style="grid-template-columns:74px 1fr;margin:2px 0 4px">'
+    h+='<div class="obbloq"><p class="obn"><span class="azul">'+descMod(md.id)+'</span></p><div class="objrow" style="grid-template-columns:74px 1fr;margin:2px 0 4px">'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por tanda, '+descMod(md.id)+'" '
       +'data-objarq="'+i+'" data-objmod="'+md.id+'" data-objcampo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
       +'<input class="cinp" type="date" aria-label="Fecha límite, '+descMod(md.id)+'" '
@@ -1164,7 +1166,7 @@ function pantallaObjetivos(){
     var k=kk[0], o=A[k==='2'?'obj2d':'obj3d'], ob=(o&&Number(o.p)>0)?o:null;
     h+='<div class="card"><div class="chead"><h2>'+kk[1]+'</h2><span>'+esc(nombreArq(A))+'</span></div>'
       +objetivosRecArq(A,i,k)
-      +(ob?'<div class="objtxt" style="font-size:13px">'+objCTexto(ob)+'</div>'+obTabla(obItemsRec(A,k),['tanda','tandas'])
+      +(ob?'<div class="objtxt" style="font-size:13px">'+objCTexto(ob)+'</div>'+obTabla(obItemsRec(A,k),['tanda','tandas','vd'])
           :'<p class="stat" style="margin:2px 0 4px">Sin objetivo en este recorrido.</p>')+'</div>';
   });
   /* recorridos de campo */
@@ -1173,14 +1175,14 @@ function pantallaObjetivos(){
     +'<div class="objrow objc5"><div class="lbl"></div><div class="stat" style="font-size:11px;text-align:center">Pts recorrido</div><div class="stat" style="font-size:11px;text-align:center">Pts por puesto</div></div>';
   [12,24].forEach(function(pu){
     var o=(A.objC&&A.objC[String(pu)])||{}, ob=objCDe(A,pu);
-    h+='<div class="obbloq" style="border-top:none;padding:0"><div class="objrow objc5"><div class="lbl">'+pu+' puestos</div>'
+    h+='<div class="obbloq" style="border-top:none;padding:0"><div class="objrow objc5"><div class="lbl"><span class="verd">'+pu+' puestos</span></div>'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="p" value="'+esc(o.p==null?'':String(o.p))+'">'
       +'<input class="cinp" type="number" inputmode="decimal" min="0" step="any" placeholder="pts" aria-label="Puntos por puesto, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="pp" value="'+esc(o.pp==null?'':String(o.pp))+'">'
       +'<input class="cinp" style="grid-column:1/-1" type="date" aria-label="Fecha límite, '+pu+' puestos" '
       +'data-objcarq="'+i+'" data-objcpu="'+pu+'" data-objcpo="f" value="'+esc(o.f||'')+'"></div>'
-      +(ob?'<div class="objtxt" style="font-size:13px;margin-bottom:2px">'+pu+' puestos: '+objCTexto(ob)+'</div>'+'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(A,pu),['recorrido','recorridos'],obPer(),'Primer recorrido')+(objCPP(A,pu)?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo ('+objCPP(A,pu)+' pts por puesto)</div>'+obBloque(obItemsCampoPP(A,pu),['puesto','puestos'],obPer(),'Primer puesto'):'')
+      +(ob?'<div class="objtxt" style="font-size:13px;margin-bottom:2px">'+pu+' puestos: '+objCTexto(ob)+'</div>'+'<div class="objtxt dias" style="margin-top:6px">Recorridos en los que conseguiste el objetivo</div>'+obBloque(obItemsCampo(A,pu),['recorrido','recorridos','vd'],obPer(),'Primer recorrido')+(objCPP(A,pu)?'<div class="objtxt dias" style="margin-top:6px">Puestos en los que conseguiste el objetivo ('+objCPP(A,pu)+' pts por puesto)</div>'+obBloque(obItemsCampoPP(A,pu),['puesto','puestos','vd'],obPer(),'Primer puesto'):'')
           :'')+'</div>';
   });
   return h+'</div>';
@@ -1356,7 +1358,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=111;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=112;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
