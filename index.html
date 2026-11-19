@@ -888,6 +888,12 @@ function equipoArq0(a,i){
     +(c.ap?'Para tu apertura se calculan palas <b>'+NOM_PALAS[c.palas]+' de '+pc(PALAS_NOM[c.palas])+'</b>.'
       +(au.palas?calc('palas'):(e.palas!==c.palas||Number(e.palasIn)!==PALAS_NOM[c.palas]?poner('palas',c.palas,'Usar las calculadas ('+NOM_PALAS[c.palas]+')'):''))
       :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
+  /* 3b. potencia de las palas */
+  var pt=puntaTeorica(a);
+  h+='<div class="field"><label>Potencia palas</label>'+campo('libras','35','Potencia de las palas en libras')+'<span class="un">lb</span></div>'
+    +'<p class="consejo">La potencia suele venir marcada en las palas (libras a 28″). '
+    +(pt?'A tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+' son unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).'
+      :'Escríbela y la app la ajusta a tu apertura.')+'</p>';
   /* 4. medida del arco */
   h+=par('Medida del arco','largo','largoCm','68','172.7','Medida del arco')
     +'<p class="consejo">'+(c.largo?'Con riser de <b>'+pc(c.r)+'</b> y palas '+(c.p?NOM_PALAS[c.p]+' ':'')+'de <b>'+pc(c.pn)+'</b>, el arco mide <b>'+pc(c.largo)+'</b> (riser + talla de las palas − 25″).'
@@ -900,20 +906,17 @@ function equipoArq0(a,i){
       +(!au.cuerda&&e.cuerdaIn>0&&Math.abs(Number(e.cuerdaIn)-c.cuerda)>1.5?'<br><span class="avisoeq">⚠ Tu cuerda es de '+pc(e.cuerdaIn)+': para un arco de '+pc(c.L)+' lo normal son unas '+pc(c.cuerda)+'.</span>':'')
       +(au.cuerda?calc('cuerda'):(Number(e.cuerdaIn)!==c.cuerda?poner('cuerda',c.cuerda,'Usar el calculado ('+pc(c.cuerda)+')'):''))
       :'Suele medir unas 4″ menos que el arco: '+pc(64)+' para uno de '+pc(68)+'.')+'</p>';
-  /* 5b. potencia y punta */
-  var pt=puntaTeorica(a);
-  h+='<div class="field"><label>Potencia</label>'+campo('libras','35','Potencia de las palas en libras')+'<span class="un">lb</span></div>'
-    +'<p class="consejo">La potencia suele venir marcada en las palas (libras a 28″). '
-    +(pt?'A tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+' son unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).<br>'
-      +'Peso adecuado de la punta (teórico): <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
-      +'<br>Sale de una flecha completa de unos '+pt.total+' grains (9 grains por libra) con la punta en torno al 28 %. Es solo un cálculo teórico: ajústalo con tu entrenador o tu tienda según tus flechas.'
-      :'Escríbela para calcular el peso teórico de la punta en grains y en gramos.')+'</p>';
   /* 6. flechas */
   h+=par('Flechas','flechaIn','flechaCm','28','71.1','Flecha')
     +'<p class="consejo">Se mide desde el <b>fondo de la muesca</b> (donde apoya la cuerda) hasta el <b>final del tubo</b>, sin contar la punta. '
     +(c.ap?'Con tu apertura de <b>'+pc(c.ap)+'</b>: entre <b>'+pc(c.ap+1)+'</b> y <b>'+pc(c.ap+2)+'</b> (apertura más 1 a 2″). Si dudas, mejor un poco larga que corta.'
       +' Se calcula <b>'+pc(c.fl)+'</b>.'+(au.flecha?calc('flecha'):(Number(e.flechaIn)!==c.fl?poner('flecha',c.fl,'Usar el calculado ('+pc(c.fl)+')'):''))
       :'Suele ser la apertura más 1 a 2″.')+'</p>';
+  /* 7. peso de las puntas */
+  h+='<div class="field"><label>Peso puntas</label></div>'
+    +'<p class="consejo">'+(pt?'Con unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> a tu apertura'+(e.flechaIn>0?' y flechas de <b>'+pc(e.flechaIn)+'</b>':'')+', el peso adecuado de la punta (teórico) es de <b>'+pt.p+' grains ('+grG(pt.p)+')</b>, con un margen de '+pt.lo+' a '+pt.hi+' grains ('+grG(pt.lo)+' a '+grG(pt.hi)+').'
+      +'<br>Sale de una flecha completa de unos '+pt.total+' grains ('+grG(pt.total)+', a 9 grains por libra) con la punta en torno al 28 % de ese peso. Es solo un cálculo teórico: ajústalo con tu entrenador o tu tienda según tus flechas.'
+      :'Escribe la potencia de las palas para calcular el peso teórico de las puntas en grains y en gramos.')+'</p>';
   return h;
 }
 
@@ -1353,7 +1356,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=109;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=110;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -1522,7 +1525,7 @@ function pantallaMejores(){
         +'<div class="l1"><b>'+esc(sitio(si))+'</b><span class="hdcha">'+r3Total(c3)+'</span></div>'
         +'<div class="l2">'+r3Formato(c3)+noctTxt(c3)+' · '+dec(r3Media(c3))+' por flecha · '+fecha(c3.fecha)+(sel===''?' · '+esc(nombreArq(arqPorId(c3.arq))):'')+'</div></div>';
     });
-    if(f3) h+='<div class="card"><div class="chead"><h2>Recorrido '+r3N()+'</h2><span>mejor recorrido</span></div>'+f3+'</div>';
+    if(f3) h+='<div class="card"><div class="chead"><h2><span class="verd">Recorrido '+r3N()+'</span></h2><span>mejor recorrido</span></div>'+f3+'</div>';
     R3K=antes;
   });
   if(!hay) h+='<div class="card"><p class="empty">Aún no hay tiradas completas'+(sel!==''&&arqs.length>1?' de este arquero':'')
@@ -5693,7 +5696,7 @@ function progreso3D(A){
   h+='<div class="card"><div class="chead"><h2>Mejores marcas</h2><span>'+esc(nombreArq(A))+'</span></div>';
   D.sites.forEach(function(sn,i){
     var b=r3MejorSitio(A.id,i);
-    h+='<div class="rec r3rec"><div class="lbl">Recorrido '+r3N()+'<small>'+esc(sn)+'</small></div><div class="v">'
+    h+='<div class="rec r3rec"><div class="lbl"><span class="verd">Recorrido '+r3N()+'</span><small>'+esc(sn)+'</small></div><div class="v">'
       +(b?'<b>'+dec(r3Media(b))+'</b><small>'+r3Total(b)+' de '+r3Max(b)+' · '+(r3T(b)>1?r3T(b)+' tandas · ':'')+b.fp+(b.fp===1?' flecha':' flechas')+' por puesto · '+fecha(b.fecha).replace(/ /g,'\u00a0')+'</small>':'<small>Sin registro</small>')+'</div></div>';
   });
   h+='</div><div class="card"><div class="chead"><h2>Guardar</h2></div>'+dosBotones('prog')+'</div>';
