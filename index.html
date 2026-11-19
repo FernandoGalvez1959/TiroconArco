@@ -881,19 +881,19 @@ function equipoArq0(a,i){
   /* 3. palas: tipo y talla */
   h+='<div class="field"><label>Palas</label><div class="seg segpal">'
     +[['corta','Cortas'],['media','Medias'],['larga','Largas']].map(function(q){
-      return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')+'</div></div>'
-    +par('Talla','palasIn','palasCm','68','172.7','Talla de las palas')
-    +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '
-    +'Se nombran por el arco que forman con un riser de '+pc(25)+': cortas '+pc(66)+', medias '+pc(68)+', largas '+pc(70)+'. '
-    +(c.ap?'Para tu apertura se calculan palas <b>'+NOM_PALAS[c.palas]+' de '+pc(PALAS_NOM[c.palas])+'</b>.'
-      +(au.palas?calc('palas'):(e.palas!==c.palas||Number(e.palasIn)!==PALAS_NOM[c.palas]?poner('palas',c.palas,'Usar las calculadas ('+NOM_PALAS[c.palas]+')'):''))
-      :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
+      return '<button data-act="eqpalas" data-i="'+i+'" data-v="'+q[0]+'" data-on="'+(e.palas===q[0]?1:0)+'">'+q[1]+'</button>'; }).join('')+'</div></div>';
   /* 3b. potencia de las palas */
   var pt=puntaTeorica(a);
   h+='<div class="field"><label>Potencia palas</label>'+campo('libras','35','Potencia de las palas en libras')+'<span class="un">lb</span></div>'
     +'<p class="consejo">La potencia suele venir marcada en las palas (libras a 28″). '
     +(pt?'A tu apertura'+(pt.ap?' de '+pc(pt.ap):'')+' son unas <b>'+fmtN(Math.round(pt.real*10)/10)+' lb</b> (2,5 lb más o menos por cada pulgada de diferencia con 28″).'
       :'Escríbela y la app la ajusta a tu apertura.')+'</p>';
+  h+=par('Talla palas','palasIn','palasCm','68','172.7','Talla de las palas')
+    +'<p class="consejo">No se miden: la talla suele venir <b>marcada en la propia pala</b> (S, M o L), junto con su potencia en libras. '
+    +'Se nombran por el arco que forman con un riser de '+pc(25)+': cortas '+pc(66)+', medias '+pc(68)+', largas '+pc(70)+'. '
+    +(c.ap?'Para tu apertura se calculan palas <b>'+NOM_PALAS[c.palas]+' de '+pc(PALAS_NOM[c.palas])+'</b>.'
+      +(au.palas?calc('palas'):(e.palas!==c.palas||Number(e.palasIn)!==PALAS_NOM[c.palas]?poner('palas',c.palas,'Usar las calculadas ('+NOM_PALAS[c.palas]+')'):''))
+      :'Cortas con apertura menor de 26″, medias de 26 a 29″ y largas de 29″ en adelante.')+'</p>';
   /* 4. medida del arco */
   h+=par('Medida del arco','largo','largoCm','68','172.7','Medida del arco')
     +'<p class="consejo">'+(c.largo?'Con riser de <b>'+pc(c.r)+'</b> y palas '+(c.p?NOM_PALAS[c.p]+' ':'')+'de <b>'+pc(c.pn)+'</b>, el arco mide <b>'+pc(c.largo)+'</b> (riser + talla de las palas − 25″).'
@@ -1356,7 +1356,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=110;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=111;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -5181,7 +5181,7 @@ function mejoresDe(a){
     var antes=R3K; R3K=kk;
     var m3=r3MejorSitio(a.id,null);
     if(m3) hay=true;
-    h+='<div class="rec" style="padding:8px 0"><div class="lbl">Recorrido '+r3N()
+    h+='<div class="rec" style="padding:8px 0"><div class="lbl"><span class="verd">Recorrido '+r3N()+'</span>'
       +(m3?'<small>'+esc(sitio(m3.site))+' · '+r3Formato(m3)+' · '+fecha(m3.fecha)+'</small>':'')+'</div><div class="v">'
       +(m3?'<b>'+r3Total(m3)+'</b><small>'+dec(r3Media(m3))+' por flecha</small>':'<small>Sin marca</small>')+'</div></div>';
     R3K=antes;
