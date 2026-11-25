@@ -1375,7 +1375,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=116;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=117;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
@@ -2996,7 +2996,9 @@ function tarjetaCopia(){
       +'<button class="act act2" data-act="syncbaja" style="margin-top:0">Traer ahora</button></div>'
       +(normalizaUrl(D.sync.url).ok
         ? '<button class="act" data-act="synclink">Enviar enlace a otro móvil</button>'
+          +'<button class="act act2" data-act="synclinkarch">Guardar enlace en un archivo</button>'
           +'<p class="stat" style="margin-top:6px">Quien abra ese enlace en otro móvil queda conectado sin teclear nada. '
+          +'<b>Si borras los datos de navegación</b>, la app pierde la conexión: abre este enlace (guárdalo en tus notas o en el archivo) y se reconecta sola. '
           +'Mándalo solo a tus propios aparatos: el enlace lleva la clave.</p>'
         : '')
       +'<p class="stat" style="margin-top:8px">'
@@ -6779,6 +6781,10 @@ document.getElementById('app').addEventListener('click',function(ev){
     if(navigator.share) navigator.share({title:'Tiro con Arco: conectar a la nube',
       text:'Abre este enlace en tu otro móvil para conectar la app a tu nube:',url:en}).catch(function(){});
     else copiar(en,'Enlace'); }
+  else if(a==='synclinkarch'){
+    var en2=enlaceNube();
+    if(!en2){ toast('Primero configura la dirección y la clave.'); return; }
+    bajar(['Enlace para reconectar Tiro con Arco a tu nube.\nAbre este enlace en el móvil si se pierde la conexión:\n\n'+en2+'\n'],'enlace-conexion-tiro-con-arco.txt','text/plain'); }
   else if(a==='synccrea'){ cambiaSync('clave',claveNueva()); save(false); render();
     toast('Clave de la nube nueva creada. Ahora envía el enlace a tus otros móviles.');
     if(syncListo()){ bajarNube(false); vivoOn(); } }
