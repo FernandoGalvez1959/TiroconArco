@@ -759,7 +759,7 @@ var LARGO_PALAS={corta:41,media:43,larga:45};      /* lo que las palas suman al 
 var PALAS_NOM={corta:66,media:68,larga:70};         /* talla de las palas: el largo del arco que forman con un riser de 25″ */
 var NOM_PALAS={corta:'cortas',media:'medias',larga:'largas'};
 var PAR_EQ={cuerdaCm:['cuerdaIn',1/2.54],cuerdaIn:['cuerdaCm',2.54],flechaIn:['flechaCm',2.54],flechaCm:['flechaIn',1/2.54],
-  envCm:['envIn',1/2.54],envIn:['envCm',2.54],
+  envCm:['envIn',1/2.54],envIn:['envCm',2.54],fistCm:['fistIn',1/2.54],fistIn:['fistCm',2.54],
   reservaCm:['reserva',1/2.54],reserva:['reservaCm',2.54],palasCm:['palasIn',1/2.54],palasIn:['palasCm',2.54],
   largoCm:['largo',1/2.54],largo:['largoCm',2.54],apCm:['apIn',1/2.54],apIn:['apCm',2.54]};
 var AUTO_DE={reserva:'reserva',reservaCm:'reserva',palasIn:'palas',palasCm:'palas',largo:'largo',largoCm:'largo',
@@ -911,6 +911,14 @@ function equipoArq0(a,i){
       +(!au.largo&&e.largo>0&&Math.abs(Number(e.largo)-c.largo)>0.5?'<br><span class="avisoeq">⚠ Tu arco está puesto en '+pc(e.largo)+' y no cuadra con tu riser y tus palas.</span>':'')
       +(au.largo?calc('largo'):(Number(e.largo)!==c.largo?poner('largo',c.largo,'Usar el calculado ('+pc(c.largo)+')'):''))
       :'Es el largo total del arco: el riser más la talla de las palas menos 25″.')+'</p>';
+  /* 4b. fistmele (altura de puente) */
+  var fistRec=c.L?Math.round((8.75+(c.L-68)*0.125)*4)/4:0;
+  h+=par('Fistmele','fistIn','fistCm','8.75','22.2','Fistmele o altura de puente')
+    +'<p class="consejo">Es la distancia desde el <b>punto más hondo de la empuñadura</b> (el pivote) hasta la <b>cuerda</b>, con el arco encordado y sin tirar. Se mide con una regla o un medidor de puente (fistmele). '
+    +(fistRec?'Para un arco de <b>'+pc(c.L)+'</b> lo habitual es de <b>'+pc(fistRec-0.25)+'</b> a <b>'+pc(fistRec+0.25)+'</b>; como punto de partida, <b>'+pc(fistRec)+'</b>. '
+      +'Cada fabricante indica el suyo (suele venir en las palas): mejor sigue ese. Para afinarlo, se gira la cuerda (más vueltas = menos fistmele) y se comprueba cómo vuelan las flechas.'
+      +(e.fistIn>0?(Math.abs(Number(e.fistIn)-fistRec)>0.75?'<br><span class="avisoeq">⚠ Tu fistmele ('+pc(e.fistIn)+') se aleja bastante de lo habitual para tu arco.</span>':''):poner('fistIn',fistRec,'Anotar '+pc(fistRec)))
+      :'Se suele situar entre 8½″ y 9¼″, según el largo del arco. Cada fabricante indica el suyo.')+'</p>';
   /* 5. cuerda */
   h+=par('Cuerda','cuerdaIn','cuerdaCm','64','162.6','Cuerda')
     +'<p class="consejo">'+(c.cuerda?'Para un arco de <b>'+pc(c.L)+'</b>, cuerda de unas <b>'+pc(c.cuerda)+'</b> (arco menos 4″).'
@@ -1375,7 +1383,7 @@ var STORE='arqueria:datos:v1';
 var WV=/;\s*wv\)/.test(navigator.userAgent||'');
 
 /* ---- ¿conserva este móvil lo que la app guarda? ---- */
-var APP_VER=117;   /* debe coincidir con el número de arquero-vNN en sw.js */
+var APP_VER=118;   /* debe coincidir con el número de arquero-vNN en sw.js */
 var ALM={ok:true,causa:'',persist:null,primera:0,aperturas:0,previa:0};
 var LIMITE_ALM=5242880;   /* caracteres que admite el navegador por página, más o menos */
 function pruebaAlmacen(){
